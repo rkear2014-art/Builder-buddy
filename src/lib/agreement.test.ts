@@ -1,0 +1,107 @@
+import assert from "node:assert/strict";
+import { describe, it } from "node:test";
+import {
+  agreementChanges,
+  keepExistingSignOff,
+  lockAgreement,
+  parseLockedAgreement,
+  toPublicAgreement,
+  type AgreementSource,
+} from "./agreement";
+
+const signedAt = "2026-10-04T08:40:00.000Z";
+
+function plasterJob(): AgreementSource {
+  return {
+    businessName: "Hart & Co",
+    customerName: "Anita Patel",
+    address: "14 Larkspur Road, Bristol, BS7 8NS",
+    phone: "07700 900123",
+    email: "anita.patel@example.com",
+    trade: "Plasterer",
+    description: "Skim the lounge and hall.",
+    internalNotes: "GATE-CODE-4821",
+    scheduledDate: "2026-10-06",
+    timeSlot: "morning",
+    materials: [
+      {
+        name: "Multi-finish plaster",
+        quantity: "3",
+        unit: "bag",
+        unitPricePence: 940,
+        costPricePence: 987654,
+      },
+      {
+        name: "Scrim tape",
+        quantity: "1",
+        unit: "roll",
+        unitPricePence: null,
+        costPricePence: 280,
+      },
+    ],
+  };
+}
+
+describe("sign-off locking", () => {
+  it("keeps the agreed wording after the working job is edited", () => {
+    const job = plasterJob();
+    const locked = lockAgreement(job, { signerName: "Anita Patel", signedAt });
+
+    job.description = "Skim the whole house and the extension.";
+    job.materials[0].unitPricePence = 5000;
+    job.materials.push({
+      name: "Extra skim",
+      quantity: "1",
+      unit: "bag",
+      unitPricePence: 100,
+      costPricePence: 50,
+    });
+    job.internalNotes = "changed note";
+
+    assert.equal(locked.description, "Skim the lounge and hall.");
+    assert.equal(locked.materials.length, 2);
+    assert.equal(locked.materials[0].unitPricePence, 940);
+    assert.equal(locked.materials[0].lineTotalPence, 2820);
+    assert.equal(locked.signerName, "Anita Patel");
+    assert.equal(locked.signedAt, signedAt);
+    assert.equal(parseLockedAgreement(locked)?.description, "Skim the lounge and hall.");
+  });
+
+  it("does not treat a bought tick or a cost change as a change to the agreement", () => {
+    const job = plasterJob();
+    const locked = lockAgreement(job, { signerName: "Anita Patel", signedAt });
+    const current = toPublicAgreement({
+      ...job,
+      materials: job.materials.map((line) => ({ ...line, costPricePence: 1 })),
+    });
+    assert.deepEqual(agreementChanges(locked, current), []);
+  });
+
+  it("names the customer-facing fields that drifted", () => {
+    const job = plasterJob();
+    const locked = lockAgreement(job, { signerName: "Anita Patel", signedAt });
+    const current = toPublicAgreement({
+      ...job,
+      description: "Skim the lounge, hall, and stairs.",
+      scheduledDate: "2026-10-07",
+    });
+    assert.deepEqual(agreementChanges(locked, current), ["Work description", "Date"]);
+  });
+
+  it("refuses a second signature and keeps the first snapshot", () => {
+    const first = lockAgreement(plasterJob(), { signerName: "Anita Patel", signedAt });
+    const second = lockAgreement(
+      { ...plasterJob(), description: "A different agreement." },
+      { signerName: "Someone Else", signedAt: "2026-10-05T10:00:00.000Z" },
+    );
+    const decision = keepExistingSignOff(first, second);
+    assert.equal(decision.created, false);
+    assert.equal(decision.accepted, first);
+    assert.equal(decision.accepted.description, "Skim the lounge and hall.");
+  });
+
+  it("rejects a snapshot that is not the locked shape", () => {
+    assert.equal(parseLockedAgreement({ description: "Skim the lounge and hall." }), null);
+    assert.equal(parseLockedAgreement(null), null);
+  });
+});

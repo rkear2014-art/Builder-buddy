@@ -1,0 +1,145 @@
+"use server";
+
+import { redirect } from "next/navigation";
+import { createShareToken } from "@/lib/access";
+import { isJobStatus } from "@/lib/constants";
+import { isoToUtcDate } from "@/lib/dates";
+import type { ActionState } from "@/lib/form-state";
+import { parseJobForm, parseTemplateForm } from "@/lib/validators";
+import { requireUser } from "@/server/dal";
+import { getPrisma, isUniqueConstraint } from "@/server/prisma";
+import { revalidateDesk } from "@/server/revalidate";
+
+export async function createJob(_state: ActionState, formData: FormData): Promise<ActionState> {
+  const user = await requireUser();
+  const parsed = parseJobForm(formData);
+  if (!parsed.ok) return { error: parsed.error };
+  const job = await getPrisma().job.create({
+    data: {
+      userId: user.id,
+      customerName: parsed.data.customerName,
+      address: parsed.data.address,
+      phone: parsed.data.phone,
+      email: parsed.data.email,
+      trade: parsed.data.trade,
+      description: parsed.data.description,
+      internalNotes: parsed.data.internalNotes,
+      scheduledDate: isoToUtcDate(parsed.data.scheduledDate),
+      timeSlot: parsed.data.timeSlot,
+      status: parsed.data.status,
+      shareToken: createShareToken(),
+    },
+    select: { id: true },
+  });
+  revalidateDesk(job.id);
+  redirect(`/jobs/${job.id}`);
+}
+
+export async function updateJob(_state: ActionState, formData: FormData): Promise<ActionState> {
+  const user = await requireUser();
+  const jobId = String(formData.get("jobId") ?? "");
+  const parsed = parseJobForm(formData);
+  if (!parsed.ok) return { error: parsed.error };
+  const existing = await getPrisma().job.findFirst({
+    where: { id: jobId, userId: user.id },
+    select: { id: true, shareToken: true },
+  });
+  if (!existing) return { error: "That job could not be found." };
+  await getPrisma().job.update({
+    where: { id: existing.id },
+    data: {
+      customerName: parsed.data.customerName,
+      address: parsed.data.address,
+      phone: parsed.data.phone,
+      email: parsed.data.email,
+      trade: parsed.data.trade,
+      description: parsed.data.description,
+      internalNotes: parsed.data.internalNotes,
+      scheduledDate: isoToUtcDate(parsed.data.scheduledDate),
+      timeSlot: parsed.data.timeSlot,
+      status: parsed.data.status,
+    },
+  });
+  revalidateDesk(existing.id, existing.shareToken);
+  redirect(`/jobs/${existing.id}`);
+}
+
+export async function setJobStatus(formData: FormData): Promise<void> {
+  const user = await requireUser();
+  const jobId = String(formData.get("jobId") ?? "");
+  const status = String(formData.get("status") ?? "");
+  if (!isJobStatus(status)) return;
+  const existing = await getPrisma().job.findFirst({
+    where: { id: jobId, userId: user.id },
+    select: { id: true, shareToken: true },
+  });
+  if (!existing) return;
+  await getPrisma().job.update({ where: { id: existing.id }, data: { status } });
+  revalidateDesk(existing.id, existing.shareToken);
+}
+
+export async function rotateShareLink(formData: FormData): Promise<void> {
+  const user = await requireUser();
+  const jobId = String(formData.get("jobId") ?? "");
+  const existing = await getPrisma().job.findFirst({
+    where: { id: jobId, userId: user.id },
+    select: { id: true, shareToken: true, signOff: { select: { id: true } } },
+  });
+  if (!existing || existing.signOff) return;
+  const shareToken = createShareToken();
+  await getPrisma().job.update({ where: { id: existing.id }, data: { shareToken } });
+  revalidateDesk(existing.id, existing.shareToken);
+  revalidateDesk(existing.id, shareToken);
+}
+
+export async function deleteJob(formData: FormData): Promise<void> {
+  const user = await requireUser();
+  const jobId = String(formData.get("jobId") ?? "");
+  const existing = await getPrisma().job.findFirst({
+    where: { id: jobId, userId: user.id },
+    select: { id: true },
+  });
+  if (!existing) return;
+  await getPrisma().job.delete({ where: { id: existing.id } });
+  revalidateDesk();
+  redirect("/jobs");
+}
+
+export async function saveJobAsTemplate(_state: ActionState, formData: FormData): Promise<ActionState> {
+  const user = await requireUser();
+  const jobId = String(formData.get("jobId") ?? "");
+  const parsed = parseTemplateForm(formData);
+  if (!parsed.ok) return { error: parsed.error };
+  const job = await getPrisma().job.findFirst({
+    where: { id: jobId, userId: user.id },
+    include: { materials: { orderBy: { sortOrder: "asc" } } },
+  });
+  if (!job) return { error: "That job could not be found." };
+  if (job.materials.length === 0) {
+    return { error: "Add some materials before saving a template." };
+  }
+  try {
+    await getPrisma().materialTemplate.create({
+      data: {
+        userId: user.id,
+        name: parsed.data.name,
+        trade: parsed.data.trade,
+        items: {
+          create: job.materials.map((material, index) => ({
+            name: material.name,
+            quantity: material.quantity,
+            unit: material.unit,
+            unitPricePence: material.unitPricePence,
+            costPricePence: material.costPricePence,
+            sortOrder: index,
+          })),
+        },
+      },
+    });
+  } catch (error) {
+    if (isUniqueConstraint(error)) return { error: "That template already exists." };
+    throw error;
+  }
+  revalidateDesk(job.id);
+  redirect(`/jobs/${job.id}#materials`);
+}
