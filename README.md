@@ -1,6 +1,6 @@
 # Builder Buddy
 
-A tablet- and phone-friendly job diary for UK tradespeople: plasterers, builders, electricians, plumbers, and the rest. Book work in, keep a materials list, and send the customer a private link they can sign with a finger.
+A tablet- and phone-friendly job diary for plastering. Book work in, keep a materials list, and send the customer a private link they can sign with a finger. Other trades stay in the code and can be switched back on from one list.
 
 ## Stack
 
@@ -15,15 +15,16 @@ Each business is its own tenant. Jobs, customer details, materials, saved items,
 
 ## What you can do
 
-- Book in a job with the customer’s name, address, phone, and email, the trade, the work, a date, a time slot, and a status: enquiry, booked, in progress, or complete.
+- Book in a job with the customer’s name, address, phone, and email, the work, a date, a time slot, and a status: enquiry, booked, in progress, or complete. The trade is plastering. A job saved earlier under another trade still opens.
 - See the week and month in a diary.
 - Keep materials on each job: quantity, unit, optional customer price, optional cost (hidden from the customer), and a bought tick.
-- Save items and templates per trade, and drop them onto a job.
+- Save items and templates, and add them to a job from a chooser of plastering work. The owner can set a photo on each tile from Library.
 - On a plastering job, pick a built-in starter when booking in, or add one later. The lists follow a plasterer’s usual services (skim, hardwall, dot and dab, stud walls, Artex, wire mesh, repairs, lime, tape and jointing, cornices, coving, rendering, and screeding). Prices are left blank, and each list has a short description the customer reads on the sign-off page. Any plastering business can copy them into its own library. Load plastering starter lists adds only the ones that are missing, and updates an older saved name instead of making a second copy.
 - Send an unguessable link. The customer sees a quotation: a cover, a short letter, the price, and a contract for the works, then signs. The signature, name, and time are stored. Later edits do not change the signed copy. VAT, any deposit, and whether each price is shown are frozen with that copy.
 - Open on a dashboard for this business: today, tomorrow, agreements waiting for a signature, follow-ups, and jobs added in the last day, plus this week, this month’s priced work, and recent jobs. **Hide £** is remembered on this device. There is no invoice list and no “quotes sent” list.
 - Put an optional logo, dashboard photos, accent colour, and letterhead (phone, email, address, website, tagline) on the business. The owner sets these on **Business**. A new logo suggests a colour when none has been chosen. The AK Plastering sample can be applied again to replace an older copy: the agreement keeps the full logo, and the dashboard uses a smaller mark on a light tile. A business can keep several dashboard photos. Each visit shows a different one, with a dark overlay so the greeting stays readable, and an optional caption. Use the AK Plastering photos adds any sample photos that are not already stored. With no photo, the dashboard uses a plaster-coloured gradient. With no logo, the agreement shows the business name only. The home-screen icon stays Builder Buddy.
 - On Business, the owner can write the covering letter and extra badges, such as Fully insured, and turn VAT on with a rate. VAT stays off until then. A job can ask for a deposit, or show only the overall price.
+- On a job, tick a survey checklist, choose a deposit or no deposit, and open the quote in email, WhatsApp, or text. Nothing is sent until you send it from your own app. You can hide prices, print a job sheet with no prices, and revoke the customer link.
 - Print the quotation, or use the browser’s “Save as PDF”. Each section starts on its own page.
 
 Internal notes and your costs never appear on the customer page.

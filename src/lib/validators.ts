@@ -1,8 +1,10 @@
 import { z } from "zod";
 import {
+  isEnabledTrade,
   isJobStatus,
   isTimeSlot,
   isTrade,
+  singleEnabledTrade,
   type JobStatus,
 } from "./constants";
 import { isIsoDate } from "./dates";
@@ -63,7 +65,7 @@ export function parseJobForm(formData: FormData): FormParse<JobInput> {
     address: field(formData, "address"),
     phone: field(formData, "phone"),
     email: field(formData, "email"),
-    trade: field(formData, "trade"),
+    trade: field(formData, "trade") || singleEnabledTrade() || "",
     description: field(formData, "description"),
     internalNotes: field(formData, "internalNotes"),
     scheduledDate: field(formData, "scheduledDate"),
@@ -133,8 +135,8 @@ export function parseMaterialForm(formData: FormData): FormParse<MaterialInput> 
 export function parseLibraryItemForm(
   formData: FormData,
 ): FormParse<MaterialInput & { trade: string }> {
-  const trade = field(formData, "trade");
-  if (!isTrade(trade)) return { ok: false, error: "Choose a trade." };
+  const trade = field(formData, "trade") || singleEnabledTrade() || "";
+  if (!isEnabledTrade(trade)) return { ok: false, error: "Choose a trade." };
   const material = parseMaterialForm(formData);
   if (!material.ok) return material;
   return { ok: true, data: { ...material.data, trade } };
@@ -142,11 +144,11 @@ export function parseLibraryItemForm(
 
 export function parseTemplateForm(formData: FormData): FormParse<{ name: string; trade: string }> {
   const name = field(formData, "name");
-  const trade = field(formData, "trade");
+  const trade = field(formData, "trade") || singleEnabledTrade() || "";
   if (name.length < 2 || name.length > 80) {
     return { ok: false, error: "Give the template a name." };
   }
-  if (!isTrade(trade)) return { ok: false, error: "Choose a trade." };
+  if (!isEnabledTrade(trade)) return { ok: false, error: "Choose a trade." };
   return { ok: true, data: { name, trade } };
 }
 

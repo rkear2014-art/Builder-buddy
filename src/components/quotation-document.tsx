@@ -7,6 +7,7 @@ import { townFromAddress } from "@/lib/place";
 import {
   addressLines,
   coverChips,
+  paymentNote,
   quoteFooter,
   quoteLetterText,
   quoteMoney,
@@ -325,7 +326,3 @@ function PriceRow({ label, amount }: { label: string; amount: string }) {
   );
 }
 
-function paymentNote(depositPence: number | null): string {
-  if (depositPence == null) return "No deposit required. Full payment due on completion.";
-  return `A deposit of ${formatPence(depositPence)} is due before the work starts. The rest is due when the work is finished.`;
-}

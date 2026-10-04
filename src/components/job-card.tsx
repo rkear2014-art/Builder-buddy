@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { slotLabel } from "@/lib/constants";
+import { slotLabel, visibleTradeLabel } from "@/lib/constants";
 import { formatIsoDate } from "@/lib/dates";
 import type { JobSummary } from "@/lib/desk";
 import { StatusBadge } from "@/components/status-badge";
@@ -9,7 +9,9 @@ export function JobCard({ job }: { job: JobSummary }) {
     <Link href={`/jobs/${job.id}`} className="card block transition hover:border-ink">
       <div className="flex items-start justify-between gap-3">
         <p className="text-sm font-bold text-stone">
-          {job.trade} · {formatIsoDate(job.scheduledDate)} · {slotLabel(job.timeSlot)}
+          {[visibleTradeLabel(job.trade), formatIsoDate(job.scheduledDate), slotLabel(job.timeSlot)]
+            .filter(Boolean)
+            .join(" · ")}
         </p>
         <StatusBadge status={job.status} />
       </div>

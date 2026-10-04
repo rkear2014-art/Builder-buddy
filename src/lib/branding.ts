@@ -179,6 +179,12 @@ export function customerHeroSrc(token: string, photoId: string, updatedAt: strin
   return `/sign/${token}/hero/${encodeURIComponent(photoId)}${version}`;
 }
 
+export function deskCatalogueSrc(catalogueKey: string, updatedAt: string | null): string | null {
+  if (!/^[a-z0-9-]{8,80}$/i.test(catalogueKey)) return null;
+  const version = updatedAt ? `?v=${encodeURIComponent(updatedAt)}` : "";
+  return `/branding/catalogue/${encodeURIComponent(catalogueKey)}${version}`;
+}
+
 export function deskHeroSrc(photoId: string, updatedAt: string | null): string {
   const version = updatedAt ? `?v=${encodeURIComponent(updatedAt)}` : "";
   return `/branding/hero/${encodeURIComponent(photoId)}${version}`;

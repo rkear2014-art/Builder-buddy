@@ -97,6 +97,7 @@ export async function applyTemplate(formData: FormData): Promise<void> {
     }
   });
   revalidateDesk(job.id, job.shareToken);
+  redirect(`/jobs/${job.id}#materials`);
 }
 
 export async function toggleMaterialBought(formData: FormData): Promise<void> {

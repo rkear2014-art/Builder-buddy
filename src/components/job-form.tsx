@@ -1,7 +1,16 @@
 "use client";
 
 import { useState } from "react";
-import { JOB_STATUSES, STATUS_LABELS, TIME_SLOTS, TRADES } from "@/lib/constants";
+import {
+  JOB_STATUSES,
+  STATUS_LABELS,
+  TIME_SLOTS,
+  enabledTrades,
+  isEnabledTrade,
+  isTrade,
+  singleEnabledTrade,
+  tradeLabel,
+} from "@/lib/constants";
 import type { ActionState } from "@/lib/form-state";
 import { starterTemplatesFor } from "@/lib/trade-starters";
 import { InlineForm } from "@/components/inline-form";
@@ -34,7 +43,11 @@ export function JobForm({
     depositPence: number | null;
   };
 }) {
-  const [trade, setTrade] = useState(job?.trade ?? "");
+  const onlyTrade = singleEnabledTrade();
+  const choices = enabledTrades();
+  const savedTrade = job?.trade && isTrade(job.trade) && !isEnabledTrade(job.trade) ? job.trade : null;
+  const [trade, setTrade] = useState(job?.trade || onlyTrade || "");
+  const showTradePicker = choices.length > 1;
   const [description, setDescription] = useState(job?.description ?? "");
   const [starterId, setStarterId] = useState("");
 
@@ -72,28 +85,36 @@ export function JobForm({
           <input name="email" type="email" autoComplete="email" defaultValue={job?.email} />
         </label>
       </div>
-      <label className="field">
-        Trade
-        <select
-          name="trade"
-          required
-          value={trade}
-          onChange={(event) => {
-            const next = event.target.value;
-            setTrade(next);
-            if (next !== "Plasterer") setStarterId("");
-          }}
-        >
-          <option value="" disabled>
-            Choose a trade
-          </option>
-          {TRADES.map((option) => (
-            <option key={option} value={option}>
-              {option}
+      {showTradePicker ? (
+        <label className="field">
+          Trade
+          <select
+            name="trade"
+            required
+            value={choices.includes(trade as (typeof choices)[number]) ? trade : ""}
+            onChange={(event) => {
+              const next = event.target.value;
+              setTrade(next);
+              if (next !== "Plasterer") setStarterId("");
+            }}
+          >
+            <option value="" disabled>
+              Choose a trade
             </option>
-          ))}
-        </select>
-      </label>
+            {choices.map((option) => (
+              <option key={option} value={option}>
+                {tradeLabel(option)}
+              </option>
+            ))}
+            {savedTrade ? <option value={savedTrade}>{tradeLabel(savedTrade)}</option> : null}
+          </select>
+        </label>
+      ) : (
+        <>
+          <input type="hidden" name="trade" value={savedTrade ?? onlyTrade ?? trade} />
+          {savedTrade ? <p className="font-bold">Saved as {tradeLabel(savedTrade)}.</p> : null}
+        </>
+      )}
       {!job && trade === "Plasterer" ? (
         <fieldset className="grid gap-2">
           <legend className="font-extrabold">Job template</legend>

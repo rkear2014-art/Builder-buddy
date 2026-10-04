@@ -34,6 +34,8 @@ export type DeskJob = {
   timeSlot: string;
   showLinePrices: boolean;
   depositPence: number | null;
+  shareActive: boolean;
+  surveyDone: string;
   vatRegistered: boolean;
   vatRatePercent: number;
   materials: DeskMaterial[];

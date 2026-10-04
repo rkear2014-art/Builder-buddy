@@ -91,6 +91,8 @@ describe("dashboard glance", () => {
       ["today", "tomorrow", "sign-off", "chase", "new"],
     );
     assert.equal(glance.cards.find((card) => card.id === "today")?.value, "1");
+    assert.equal(glance.cards.find((card) => card.id === "today")?.sub, "booking");
+    assert.equal(JSON.stringify(glance).includes("Plasterer"), false);
     assert.equal(glance.cards.find((card) => card.id === "sign-off")?.value, "1");
     assert.equal(glance.cards.find((card) => card.id === "new")?.value, "1");
     assert.equal(glance.month.totalPence, 5200);

@@ -15,9 +15,9 @@ export async function GET(
   }
   const job = await getPrisma().job.findUnique({
     where: { shareToken: token },
-    select: { businessId: true },
+    select: { businessId: true, shareActive: true },
   });
-  if (!job) {
+  if (!job?.shareActive) {
     return new Response(null, { status: 404, headers: { "Cache-Control": "private, no-store" } });
   }
   const photo = await getPrisma().heroPhoto.findFirst({
