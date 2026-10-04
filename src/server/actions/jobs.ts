@@ -48,7 +48,7 @@ export async function createJob(_state: ActionState, formData: FormData): Promis
             name: item.name,
             quantity: item.quantity,
             unit: item.unit,
-            unitPricePence: null,
+            unitPricePence: item.unitPricePence,
             costPricePence: null,
             sortOrder: index,
           },
