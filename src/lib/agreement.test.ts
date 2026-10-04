@@ -104,4 +104,35 @@ describe("sign-off locking", () => {
     assert.equal(parseLockedAgreement({ description: "Skim the lounge and hall." }), null);
     assert.equal(parseLockedAgreement(null), null);
   });
+
+  it("reads an older signed copy that has no VAT, deposit, or line-price flag", () => {
+    const locked = lockAgreement(plasterJob(), { signerName: "Anita Patel", signedAt });
+    const stored: Record<string, unknown> = { ...locked };
+    delete stored.showLinePrices;
+    delete stored.depositPence;
+    delete stored.vatRegistered;
+    delete stored.vatRatePercent;
+
+    const parsed = parseLockedAgreement(stored);
+    assert.ok(parsed);
+    assert.equal(parsed.showLinePrices, true);
+    assert.equal(parsed.depositPence, null);
+    assert.equal(parsed.vatRegistered, false);
+    assert.equal(parsed.vatRatePercent, 20);
+    assert.equal(parsed.description, "Skim the lounge and hall.");
+    assert.equal(parsed.totalPence, locked.totalPence);
+  });
+
+  it("names VAT, deposit, and item-price changes separately from the materials", () => {
+    const job = plasterJob();
+    const locked = lockAgreement(job, { signerName: "Anita Patel", signedAt });
+    const current = toPublicAgreement({
+      ...job,
+      vatRegistered: true,
+      vatRatePercent: 20,
+      depositPence: 5000,
+      showLinePrices: false,
+    });
+    assert.deepEqual(agreementChanges(locked, current), ["VAT", "Deposit", "Item prices"]);
+  });
 });

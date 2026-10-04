@@ -30,6 +30,8 @@ export function JobForm({
     scheduledDate: string;
     timeSlot: string;
     status: string;
+    showLinePrices: boolean;
+    depositPence: number | null;
   };
 }) {
   const [trade, setTrade] = useState(job?.trade ?? "");
@@ -165,6 +167,24 @@ export function JobForm({
             </option>
           ))}
         </select>
+      </label>
+      <label className="flex items-start gap-3 font-bold">
+        <input type="hidden" name="showLinePrices" value="no" />
+        <input type="checkbox" name="showLinePrices" value="yes" defaultChecked={job?.showLinePrices !== false} className="mt-1" />
+        <span>
+          Show each price on the quotation
+          <span className="mt-1 block text-sm font-semibold text-stone">Untick to show only the overall price.</span>
+        </span>
+      </label>
+      <label className="field">
+        Deposit
+        <span>Optional. Leave blank if none is required.</span>
+        <input
+          name="deposit"
+          inputMode="decimal"
+          placeholder="150.00"
+          defaultValue={job?.depositPence != null && job.depositPence > 0 ? (job.depositPence / 100).toFixed(2) : ""}
+        />
       </label>
       <label className="field">
         Internal notes

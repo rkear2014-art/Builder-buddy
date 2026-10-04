@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getShareView } from "@/server/dal";
-import { AgreementDocument } from "@/components/agreement-document";
+import { QuotationDocument } from "@/components/quotation-document";
 import { SignForm } from "@/components/sign-form";
 
 export const dynamic = "force-dynamic";
@@ -24,25 +24,25 @@ export default async function SignPage({ params }: { params: Promise<{ token: st
   const share = view.presentation;
   if (share.kind === "not_found") notFound();
 
+  const quote = view.quote;
   return (
-    <main className="mx-auto min-h-dvh max-w-2xl px-4 py-6">
-      {share.kind === "damaged" ? (
+    <main className="mx-auto min-h-dvh max-w-3xl px-3 py-6 sm:px-4">
+      {share.kind === "damaged" || !quote ? (
         <div className="card">
           <h1 className="font-display text-4xl">This signed copy cannot be shown</h1>
           <p className="mt-3">Ask the tradesperson to contact you. The live job is not shown in its place.</p>
         </div>
       ) : (
-        <div className="card">
-          {share.kind === "pending" ? (
-            <p className="mb-4 text-lg">
-              Please read the work, materials, and price. Sign at the bottom if you agree.
-            </p>
-          ) : (
-            <p className="mb-4 text-lg">Thank you. This is the copy you agreed.</p>
-          )}
-          <AgreementDocument
+        <>
+          <p className="mb-4 text-lg">
+            {share.kind === "pending"
+              ? "Please read the quotation. Sign at the end if you agree."
+              : "Thank you. This is the copy you agreed."}
+          </p>
+          <QuotationDocument
             agreement={share.agreement}
             letterhead={view.letterhead}
+            quote={quote}
             signatureDataUrl={share.kind === "signed" ? share.signatureDataUrl : null}
             signed={
               share.kind === "signed"
@@ -50,16 +50,17 @@ export default async function SignPage({ params }: { params: Promise<{ token: st
                 : null
             }
           />
-          {share.kind === "pending" ? (
-            <div className="mt-6 border-t border-line pt-4">
-              <SignForm token={token} />
-            </div>
-          ) : (
-            <Link href={`/sign/${token}/print`} className="btn btn-secondary mt-6">
+          <div className="mt-4 flex flex-wrap gap-2">
+            <Link href={`/sign/${token}/print`} className="btn btn-secondary">
               Print or save as PDF
             </Link>
-          )}
-        </div>
+          </div>
+          {share.kind === "pending" ? (
+            <div className="card mt-4">
+              <SignForm token={token} />
+            </div>
+          ) : null}
+        </>
       )}
       <p className="mt-4 text-sm text-stone">
         This page shows only this job. You do not need an account. Internal notes and the tradesperson&apos;s costs are

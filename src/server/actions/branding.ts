@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { accentFromImage, normaliseAccent } from "@/lib/accent";
+import { parseQuoteSettings } from "@/lib/quote";
 import { businessLogoQuery, canEditBusiness, parseBusinessProfile } from "@/lib/branding";
 import type { ActionState } from "@/lib/form-state";
 import { AK_HERO_CAPTION, MAX_HERO_PHOTOS, missingSampleHeroKeys } from "@/lib/heroes";
@@ -25,6 +26,19 @@ async function ownerBusinessId(): Promise<{ id: string } | { error: string }> {
     return { error: "Only the owner can change the business details." };
   }
   return { id: businessLogoQuery(user.businessId).id };
+}
+
+export async function saveQuoteSettings(_state: ActionState, formData: FormData): Promise<ActionState> {
+  const owner = await ownerBusinessId();
+  if ("error" in owner) return { error: owner.error };
+  const parsed = parseQuoteSettings(formData);
+  if (!parsed.ok) return { error: parsed.error };
+  await getPrisma().business.update({
+    where: { id: owner.id },
+    data: parsed.data,
+  });
+  refreshBranding();
+  redirect("/settings?saved=quote");
 }
 
 export async function saveBusinessProfile(_state: ActionState, formData: FormData): Promise<ActionState> {

@@ -3,13 +3,21 @@ import { cache } from "react";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { isWellFormedShareToken } from "@/lib/access";
-import { letterheadFromRow, toBranding, deskHeroSrc, deskSmallLogoSrc, type CustomerLetterhead } from "@/lib/branding";
+import {
+  customerHeroSrc,
+  deskHeroSrc,
+  deskSmallLogoSrc,
+  letterheadFromRow,
+  toBranding,
+  type CustomerLetterhead,
+} from "@/lib/branding";
 import { HERO_VISIT_COOKIE, pickRotatingHero } from "@/lib/heroes";
 import { isConfigured } from "@/lib/config";
 import type { JobStatus } from "@/lib/constants";
 import { addDays, isoToUtcDate, londonHour, londonToday, utcDateToIso, weekDates } from "@/lib/dates";
 import type { DeskJob, JobSummary, MaterialTemplateView, SavedItem, SessionUser } from "@/lib/desk";
 import { buildGlance, glanceChips, type GlanceJob, type GlancePage } from "@/lib/glance";
+import { parseQuoteChips, quoteReference, type QuoteChrome } from "@/lib/quote";
 import { materialsTotals, quantityFromStored } from "@/lib/materials";
 import { presentShare, type SharePresentation } from "@/lib/share";
 import { tenantWhere } from "@/lib/tenancy";
@@ -28,11 +36,16 @@ const businessBrandingSelect = {
   logoUpdatedAt: true,
   markMime: true,
   markUpdatedAt: true,
+  vatRegistered: true,
+  vatRatePercent: true,
+  quoteLetter: true,
+  quoteChips: true,
 } as const;
 
 const jobInclude = {
   materials: { orderBy: { sortOrder: "asc" as const } },
   signOff: true,
+  user: { select: { name: true } },
   business: { select: businessBrandingSelect },
 };
 
@@ -60,6 +73,10 @@ function mapJob(job: JobWithRelations): DeskJob {
     internalNotes: job.internalNotes,
     scheduledDate: utcDateToIso(job.scheduledDate),
     timeSlot: job.timeSlot,
+    showLinePrices: job.showLinePrices,
+    depositPence: job.depositPence,
+    vatRegistered: job.business.vatRegistered,
+    vatRatePercent: job.business.vatRatePercent,
     materials: job.materials.map((material) => ({
       id: material.id,
       name: material.name,
@@ -437,18 +454,25 @@ export async function getLibrary(businessId: string): Promise<{
 export type ShareView = {
   presentation: SharePresentation;
   letterhead: CustomerLetterhead | null;
+  quote: QuoteChrome | null;
 };
 
 export const getShareView = cache(async (token: string): Promise<ShareView> => {
   if (!isConfigured() || !isWellFormedShareToken(token)) {
-    return { presentation: { kind: "not_found" }, letterhead: null };
+    return { presentation: { kind: "not_found" }, letterhead: null, quote: null };
   }
   const job = await getPrisma().job.findUnique({
     where: { shareToken: token },
     include: jobInclude,
   });
-  if (!job) return { presentation: presentShare({ token, record: null, signOff: null }), letterhead: null };
+  if (!job) return { presentation: presentShare({ token, record: null, signOff: null }), letterhead: null, quote: null };
   const mapped = mapJob(job);
+  const photos = await getPrisma().heroPhoto.findMany({
+    where: tenantWhere(job.businessId),
+    select: { id: true, caption: true, updatedAt: true },
+    orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
+    take: 4,
+  });
   return {
     presentation: presentShare({
       token,
@@ -464,6 +488,10 @@ export const getShareView = cache(async (token: string): Promise<ShareView> => {
         internalNotes: mapped.internalNotes,
         scheduledDate: mapped.scheduledDate,
         timeSlot: mapped.timeSlot,
+        showLinePrices: mapped.showLinePrices,
+        depositPence: mapped.depositPence,
+        vatRegistered: mapped.vatRegistered,
+        vatRatePercent: mapped.vatRatePercent,
         materials: mapped.materials,
       },
       signOff: mapped.signOff
@@ -471,6 +499,16 @@ export const getShareView = cache(async (token: string): Promise<ShareView> => {
         : null,
     }),
     letterhead: letterheadFromRow(token, job.business),
+    quote: {
+      reference: quoteReference(job.id),
+      preparedBy: job.user.name.trim() || job.business.name,
+      letter: job.business.quoteLetter,
+      chips: parseQuoteChips(job.business.quoteChips),
+      photos: photos.flatMap((photo) => {
+        const src = customerHeroSrc(token, photo.id, photo.updatedAt.toISOString());
+        return src ? [{ id: photo.id, caption: photo.caption, src }] : [];
+      }),
+    },
   };
 });
 

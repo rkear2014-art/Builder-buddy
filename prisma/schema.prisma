@@ -28,6 +28,10 @@ model Business {
   website       String             @default("")
   tagline       String             @default("")
   accent        String             @default("")
+  vatRegistered Boolean            @default(false)
+  vatRatePercent Int               @default(20)
+  quoteLetter   String             @default("")
+  quoteChips    String             @default("")
   logoBytes     Bytes?
   logoMime      String?
   logoUpdatedAt DateTime?
@@ -97,6 +101,8 @@ model Job {
   trade         String
   description   String
   internalNotes String       @default("")
+  showLinePrices Boolean     @default(true)
+  depositPence   Int?
   scheduledDate DateTime     @db.Date
   timeSlot      String
   status        JobStatus

@@ -21,6 +21,8 @@ export type JobInput = {
   scheduledDate: string;
   timeSlot: string;
   status: JobStatus;
+  showLinePrices: boolean;
+  depositPence: number | null;
 };
 
 export type MaterialInput = {
@@ -79,12 +81,20 @@ export function parseJobForm(formData: FormData): FormParse<JobInput> {
   if (!isIsoDate(data.scheduledDate)) return { ok: false, error: "Choose a date." };
   if (!isTimeSlot(data.timeSlot)) return { ok: false, error: "Choose a time slot." };
   if (!isJobStatus(data.status)) return { ok: false, error: "Choose a status." };
+  const priceFlags = formData.getAll("showLinePrices").map(String);
+  const showLinePrices = priceFlags.length === 0 || priceFlags.includes("yes");
+  const depositRaw = field(formData, "deposit");
+  const deposit = parsePoundsToPence(depositRaw);
+  if (!deposit.ok) return { ok: false, error: "Enter the deposit in pounds, or leave it blank." };
+  const depositPence = deposit.pence != null && deposit.pence > 0 ? deposit.pence : null;
   return {
     ok: true,
     data: {
       ...data,
       email: data.email.toLowerCase(),
       status: data.status,
+      showLinePrices,
+      depositPence,
     },
   };
 }

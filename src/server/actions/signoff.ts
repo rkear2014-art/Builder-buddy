@@ -28,7 +28,7 @@ export async function signAgreement(_state: ActionState, formData: FormData): Pr
     include: {
       materials: { orderBy: { sortOrder: "asc" } },
       signOff: true,
-      business: { select: { name: true } },
+      business: { select: { name: true, vatRegistered: true, vatRatePercent: true } },
     },
   });
   if (!job) return { error: "This link is not valid." };
@@ -45,6 +45,10 @@ export async function signAgreement(_state: ActionState, formData: FormData): Pr
       internalNotes: job.internalNotes,
       scheduledDate: job.scheduledDate.toISOString().slice(0, 10),
       timeSlot: job.timeSlot,
+      showLinePrices: job.showLinePrices,
+      depositPence: job.depositPence,
+      vatRegistered: job.business.vatRegistered,
+      vatRatePercent: job.business.vatRatePercent,
       materials: job.materials.map((material) => ({
         name: material.name,
         quantity: material.quantity.toString(),

@@ -4,6 +4,7 @@ import {
   removeBusinessLogo,
   removeHeroPhoto,
   saveAccent,
+  saveQuoteSettings,
   uploadBusinessLogo,
   uploadHeroPhoto,
   useLogoAccent,
@@ -45,6 +46,8 @@ function savedMessage(saved: string | undefined, added: string | undefined): str
       return `Added ${count ?? "the"} AK Plastering photos. The dashboard shows a different one each visit.`;
     case "accent":
       return "Accent colour saved.";
+    case "quote":
+      return "Quotation details saved.";
     default:
       return null;
   }
@@ -99,6 +102,7 @@ export default async function SettingsPage({
       <HeroSection user={user} owner={owner} photos={photos} />
       <AccentSection user={user} owner={owner} />
       <ProfileSection user={user} owner={owner} />
+      <QuoteSection user={user} owner={owner} />
     </div>
   );
 }
@@ -291,6 +295,46 @@ function ProfileSection({ user, owner }: { user: SessionUser; owner: boolean }) 
           <ProfileLine label="Website" value={profile.website} />
           <p className="font-bold">Only the owner can change these.</p>
         </dl>
+      )}
+    </section>
+  );
+}
+
+function QuoteSection({ user, owner }: { user: SessionUser; owner: boolean }) {
+  const branding = user.branding;
+  return (
+    <section className="card grid gap-4">
+      <h2 className="font-display text-2xl">Quotation</h2>
+      <p className="text-stone">
+        These appear on the customer quotation. The tagline and the town from your address are added as badges. Anything
+        else, such as Fully insured, only shows if you write it here.
+      </p>
+      {owner ? (
+        <InlineForm action={saveQuoteSettings} className="grid gap-3">
+          <input type="hidden" name="vatRegistered" value="no" />
+          <label className="flex items-center gap-3 font-bold">
+            <input type="checkbox" name="vatRegistered" value="yes" defaultChecked={branding.vatRegistered} />
+            VAT registered
+          </label>
+          <label className="field">
+            VAT rate
+            <span>Percent. Used only when VAT registered is ticked. Leave it at 20 for the standard rate.</span>
+            <input name="vatRatePercent" inputMode="numeric" defaultValue={String(branding.vatRatePercent)} />
+          </label>
+          <label className="field">
+            Badges
+            <span>One per line. Up to six, 40 characters each.</span>
+            <textarea name="quoteChips" defaultValue={branding.quoteChips} placeholder={"Fully insured"} />
+          </label>
+          <label className="field">
+            Covering letter
+            <span>Leave this blank to use the standard letter. The customer’s name is added above it.</span>
+            <textarea name="quoteLetter" defaultValue={branding.quoteLetter} placeholder="Thank you for asking us to quote for this work." />
+          </label>
+          <SubmitButton>Save quotation</SubmitButton>
+        </InlineForm>
+      ) : (
+        <p className="font-bold">Only the owner can change the quotation.</p>
       )}
     </section>
   );
