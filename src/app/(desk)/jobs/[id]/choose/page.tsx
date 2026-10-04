@@ -62,8 +62,8 @@ export default async function ChooseItemPage({ params }: { params: Promise<{ id:
         <h1 className="font-display text-4xl leading-tight">New item · {job.customerName}</h1>
         <p className="mt-2 font-display text-3xl">Choose a job</p>
         <p className="mt-1 text-stone">
-          Pick the work and its materials are added to this job. Prices stay blank until you set them. A list you have
-          already saved is under Your templates.
+          Pick the work and its materials are added to this job, with a starting price where we have one. You can change
+          any price. A list you have already saved is under Your templates.
         </p>
       </header>
 

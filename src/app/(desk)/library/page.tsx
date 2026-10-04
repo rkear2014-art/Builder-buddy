@@ -23,7 +23,12 @@ function countParam(value: string | undefined): number {
   return Number(value);
 }
 
-function libraryNotice(notice: string | undefined, added: string | undefined, renamed: string | undefined): string | null {
+function libraryNotice(
+  notice: string | undefined,
+  added: string | undefined,
+  renamed: string | undefined,
+  priced: string | undefined,
+): string | null {
   if (notice === "photo-saved") return "Tile photo saved. It shows on the chooser for that list.";
   if (notice === "photo-removed") return "Tile photo removed. The chooser uses a work photo or a plain tile.";
   if (notice === "photo") return "That picture could not be used. Choose a PNG, JPG, or WebP under 2 MB.";
@@ -34,21 +39,26 @@ function libraryNotice(notice: string | undefined, added: string | undefined, re
   if (notice !== "starters") return null;
   const addedCount = countParam(added);
   const renamedCount = countParam(renamed);
-  if (addedCount === 0 && renamedCount === 0) {
+  const pricedCount = countParam(priced);
+  if (addedCount === 0 && renamedCount === 0 && pricedCount === 0) {
     return "Your library already has these plastering lists. Nothing new was added.";
   }
   const parts: string[] = [];
-  if (addedCount === 1) parts.push("Added 1 plastering list. Prices are blank.");
-  else if (addedCount > 1) parts.push(`Added ${addedCount} plastering lists. Prices are blank.`);
+  if (addedCount === 1) parts.push("Added 1 plastering list.");
+  else if (addedCount > 1) parts.push(`Added ${addedCount} plastering lists.`);
   if (renamedCount === 1) parts.push("Updated 1 older name so it is not listed twice.");
   else if (renamedCount > 1) parts.push(`Updated ${renamedCount} older names so they are not listed twice.`);
+  if (pricedCount === 1) parts.push("Filled 1 blank price. A price you had already set was left as it was.");
+  else if (pricedCount > 1) {
+    parts.push(`Filled ${pricedCount} blank prices. A price you had already set was left as it was.`);
+  }
   return parts.join(" ");
 }
 
 export default async function LibraryPage({
   searchParams,
 }: {
-  searchParams: Promise<{ notice?: string; added?: string; renamed?: string }>;
+  searchParams: Promise<{ notice?: string; added?: string; renamed?: string; priced?: string }>;
 }) {
   const user = await requireUser();
   const library = await getLibrary(user.businessId);
@@ -56,8 +66,8 @@ export default async function LibraryPage({
   const tileUpdated = new Map(tiles.map((tile) => [tile.catalogueKey, tile.updatedAt]));
   const owner = canEditBusiness(user.role);
   const onlyTrade = singleEnabledTrade();
-  const { notice, added, renamed } = await searchParams;
-  const noticeText = libraryNotice(notice, added, renamed);
+  const { notice, added, renamed, priced } = await searchParams;
+  const noticeText = libraryNotice(notice, added, renamed, priced);
   const savedItems = library.savedItems.filter((item) => isEnabledTrade(item.trade));
   const templates = library.templates.filter((template) => isEnabledTrade(template.trade));
 
@@ -79,9 +89,10 @@ export default async function LibraryPage({
           </form>
         </div>
         <p className="text-stone">
-          These lists are built in for every plastering business. Prices are blank, and each one has a short description
-          the customer can read on the sign-off page. Load plastering starter lists adds only the ones missing from
-          your library. A list you already saved under an older name is kept, and that name is brought up to date.
+          These lists are built in for every plastering business, and each one has a short description the customer can
+          read on the sign-off page. Starter prices are Travis Perkins and other UK merchant website prices from October
+          2026, including VAT, and you can change any of them. Load plastering starter lists adds a missing list, brings an older saved name
+          up to date, and fills a blank price. A price you have already set is left as it was.
         </p>
         {PLASTERING_STARTER_TEMPLATES.map((starter) => (
           <article key={starter.id} className="card grid gap-3">
@@ -106,7 +117,8 @@ export default async function LibraryPage({
             <ul className="grid gap-1">
               {starter.items.map((item) => (
                 <li key={item.name}>
-                  {item.quantity} {item.unit} {item.name} · No price
+                  {item.quantity} {item.unit} {item.name} ·{" "}
+                  {item.unitPricePence == null ? "No price" : formatPence(item.unitPricePence)}
                 </li>
               ))}
             </ul>
@@ -119,7 +131,10 @@ export default async function LibraryPage({
               <li key={item.id} className="flex flex-wrap items-center justify-between gap-3 border-b border-line pb-2">
                 <p>
                   <span className="font-bold">{item.name}</span>
-                  <span className="text-stone"> · per {item.unit} · No price</span>
+                  <span className="text-stone">
+                    {" "}
+                    · per {item.unit} · {item.unitPricePence == null ? "No price" : formatPence(item.unitPricePence)}
+                  </span>
                 </p>
                 <form action={saveStarterItem}>
                   <input type="hidden" name="starterId" value={item.id} />
