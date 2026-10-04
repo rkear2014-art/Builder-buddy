@@ -9,7 +9,7 @@ describe("accent colour", () => {
     assert.equal(normaliseAccent(""), "");
     assert.equal(normaliseAccent("pink"), null);
     assert.equal(normaliseAccent("javascript:alert(1)"), null);
-    assert.equal(resolveAccent(""), "#245a94");
+    assert.equal(resolveAccent(""), "#395571");
     assert.equal(resolveAccent("#aabbcc"), "#aabbcc");
     assert.equal(accentInk("#245a94"), "#ffffff");
     assert.equal(accentInk("#f0b429"), "#1c1915");
@@ -40,6 +40,7 @@ describe("accent colour", () => {
   it("reads a blue from the plastering logo rather than the pale background", async () => {
     const bytes = new Uint8Array(readFileSync(new URL("../fixtures/ak-plastering-logo.webp", import.meta.url)));
     const accent = await accentFromImage(bytes);
+    assert.equal(accent, "#395571");
     assert.match(accent, /^#[0-9a-f]{6}$/);
     const red = Number.parseInt(accent.slice(1, 3), 16);
     const green = Number.parseInt(accent.slice(3, 5), 16);

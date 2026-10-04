@@ -5,9 +5,9 @@ import { redirect } from "next/navigation";
 import { accentFromImage, normaliseAccent } from "@/lib/accent";
 import { businessLogoQuery, canEditBusiness, parseBusinessProfile } from "@/lib/branding";
 import type { ActionState } from "@/lib/form-state";
-import { MAX_LOGO_UPLOAD_BYTES, prepareHero, prepareLogo } from "@/lib/logo";
+import { detectLogoMime, MAX_LOGO_UPLOAD_BYTES, prepareHero, prepareLogo } from "@/lib/logo";
 import { requireUser } from "@/server/dal";
-import { readBundledLogo } from "@/server/sample-logo";
+import { readBundledLogo, readBundledMark } from "@/server/sample-logo";
 import { getPrisma } from "@/server/prisma";
 import { revalidateDesk } from "@/server/revalidate";
 
@@ -52,6 +52,9 @@ async function storeLogo(bytes: Uint8Array, businessId: string): Promise<string 
       logoBytes: Buffer.from(prepared.bytes),
       logoMime: prepared.mime,
       logoUpdatedAt: new Date(),
+      markBytes: null,
+      markMime: null,
+      markUpdatedAt: new Date(),
       ...(accent ? { accent } : {}),
     },
   });
@@ -79,23 +82,62 @@ export async function removeBusinessLogo(): Promise<void> {
   if ("error" in owner) redirect("/settings?notice=owner");
   await getPrisma().business.update({
     where: { id: owner.id },
-    data: { logoBytes: null, logoMime: null, logoUpdatedAt: new Date() },
+    data: {
+      logoBytes: null,
+      logoMime: null,
+      logoUpdatedAt: new Date(),
+      markBytes: null,
+      markMime: null,
+      markUpdatedAt: new Date(),
+    },
   });
   refreshBranding();
   redirect("/settings?saved=removed");
 }
 
+const PREVIOUS_DEFAULT_ACCENT = "#245a94";
+
 export async function useSampleLogo(): Promise<void> {
   const owner = await ownerBusinessId();
   if ("error" in owner) redirect("/settings?notice=owner");
-  let bytes: Uint8Array;
+  let logo: Uint8Array;
+  let mark: Uint8Array;
   try {
-    bytes = await readBundledLogo();
+    logo = await readBundledLogo();
+    mark = await readBundledMark();
   } catch {
     redirect("/settings?notice=sample");
   }
-  const error = await storeLogo(bytes, owner.id);
-  if (error) redirect("/settings?notice=sample");
+  if (
+    detectLogoMime(logo) !== "image/webp" ||
+    detectLogoMime(mark) !== "image/webp" ||
+    logo.byteLength === 0 ||
+    mark.byteLength === 0 ||
+    logo.byteLength > MAX_LOGO_UPLOAD_BYTES ||
+    mark.byteLength > MAX_LOGO_UPLOAD_BYTES
+  ) {
+    redirect("/settings?notice=sample");
+  }
+  const current = await getPrisma().business.findFirst({
+    where: { id: owner.id },
+    select: { accent: true },
+  });
+  const storedAccent = current?.accent.toLowerCase() ?? "";
+  const accent =
+    !storedAccent || storedAccent === PREVIOUS_DEFAULT_ACCENT ? await accentFromImage(logo) : undefined;
+  await getPrisma().business.update({
+    where: { id: owner.id },
+    data: {
+      logoBytes: Buffer.from(logo),
+      logoMime: "image/webp",
+      logoUpdatedAt: new Date(),
+      markBytes: Buffer.from(mark),
+      markMime: "image/webp",
+      markUpdatedAt: new Date(),
+      ...(accent ? { accent } : {}),
+    },
+  });
+  refreshBranding();
   redirect("/settings?saved=sample");
 }
 

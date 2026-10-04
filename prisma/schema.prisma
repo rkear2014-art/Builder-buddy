@@ -31,6 +31,9 @@ model Business {
   logoBytes     Bytes?
   logoMime      String?
   logoUpdatedAt DateTime?
+  markBytes     Bytes?
+  markMime      String?
+  markUpdatedAt DateTime?
   heroBytes     Bytes?
   heroMime      String?
   heroUpdatedAt DateTime?

@@ -1,7 +1,7 @@
 import sharp from "sharp";
 
-/** Blue from the plastering logo. Used until a business chooses its own. */
-export const DEFAULT_ACCENT = "#245a94";
+/** Steel blue sampled from the K in the plastering logo. Used until a business chooses its own. */
+export const DEFAULT_ACCENT = "#395571";
 
 const HEX = /^#[0-9a-fA-F]{6}$/;
 

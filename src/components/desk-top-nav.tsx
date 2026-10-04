@@ -23,12 +23,14 @@ function isActive(pathname: string, href: string): boolean {
 export function DeskTopNav({
   businessName,
   logoSrc,
+  logoCompact = false,
   chaseCount,
   accentColour,
   accentInk,
 }: {
   businessName: string;
   logoSrc: string | null;
+  logoCompact?: boolean;
   chaseCount: number;
   accentColour: string;
   accentInk: string;
@@ -49,7 +51,15 @@ export function DeskTopNav({
         <Link href="/" className="flex min-w-0 items-center gap-2">
           {logoSrc ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={logoSrc} alt="" className="h-9 w-auto max-w-16 rounded-lg bg-white object-contain p-0.5" />
+            <img
+              src={logoSrc}
+              alt=""
+              className={
+                logoCompact
+                  ? "h-9 w-9 rounded-lg bg-white object-contain p-0.5"
+                  : "h-9 w-auto max-w-16 rounded-lg bg-white object-contain p-0.5"
+              }
+            />
           ) : null}
           <span className="max-w-[7.5rem] truncate text-base font-extrabold tracking-wide sm:max-w-[11rem] sm:text-lg">
             {businessName.toUpperCase()}

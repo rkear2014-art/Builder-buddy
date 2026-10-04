@@ -3,7 +3,7 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   poweredByHeader: false,
   outputFileTracingIncludes: {
-    "/*": ["./src/fixtures/ak-plastering-logo.webp"],
+    "/*": ["./src/fixtures/ak-plastering-logo.webp", "./src/fixtures/ak-plastering-mark.webp"],
   },
   experimental: {
     serverActions: {

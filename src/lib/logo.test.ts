@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { describe, it } from "node:test";
+import sharp from "sharp";
 import { detectLogoMime, logoUploadError, MAX_LOGO_UPLOAD_BYTES, prepareLogo } from "./logo";
 
 const TINY_PNG = Buffer.from(
@@ -41,10 +42,18 @@ describe("logo upload", () => {
     assert.ok(prepared.bytes.byteLength <= MAX_LOGO_UPLOAD_BYTES);
   });
 
-  it("keeps the bundled plastering logo as a small WebP", () => {
-    const bytes = new Uint8Array(readFileSync(new URL("../fixtures/ak-plastering-logo.webp", import.meta.url)));
-    assert.equal(detectLogoMime(bytes), "image/webp");
-    assert.ok(bytes.byteLength < 80_000);
-    assert.ok(bytes.byteLength > 1_000);
+  it("keeps the bundled plastering logo as a small WebP and a smaller mark", async () => {
+    const logo = new Uint8Array(readFileSync(new URL("../fixtures/ak-plastering-logo.webp", import.meta.url)));
+    const mark = new Uint8Array(readFileSync(new URL("../fixtures/ak-plastering-mark.webp", import.meta.url)));
+    assert.equal(detectLogoMime(logo), "image/webp");
+    assert.equal(detectLogoMime(mark), "image/webp");
+    assert.ok(logo.byteLength < 200_000);
+    assert.ok(mark.byteLength < 80_000);
+    assert.ok(mark.byteLength < logo.byteLength);
+    const logoMeta = await sharp(logo).metadata();
+    const markMeta = await sharp(mark).metadata();
+    assert.ok((logoMeta.width ?? 0) >= 1000);
+    assert.equal(markMeta.width, markMeta.height);
+    assert.ok((markMeta.width ?? 0) > 0 && (markMeta.width ?? 0) <= 640);
   });
 });

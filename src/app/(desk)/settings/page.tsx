@@ -128,8 +128,9 @@ function LogoSection({ user, owner }: { user: SessionUser; owner: boolean }) {
             ) : null}
           </div>
           <p className="text-sm font-semibold text-stone">
-            The AK Plastering logo is a sample for this business. Other businesses are not given it unless their owner
-            uploads their own.
+            The AK Plastering logo is a sample for this business. Pressing it again replaces the logo already saved
+            here, including an older copy of this sample. The agreement uses the full logo. The dashboard uses a smaller
+            mark of the AK. Other businesses are not given it unless their owner uploads their own.
           </p>
         </>
       ) : (
