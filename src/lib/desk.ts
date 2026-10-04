@@ -1,3 +1,4 @@
+import type { BusinessBranding } from "./branding";
 import type { JobStatus } from "./constants";
 
 export type DeskMaterial = {
@@ -81,4 +82,5 @@ export type SessionUser = {
   businessId: string;
   businessName: string;
   role: "OWNER" | "MEMBER";
+  branding: BusinessBranding;
 };

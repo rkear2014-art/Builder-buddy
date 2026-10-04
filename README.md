@@ -19,7 +19,9 @@ Each business is its own tenant. Jobs, customer details, materials, saved items,
 - See the week and month in a diary.
 - Keep materials on each job: quantity, unit, optional customer price, optional cost (hidden from the customer), and a bought tick.
 - Save items and templates per trade, and drop them onto a job.
+- On a plastering job, add a built-in starter list (skim, dry lining, rendering, screeding, covering Artex, and the other common plastering jobs). Prices are left blank. Any business can copy a starter into its own library. The lists are not tied to one company.
 - Send an unguessable link. The customer sees the work, materials, and prices, then signs. The signature, name, and time are stored. Later edits do not change the signed copy.
+- Put an optional logo and letterhead (phone, email, address, website, tagline) on the customer agreement. The owner sets these on **Business**, from the header. With no logo, the desk keeps the Builder Buddy mark and the agreement shows the business name only. The home-screen icon stays Builder Buddy.
 - Print the agreement, or use the browser’s “Save as PDF”.
 
 Internal notes and your costs never appear on the customer page.
@@ -44,6 +46,8 @@ Fill in `.env`:
 | `SHOW_DEMO_LOGIN` | No | Set to `true` only on a private demo to show the seeded password on the sign-in page |
 | `SEED_DEMO_PASSWORD` | No | Password for the seeded demo user. Defaults to `Plaster-tea-1` |
 | `SETUP_TOKEN` | No | Extra code for the one-time account page. Leave unset to set up with no code |
+
+Logos are stored in Postgres with the business. There is no extra file service and no extra environment variable. An upload is a PNG, JPG, or WebP up to 2 MB, and it is resized before it is saved.
 
 Create the tables and the demo diary:
 
@@ -120,5 +124,6 @@ The tests cover the rules that matter without a database:
 - materials totals use the customer price, skip blank prices, and round to the penny
 - missing configuration never counts as “allowed in”
 - first-account setup opens only with zero users, and a second overlapping claim is refused
-- a query for one business cannot read another business’s jobs, materials, templates or signatures
+- a query for one business cannot read another business’s jobs, materials, templates, signatures, or logo
+- a logo upload must be a PNG, JPG, or WebP within 2 MB, and plastering starter lists leave prices blank
 - the home-screen manifest, icons, and service worker keep customer pages and sign-off links off the device cache

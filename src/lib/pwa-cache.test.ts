@@ -4,6 +4,7 @@ import { describe, it } from "node:test";
 import {
   CACHES_CLEARED_MESSAGE,
   CLEAR_CACHES_MESSAGE,
+  PRECACHE_PATHS,
   decideCache,
   renderServiceWorker,
   type CacheInput,
@@ -24,7 +25,7 @@ function request(overrides: Partial<CacheInput> & Pick<CacheInput, "pathname">):
 describe("service worker cache policy", () => {
   it("never stores a customer sign-off, even as a document or a React Server Component", () => {
     const token = "a".repeat(43);
-    for (const pathname of [`/sign/${token}`, `/sign/${token}/`, `/sign/${token}/print`, "/sign"]) {
+    for (const pathname of [`/sign/${token}`, `/sign/${token}/`, `/sign/${token}/print`, `/sign/${token}/logo`, "/sign"]) {
       assert.equal(
         decideCache(request({ pathname, destination: "document", mode: "navigate", accept: "text/html" })),
         "network-only",
@@ -44,6 +45,11 @@ describe("service worker cache policy", () => {
     assert.equal(decideCache(request({ pathname: "/", rsc: "1" })), "network-only");
     assert.equal(decideCache(request({ pathname: "/diary", prefetch: "1" })), "network-only");
     assert.equal(decideCache(request({ pathname: "/jobs", accept: "application/json" })), "network-only");
+    assert.equal(decideCache(request({ pathname: "/branding/logo", destination: "image" })), "network-only");
+    assert.equal(
+      PRECACHE_PATHS.some((path) => path.includes("branding") || path.includes("/sign/")),
+      false,
+    );
   });
 
   it("cache-first only for the public shell and static files", () => {

@@ -20,9 +20,17 @@ enum BusinessRole {
 }
 
 model Business {
-  id         String             @id @default(cuid())
-  name       String
-  createdAt  DateTime           @default(now())
+  id            String             @id @default(cuid())
+  name          String
+  phone         String             @default("")
+  email         String             @default("")
+  address       String             @default("")
+  website       String             @default("")
+  tagline       String             @default("")
+  logoBytes     Bytes?
+  logoMime      String?
+  logoUpdatedAt DateTime?
+  createdAt     DateTime           @default(now())
   users      User[]
   jobs       Job[]
   materials  JobMaterial[]

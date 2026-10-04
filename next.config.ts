@@ -2,6 +2,14 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   poweredByHeader: false,
+  outputFileTracingIncludes: {
+    "/*": ["./src/fixtures/ak-plastering-logo.webp"],
+  },
+  experimental: {
+    serverActions: {
+      bodySizeLimit: "3mb",
+    },
+  },
   async headers() {
     return [
       {

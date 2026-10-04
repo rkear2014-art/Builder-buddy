@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { getSharePresentation } from "@/server/dal";
+import { getShareView } from "@/server/dal";
 import { AgreementDocument } from "@/components/agreement-document";
 import { PrintButton } from "@/components/print-button";
 
@@ -10,7 +10,8 @@ export const metadata = { robots: { index: false, follow: false } };
 
 export default async function PrintAgreementPage({ params }: { params: Promise<{ token: string }> }) {
   const { token } = await params;
-  const share = await getSharePresentation(token);
+  const view = await getShareView(token);
+  const share = view.presentation;
   if (share.kind === "not_found" || share.kind === "damaged") notFound();
 
   return (
@@ -23,6 +24,7 @@ export default async function PrintAgreementPage({ params }: { params: Promise<{
       </div>
       <AgreementDocument
         agreement={share.agreement}
+        letterhead={view.letterhead}
         signatureDataUrl={share.kind === "signed" ? share.signatureDataUrl : null}
         signed={
           share.kind === "signed"

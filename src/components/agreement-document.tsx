@@ -1,24 +1,35 @@
+import type { CustomerLetterhead } from "@/lib/branding";
 import { slotLabel } from "@/lib/constants";
 import { formatIsoDate, formatLondonDateTime } from "@/lib/dates";
 import type { PublicAgreement } from "@/lib/agreement";
 import { formatPence } from "@/lib/money";
+import { Letterhead } from "@/components/letterhead";
 
 export function AgreementDocument({
   agreement,
   signatureDataUrl,
   signed,
+  letterhead,
 }: {
   agreement: PublicAgreement;
   signatureDataUrl?: string | null;
   signed?: { signerName: string; signedAt: string } | null;
+  letterhead?: CustomerLetterhead | null;
 }) {
   const safeSignature =
     signatureDataUrl && signatureDataUrl.startsWith("data:image/png;base64,") ? signatureDataUrl : null;
 
+  const businessPhone = Boolean(letterhead?.branding.phone.trim());
+  const businessEmail = Boolean(letterhead?.branding.email.trim());
+
   return (
     <article className="agreement">
-      <p className="text-sm font-bold uppercase tracking-wide text-stone">{agreement.businessName}</p>
-      <h1 className="mt-1 font-display text-4xl leading-tight">Work agreement</h1>
+      {letterhead ? (
+        <Letterhead branding={letterhead.branding} logoSrc={letterhead.logoSrc} />
+      ) : (
+        <p className="text-sm font-bold uppercase tracking-wide text-stone">{agreement.businessName}</p>
+      )}
+      <h1 className={`${letterhead ? "mt-4" : "mt-1"} font-display text-4xl leading-tight`}>Work agreement</h1>
       <p className="mt-2 text-lg">
         {agreement.customerName}
         {agreement.address ? ` · ${agreement.address}` : ""}
@@ -36,13 +47,13 @@ export function AgreementDocument({
         </div>
         {agreement.phone ? (
           <div>
-            <dt className="text-sm font-bold text-stone">Phone</dt>
+            <dt className="text-sm font-bold text-stone">{businessPhone ? "Customer phone" : "Phone"}</dt>
             <dd>{agreement.phone}</dd>
           </div>
         ) : null}
         {agreement.email ? (
           <div>
-            <dt className="text-sm font-bold text-stone">Email</dt>
+            <dt className="text-sm font-bold text-stone">{businessEmail ? "Customer email" : "Email"}</dt>
             <dd>{agreement.email}</dd>
           </div>
         ) : null}

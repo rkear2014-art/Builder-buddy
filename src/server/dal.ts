@@ -3,6 +3,7 @@ import { cache } from "react";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { isWellFormedShareToken } from "@/lib/access";
+import { letterheadFromRow, toBranding, type CustomerLetterhead } from "@/lib/branding";
 import { isConfigured } from "@/lib/config";
 import type { JobStatus } from "@/lib/constants";
 import { addDays, isoToUtcDate, londonToday, utcDateToIso } from "@/lib/dates";
@@ -13,10 +14,21 @@ import { tenantWhere } from "@/lib/tenancy";
 import { SESSION_COOKIE, decryptSession } from "@/lib/session-token";
 import { getPrisma } from "@/server/prisma";
 
+const businessBrandingSelect = {
+  name: true,
+  phone: true,
+  email: true,
+  address: true,
+  website: true,
+  tagline: true,
+  logoMime: true,
+  logoUpdatedAt: true,
+} as const;
+
 const jobInclude = {
   materials: { orderBy: { sortOrder: "asc" as const } },
   signOff: true,
-  business: { select: { name: true } },
+  business: { select: businessBrandingSelect },
 };
 
 type JobWithRelations = NonNullable<Awaited<ReturnType<typeof findJobRow>>>;
@@ -103,7 +115,7 @@ export const getCurrentUser = cache(async (): Promise<SessionUser | null> => {
       name: true,
       role: true,
       businessId: true,
-      business: { select: { name: true } },
+      business: { select: businessBrandingSelect },
     },
   });
   if (!user) return null;
@@ -114,6 +126,7 @@ export const getCurrentUser = cache(async (): Promise<SessionUser | null> => {
     role: user.role,
     businessId: user.businessId,
     businessName: user.business.name,
+    branding: toBranding(user.business),
   };
 });
 
@@ -267,32 +280,46 @@ export async function getLibrary(businessId: string): Promise<{
   };
 }
 
-export async function getSharePresentation(token: string): Promise<SharePresentation> {
-  if (!isConfigured() || !isWellFormedShareToken(token)) return { kind: "not_found" };
+export type ShareView = {
+  presentation: SharePresentation;
+  letterhead: CustomerLetterhead | null;
+};
+
+export const getShareView = cache(async (token: string): Promise<ShareView> => {
+  if (!isConfigured() || !isWellFormedShareToken(token)) {
+    return { presentation: { kind: "not_found" }, letterhead: null };
+  }
   const job = await getPrisma().job.findUnique({
     where: { shareToken: token },
     include: jobInclude,
   });
-  if (!job) return presentShare({ token, record: null, signOff: null });
+  if (!job) return { presentation: presentShare({ token, record: null, signOff: null }), letterhead: null };
   const mapped = mapJob(job);
-  return presentShare({
-    token,
-    record: {
-      shareToken: mapped.shareToken,
-      businessName: mapped.businessName,
-      customerName: mapped.customerName,
-      address: mapped.address,
-      phone: mapped.phone,
-      email: mapped.email,
-      trade: mapped.trade,
-      description: mapped.description,
-      internalNotes: mapped.internalNotes,
-      scheduledDate: mapped.scheduledDate,
-      timeSlot: mapped.timeSlot,
-      materials: mapped.materials,
-    },
-    signOff: mapped.signOff
-      ? { snapshot: mapped.signOff.snapshot, signatureDataUrl: mapped.signOff.signatureDataUrl }
-      : null,
-  });
+  return {
+    presentation: presentShare({
+      token,
+      record: {
+        shareToken: mapped.shareToken,
+        businessName: mapped.businessName,
+        customerName: mapped.customerName,
+        address: mapped.address,
+        phone: mapped.phone,
+        email: mapped.email,
+        trade: mapped.trade,
+        description: mapped.description,
+        internalNotes: mapped.internalNotes,
+        scheduledDate: mapped.scheduledDate,
+        timeSlot: mapped.timeSlot,
+        materials: mapped.materials,
+      },
+      signOff: mapped.signOff
+        ? { snapshot: mapped.signOff.snapshot, signatureDataUrl: mapped.signOff.signatureDataUrl }
+        : null,
+    }),
+    letterhead: letterheadFromRow(token, job.business),
+  };
+});
+
+export async function getSharePresentation(token: string): Promise<SharePresentation> {
+  return (await getShareView(token)).presentation;
 }

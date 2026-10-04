@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { getSharePresentation } from "@/server/dal";
+import { getShareView } from "@/server/dal";
 import { AgreementDocument } from "@/components/agreement-document";
 import { SignForm } from "@/components/sign-form";
 
@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic";
 
 export async function generateMetadata({ params }: { params: Promise<{ token: string }> }) {
   const { token } = await params;
-  const share = await getSharePresentation(token);
+  const share = (await getShareView(token)).presentation;
   if (share.kind === "pending" || share.kind === "signed") {
     return {
       title: `Agreement for ${share.agreement.customerName}`,
@@ -20,7 +20,8 @@ export async function generateMetadata({ params }: { params: Promise<{ token: st
 
 export default async function SignPage({ params }: { params: Promise<{ token: string }> }) {
   const { token } = await params;
-  const share = await getSharePresentation(token);
+  const view = await getShareView(token);
+  const share = view.presentation;
   if (share.kind === "not_found") notFound();
 
   return (
@@ -41,6 +42,7 @@ export default async function SignPage({ params }: { params: Promise<{ token: st
           )}
           <AgreementDocument
             agreement={share.agreement}
+            letterhead={view.letterhead}
             signatureDataUrl={share.kind === "signed" ? share.signatureDataUrl : null}
             signed={
               share.kind === "signed"

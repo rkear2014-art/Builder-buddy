@@ -187,6 +187,48 @@ summary.btn::-webkit-details-marker {
   cursor: crosshair;
 }
 
+.brand-logo {
+  display: block;
+  height: auto;
+  width: auto;
+  max-width: 100%;
+  object-fit: contain;
+}
+
+.brand-logo-header {
+  max-height: 3rem;
+  max-width: 9rem;
+}
+
+.brand-logo-home {
+  max-height: 8rem;
+  max-width: 18rem;
+}
+
+.brand-logo-letter {
+  max-height: 5.5rem;
+  max-width: 16rem;
+}
+
+@media (min-width: 640px) {
+  .brand-logo-home {
+    max-height: 9rem;
+    max-width: 28rem;
+  }
+}
+
+@media (min-width: 768px) {
+  .brand-logo-home {
+    max-height: 11rem;
+    max-width: 36rem;
+  }
+
+  .brand-logo-letter {
+    max-height: 7rem;
+    max-width: 22rem;
+  }
+}
+
 @media print {
   .no-print {
     display: none !important;
@@ -199,5 +241,10 @@ summary.btn::-webkit-details-marker {
   .card {
     border: none;
     padding: 0;
+  }
+
+  .brand-logo-letter {
+    max-height: 4.5rem;
+    max-width: 14rem;
   }
 }

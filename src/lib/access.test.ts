@@ -74,6 +74,10 @@ describe("fail closed access", () => {
       { type: "redirect", to: "/login" },
     );
     assert.deepEqual(
+      decideAccess({ pathname: "/settings", configured: true, hasValidSession: false }),
+      { type: "redirect", to: "/login" },
+    );
+    assert.deepEqual(
       decideAccess({ pathname: "/_next/hmr", configured: true, hasValidSession: false }),
       { type: "next" },
     );

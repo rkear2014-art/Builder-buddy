@@ -5,6 +5,7 @@ import { JOB_STATUSES, STATUS_LABELS, slotLabel } from "@/lib/constants";
 import { formatIsoDate, formatLondonDateTime } from "@/lib/dates";
 import type { DeskJob } from "@/lib/desk";
 import { costTotals, materialsTotals } from "@/lib/materials";
+import { starterTemplatesFor } from "@/lib/trade-starters";
 import { formatPence } from "@/lib/money";
 import {
   deleteJob,
@@ -20,6 +21,7 @@ import {
   deleteJobMaterial,
   toggleMaterialBought,
 } from "@/server/actions/materials";
+import { applyStarterToJob } from "@/server/actions/starters";
 import { getJob, getLibrary, requireUser } from "@/server/dal";
 import { requestOrigin } from "@/server/origin";
 import { CopyLink } from "@/components/copy-link";
@@ -55,6 +57,7 @@ export default async function JobPage({ params }: { params: Promise<{ id: string
   const tradeCost = costTotals(job.materials);
   const relevantSaved = library.savedItems.filter((item) => item.trade === job.trade || item.trade === "Other");
   const relevantTemplates = library.templates.filter((template) => template.trade === job.trade);
+  const starters = starterTemplatesFor(job.trade);
 
   return (
     <div className="grid gap-4">
@@ -183,6 +186,27 @@ export default async function JobPage({ params }: { params: Promise<{ id: string
           </label>
           <SubmitButton>Add to the list</SubmitButton>
         </InlineForm>
+
+        {starters.length > 0 ? (
+          <form action={applyStarterToJob} className="grid gap-3">
+            <label className="field">
+              Starter list
+              <span>
+                Built in for plastering, for any business. Prices are left blank. It does not remove what is already
+                on the job.
+              </span>
+              <select name="starterId" required defaultValue={starters[0]?.id}>
+                {starters.map((starter) => (
+                  <option key={starter.id} value={starter.id}>
+                    {starter.name} ({starter.items.length})
+                  </option>
+                ))}
+              </select>
+            </label>
+            <input type="hidden" name="jobId" value={job.id} />
+            <SubmitButton variant="secondary">Add a starter list</SubmitButton>
+          </form>
+        ) : null}
 
         {relevantSaved.length > 0 ? (
           <form action={addSavedMaterialToJob} className="grid gap-3 sm:grid-cols-[1fr_auto] sm:items-end">
