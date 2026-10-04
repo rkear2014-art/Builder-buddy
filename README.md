@@ -11,6 +11,8 @@ A tablet- and phone-friendly job diary for UK tradespeople: plasterers, builders
 
 The tradesperson side fails closed. If `AUTH_SECRET` is missing or shorter than 32 characters, or if `DATABASE_URL` is missing, those pages return **503** and do not fall open. Customer links are the only pages that work without a login, and each link shows one job.
 
+Each business is its own tenant. Jobs, customer details, materials, saved items, templates and signatures belong to that business, and a signed-in user only sees their own business. The first account is the owner of its business.
+
 ## What you can do
 
 - Book in a job with the customer’s name, address, phone, and email, the trade, the work, a date, a time slot, and a status: enquiry, booked, in progress, or complete.
@@ -40,6 +42,7 @@ Fill in `.env`:
 | `APP_ORIGIN` | No | Public site URL used when copying a customer link, such as `https://jobs.example.com` |
 | `SHOW_DEMO_LOGIN` | No | Set to `true` only on a private demo to show the seeded password on the sign-in page |
 | `SEED_DEMO_PASSWORD` | No | Password for the seeded demo user. Defaults to `Plaster-tea-1` |
+| `SETUP_TOKEN` | No | Extra code for the one-time account page. Leave unset to set up with no code |
 
 Create the tables and the demo diary:
 
@@ -51,6 +54,8 @@ npm run dev
 
 Open [http://localhost:3000](http://localhost:3000).
 
+On an empty database, the sign-in page offers **Create your account**. That page works only while there are no users. It is checked again on the server, inside a row lock, so two people cannot both claim it. After the first account exists it stays closed, even if that user is later removed. Set `SETUP_TOKEN` if you also want a code on that form. Leave it unset to do this from a tablet.
+
 Demo login after seeding:
 
 - Email: `demo@builderbuddy.co.uk`
@@ -58,11 +63,13 @@ Demo login after seeding:
 
 `npm run db:seed` resets that demo user’s jobs, templates, and saved items. It does not touch other users.
 
-Add a real login without touching the demo data:
+Add another business (its own jobs, hidden from the others):
 
 ```bash
-npm run user:create -- --email you@example.com --name "Sam Hart" --business "Hart & Co" --password "a-long-password"
+npm run user:create -- --email you@example.com --name "Sam Hart" --business "Hart & Co" --password "a-long-password-1"
 ```
+
+A new email becomes the owner of a new business and closes first-account setup. The same email updates that person’s name, password, and business name, and leaves their jobs where they are. An invite flow for extra people inside one business is not built yet.
 
 ## Scripts
 
@@ -97,3 +104,5 @@ The tests cover the rules that matter without a database:
 - a share token returns only that job, with notes and costs removed
 - materials totals use the customer price, skip blank prices, and round to the penny
 - missing configuration never counts as “allowed in”
+- first-account setup opens only with zero users, and a second overlapping claim is refused
+- a query for one business cannot read another business’s jobs, materials, templates or signatures

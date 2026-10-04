@@ -2,6 +2,7 @@
 
 import { redirect } from "next/navigation";
 import type { ActionState } from "@/lib/form-state";
+import { tenantWhere } from "@/lib/tenancy";
 import { parseLibraryItemForm, parseMaterialForm, parseTemplateForm } from "@/lib/validators";
 import { requireUser } from "@/server/dal";
 import { getPrisma, isUniqueConstraint } from "@/server/prisma";
@@ -14,6 +15,7 @@ export async function createSavedItem(_state: ActionState, formData: FormData): 
   try {
     await getPrisma().savedMaterial.create({
       data: {
+        ...tenantWhere(user.businessId),
         userId: user.id,
         trade: parsed.data.trade,
         name: parsed.data.name,
@@ -35,7 +37,7 @@ export async function createSavedItem(_state: ActionState, formData: FormData): 
 export async function deleteSavedItem(formData: FormData): Promise<void> {
   const user = await requireUser();
   const id = String(formData.get("savedId") ?? "");
-  await getPrisma().savedMaterial.deleteMany({ where: { id, userId: user.id } });
+  await getPrisma().savedMaterial.deleteMany({ where: { id, ...tenantWhere(user.businessId) } });
   revalidateDesk();
 }
 
@@ -47,6 +49,7 @@ export async function createTemplate(_state: ActionState, formData: FormData): P
   if (!material.ok) return { error: material.error };
   await getPrisma().materialTemplate.create({
     data: {
+      ...tenantWhere(user.businessId),
       userId: user.id,
       name: parsed.data.name,
       trade: parsed.data.trade,
@@ -63,7 +66,7 @@ export async function addTemplateItem(_state: ActionState, formData: FormData): 
   const parsed = parseMaterialForm(formData);
   if (!parsed.ok) return { error: parsed.error };
   const template = await getPrisma().materialTemplate.findFirst({
-    where: { id: templateId, userId: user.id },
+    where: { id: templateId, ...tenantWhere(user.businessId) },
     include: { items: { select: { sortOrder: true }, orderBy: { sortOrder: "desc" }, take: 1 } },
   });
   if (!template) return { error: "That template could not be found." };
@@ -85,6 +88,6 @@ export async function addTemplateItem(_state: ActionState, formData: FormData): 
 export async function deleteTemplate(formData: FormData): Promise<void> {
   const user = await requireUser();
   const id = String(formData.get("templateId") ?? "");
-  await getPrisma().materialTemplate.deleteMany({ where: { id, userId: user.id } });
+  await getPrisma().materialTemplate.deleteMany({ where: { id, ...tenantWhere(user.businessId) } });
   revalidateDesk();
 }

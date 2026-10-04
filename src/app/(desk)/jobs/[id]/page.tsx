@@ -37,16 +37,16 @@ function telHref(phone: string): string {
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const user = await requireUser();
-  const job = await getJob(user.id, id);
+  const job = await getJob(user.businessId, id);
   return { title: job?.customerName ?? "Job" };
 }
 
 export default async function JobPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const user = await requireUser();
-  const job = await getJob(user.id, id);
+  const job = await getJob(user.businessId, id);
   if (!job) notFound();
-  const library = await getLibrary(user.id);
+  const library = await getLibrary(user.businessId);
   const origin = await requestOrigin();
   const shareUrl = origin ? `${origin}/sign/${job.shareToken}` : `/sign/${job.shareToken}`;
   const locked = job.signOff ? parseLockedAgreement(job.signOff.snapshot) : null;

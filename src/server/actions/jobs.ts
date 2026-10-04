@@ -5,6 +5,7 @@ import { createShareToken } from "@/lib/access";
 import { isJobStatus } from "@/lib/constants";
 import { isoToUtcDate } from "@/lib/dates";
 import type { ActionState } from "@/lib/form-state";
+import { tenantWhere } from "@/lib/tenancy";
 import { parseJobForm, parseTemplateForm } from "@/lib/validators";
 import { requireUser } from "@/server/dal";
 import { getPrisma, isUniqueConstraint } from "@/server/prisma";
@@ -16,6 +17,7 @@ export async function createJob(_state: ActionState, formData: FormData): Promis
   if (!parsed.ok) return { error: parsed.error };
   const job = await getPrisma().job.create({
     data: {
+      ...tenantWhere(user.businessId),
       userId: user.id,
       customerName: parsed.data.customerName,
       address: parsed.data.address,
@@ -41,7 +43,7 @@ export async function updateJob(_state: ActionState, formData: FormData): Promis
   const parsed = parseJobForm(formData);
   if (!parsed.ok) return { error: parsed.error };
   const existing = await getPrisma().job.findFirst({
-    where: { id: jobId, userId: user.id },
+    where: { id: jobId, ...tenantWhere(user.businessId) },
     select: { id: true, shareToken: true },
   });
   if (!existing) return { error: "That job could not be found." };
@@ -70,7 +72,7 @@ export async function setJobStatus(formData: FormData): Promise<void> {
   const status = String(formData.get("status") ?? "");
   if (!isJobStatus(status)) return;
   const existing = await getPrisma().job.findFirst({
-    where: { id: jobId, userId: user.id },
+    where: { id: jobId, ...tenantWhere(user.businessId) },
     select: { id: true, shareToken: true },
   });
   if (!existing) return;
@@ -82,7 +84,7 @@ export async function rotateShareLink(formData: FormData): Promise<void> {
   const user = await requireUser();
   const jobId = String(formData.get("jobId") ?? "");
   const existing = await getPrisma().job.findFirst({
-    where: { id: jobId, userId: user.id },
+    where: { id: jobId, ...tenantWhere(user.businessId) },
     select: { id: true, shareToken: true, signOff: { select: { id: true } } },
   });
   if (!existing || existing.signOff) return;
@@ -96,7 +98,7 @@ export async function deleteJob(formData: FormData): Promise<void> {
   const user = await requireUser();
   const jobId = String(formData.get("jobId") ?? "");
   const existing = await getPrisma().job.findFirst({
-    where: { id: jobId, userId: user.id },
+    where: { id: jobId, ...tenantWhere(user.businessId) },
     select: { id: true },
   });
   if (!existing) return;
@@ -111,7 +113,7 @@ export async function saveJobAsTemplate(_state: ActionState, formData: FormData)
   const parsed = parseTemplateForm(formData);
   if (!parsed.ok) return { error: parsed.error };
   const job = await getPrisma().job.findFirst({
-    where: { id: jobId, userId: user.id },
+    where: { id: jobId, ...tenantWhere(user.businessId) },
     include: { materials: { orderBy: { sortOrder: "asc" } } },
   });
   if (!job) return { error: "That job could not be found." };
@@ -121,6 +123,7 @@ export async function saveJobAsTemplate(_state: ActionState, formData: FormData)
   try {
     await getPrisma().materialTemplate.create({
       data: {
+        ...tenantWhere(user.businessId),
         userId: user.id,
         name: parsed.data.name,
         trade: parsed.data.trade,

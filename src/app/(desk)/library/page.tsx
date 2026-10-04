@@ -16,7 +16,7 @@ function Price({ pence }: { pence: number | null }) {
 
 export default async function LibraryPage() {
   const user = await requireUser();
-  const library = await getLibrary(user.id);
+  const library = await getLibrary(user.businessId);
 
   return (
     <div className="grid gap-6">

@@ -67,7 +67,7 @@ export function decideAccess(input: {
     return { type: "next" };
   }
 
-  if (pathname === "/login") {
+  if (pathname === "/login" || pathname === "/setup") {
     return input.hasValidSession ? { type: "redirect", to: "/" } : { type: "next" };
   }
 

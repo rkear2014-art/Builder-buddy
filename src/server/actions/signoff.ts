@@ -28,14 +28,14 @@ export async function signAgreement(_state: ActionState, formData: FormData): Pr
     include: {
       materials: { orderBy: { sortOrder: "asc" } },
       signOff: true,
-      user: { select: { businessName: true } },
+      business: { select: { name: true } },
     },
   });
   if (!job) return { error: "This link is not valid." };
 
   const incoming = lockAgreement(
     {
-      businessName: job.user.businessName,
+      businessName: job.business.name,
       customerName: job.customerName,
       address: job.address,
       phone: job.phone,
@@ -65,6 +65,7 @@ export async function signAgreement(_state: ActionState, formData: FormData): Pr
   try {
     await getPrisma().signOff.create({
       data: {
+        businessId: job.businessId,
         jobId: job.id,
         signerName: incoming.signerName,
         signatureData: signature,

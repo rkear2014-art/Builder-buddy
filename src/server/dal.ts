@@ -9,18 +9,19 @@ import { addDays, isoToUtcDate, londonToday, utcDateToIso } from "@/lib/dates";
 import type { DeskJob, JobSummary, MaterialTemplateView, SavedItem, SessionUser } from "@/lib/desk";
 import { quantityFromStored } from "@/lib/materials";
 import { presentShare, type SharePresentation } from "@/lib/share";
+import { tenantWhere } from "@/lib/tenancy";
 import { SESSION_COOKIE, decryptSession } from "@/lib/session-token";
 import { getPrisma } from "@/server/prisma";
 
 const jobInclude = {
   materials: { orderBy: { sortOrder: "asc" as const } },
   signOff: true,
-  user: { select: { businessName: true } },
+  business: { select: { name: true } },
 };
 
 type JobWithRelations = NonNullable<Awaited<ReturnType<typeof findJobRow>>>;
 
-async function findJobRow(where: { id: string; userId: string } | { shareToken: string }) {
+async function findJobRow(where: { id: string; businessId: string } | { shareToken: string }) {
   return getPrisma().job.findFirst({
     where,
     include: jobInclude,
@@ -32,7 +33,7 @@ function mapJob(job: JobWithRelations): DeskJob {
     id: job.id,
     status: job.status,
     shareToken: job.shareToken,
-    businessName: job.user.businessName,
+    businessName: job.business.name,
     customerName: job.customerName,
     address: job.address,
     phone: job.phone,
@@ -94,10 +95,26 @@ export const getCurrentUser = cache(async (): Promise<SessionUser | null> => {
   const token = (await cookies()).get(SESSION_COOKIE)?.value;
   const session = await decryptSession(token, process.env.AUTH_SECRET);
   if (!session) return null;
-  return getPrisma().user.findUnique({
+  const user = await getPrisma().user.findUnique({
     where: { id: session.userId },
-    select: { id: true, email: true, name: true, businessName: true },
+    select: {
+      id: true,
+      email: true,
+      name: true,
+      role: true,
+      businessId: true,
+      business: { select: { name: true } },
+    },
   });
+  if (!user) return null;
+  return {
+    id: user.id,
+    email: user.email,
+    name: user.name,
+    role: user.role,
+    businessId: user.businessId,
+    businessName: user.business.name,
+  };
 });
 
 export async function requireUser(): Promise<SessionUser> {
@@ -107,13 +124,13 @@ export async function requireUser(): Promise<SessionUser> {
 }
 
 export async function listJobs(
-  userId: string,
+  businessId: string,
   filter: { status?: JobStatus; query?: string },
 ): Promise<JobSummary[]> {
   const query = filter.query?.trim();
   const jobs = await getPrisma().job.findMany({
     where: {
-      userId,
+      ...tenantWhere(businessId),
       status: filter.status,
       ...(query
         ? {
@@ -135,7 +152,7 @@ export async function listJobs(
   return jobs.map(mapSummary);
 }
 
-export async function getHome(userId: string): Promise<{
+export async function getHome(businessId: string): Promise<{
   today: string;
   todayJobs: JobSummary[];
   upcoming: JobSummary[];
@@ -148,23 +165,23 @@ export async function getHome(userId: string): Promise<{
   const prisma = getPrisma();
   const [todayJobs, upcoming, grouped, awaitingSignature] = await Promise.all([
     prisma.job.findMany({
-      where: { userId, scheduledDate: todayDate },
+      where: { ...tenantWhere(businessId), scheduledDate: todayDate },
       include: { materials: { select: { bought: true } }, signOff: { select: { id: true } } },
       orderBy: { customerName: "asc" },
     }),
     prisma.job.findMany({
-      where: { userId, scheduledDate: { gt: todayDate, lte: upcomingEnd } },
+      where: { ...tenantWhere(businessId), scheduledDate: { gt: todayDate, lte: upcomingEnd } },
       include: { materials: { select: { bought: true } }, signOff: { select: { id: true } } },
       orderBy: [{ scheduledDate: "asc" }, { customerName: "asc" }],
     }),
     prisma.job.groupBy({
       by: ["status"],
-      where: { userId },
+      where: tenantWhere(businessId),
       _count: { _all: true },
     }),
     prisma.job.findMany({
       where: {
-        userId,
+        ...tenantWhere(businessId),
         signOff: null,
         status: { in: ["BOOKED", "IN_PROGRESS"] },
         scheduledDate: { gte: todayDate },
@@ -192,10 +209,10 @@ export async function getHome(userId: string): Promise<{
   };
 }
 
-export async function getDiaryJobs(userId: string, fromIso: string, toIso: string): Promise<JobSummary[]> {
+export async function getDiaryJobs(businessId: string, fromIso: string, toIso: string): Promise<JobSummary[]> {
   const jobs = await getPrisma().job.findMany({
     where: {
-      userId,
+      ...tenantWhere(businessId),
       scheduledDate: { gte: isoToUtcDate(fromIso), lte: isoToUtcDate(toIso) },
     },
     include: { materials: { select: { bought: true } }, signOff: { select: { id: true } } },
@@ -204,23 +221,23 @@ export async function getDiaryJobs(userId: string, fromIso: string, toIso: strin
   return jobs.map(mapSummary);
 }
 
-export async function getJob(userId: string, jobId: string): Promise<DeskJob | null> {
-  const job = await findJobRow({ id: jobId, userId });
+export async function getJob(businessId: string, jobId: string): Promise<DeskJob | null> {
+  const job = await findJobRow({ id: jobId, ...tenantWhere(businessId) });
   return job ? mapJob(job) : null;
 }
 
-export async function getLibrary(userId: string): Promise<{
+export async function getLibrary(businessId: string): Promise<{
   savedItems: SavedItem[];
   templates: MaterialTemplateView[];
 }> {
   const prisma = getPrisma();
   const [savedItems, templates] = await Promise.all([
     prisma.savedMaterial.findMany({
-      where: { userId },
+      where: tenantWhere(businessId),
       orderBy: [{ trade: "asc" }, { name: "asc" }],
     }),
     prisma.materialTemplate.findMany({
-      where: { userId },
+      where: tenantWhere(businessId),
       include: { items: { orderBy: { sortOrder: "asc" } } },
       orderBy: [{ trade: "asc" }, { name: "asc" }],
     }),

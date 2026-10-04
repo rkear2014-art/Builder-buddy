@@ -53,30 +53,44 @@ async function main() {
 
   const prisma = getPrisma();
   const passwordHash = await bcrypt.hash(DEMO_PASSWORD, 10);
-  const user = await prisma.user.upsert({
-    where: { email: DEMO_EMAIL },
-    update: { name: "Sam Hart", businessName: "Hart & Co", passwordHash },
-    create: {
-      email: DEMO_EMAIL,
-      name: "Sam Hart",
-      businessName: "Hart & Co",
-      passwordHash,
-    },
+  const existing = await prisma.user.findUnique({ where: { email: DEMO_EMAIL } });
+  const business = existing
+    ? await prisma.business.update({ where: { id: existing.businessId }, data: { name: "Hart & Co" } })
+    : await prisma.business.create({ data: { name: "Hart & Co" } });
+  const user = existing
+    ? await prisma.user.update({
+        where: { id: existing.id },
+        data: { name: "Sam Hart", passwordHash, role: "OWNER" },
+      })
+    : await prisma.user.create({
+        data: {
+          email: DEMO_EMAIL,
+          name: "Sam Hart",
+          passwordHash,
+          role: "OWNER",
+          businessId: business.id,
+        },
+      });
+  const businessId = business.id;
+  await prisma.setupLock.upsert({
+    where: { id: 1 },
+    update: { claimed: true, claimedAt: new Date() },
+    create: { id: 1, claimed: true, claimedAt: new Date() },
   });
 
-  await prisma.job.deleteMany({ where: { userId: user.id } });
-  await prisma.materialTemplate.deleteMany({ where: { userId: user.id } });
-  await prisma.savedMaterial.deleteMany({ where: { userId: user.id } });
+  await prisma.job.deleteMany({ where: { businessId } });
+  await prisma.materialTemplate.deleteMany({ where: { businessId } });
+  await prisma.savedMaterial.deleteMany({ where: { businessId } });
 
   await prisma.savedMaterial.createMany({
     data: [
-      { userId: user.id, trade: "Plasterer", name: "Multi-finish plaster", unit: "bag", unitPricePence: 940, costPricePence: 710 },
-      { userId: user.id, trade: "Plasterer", name: "Scrim tape", unit: "roll", unitPricePence: 450, costPricePence: 280 },
-      { userId: user.id, trade: "Electrician", name: "RCBO 32A", unit: "each", unitPricePence: 1800, costPricePence: 1250 },
-      { userId: user.id, trade: "Plumber", name: "PTFE tape", unit: "roll", unitPricePence: 120, costPricePence: 45 },
-      { userId: user.id, trade: "Builder", name: "Mortar", unit: "bag", unitPricePence: 680, costPricePence: 490 },
-      { userId: user.id, trade: "Decorator", name: "Contract matt emulsion", unit: "litre", unitPricePence: 750, costPricePence: 490 },
-      { userId: user.id, trade: "Roofer", name: "Natural slate", unit: "each", unitPricePence: 280, costPricePence: 160 },
+      { businessId, userId: user.id, trade: "Plasterer", name: "Multi-finish plaster", unit: "bag", unitPricePence: 940, costPricePence: 710 },
+      { businessId, userId: user.id, trade: "Plasterer", name: "Scrim tape", unit: "roll", unitPricePence: 450, costPricePence: 280 },
+      { businessId, userId: user.id, trade: "Electrician", name: "RCBO 32A", unit: "each", unitPricePence: 1800, costPricePence: 1250 },
+      { businessId, userId: user.id, trade: "Plumber", name: "PTFE tape", unit: "roll", unitPricePence: 120, costPricePence: 45 },
+      { businessId, userId: user.id, trade: "Builder", name: "Mortar", unit: "bag", unitPricePence: 680, costPricePence: 490 },
+      { businessId, userId: user.id, trade: "Decorator", name: "Contract matt emulsion", unit: "litre", unitPricePence: 750, costPricePence: 490 },
+      { businessId, userId: user.id, trade: "Roofer", name: "Natural slate", unit: "each", unitPricePence: 280, costPricePence: 160 },
     ],
   });
 
@@ -89,6 +103,7 @@ async function main() {
   for (const template of templates) {
     await prisma.materialTemplate.create({
       data: {
+        businessId,
         userId: user.id,
         name: template.name,
         trade: template.trade,
@@ -111,6 +126,7 @@ async function main() {
 
   const patel = await prisma.job.create({
     data: {
+      businessId,
       userId: user.id,
       customerName: "Anita Patel",
       address: "14 Larkspur Road, Bishopston, Bristol, BS7 8NS",
@@ -126,6 +142,7 @@ async function main() {
       materials: {
         create: plasterRoom.map((item, index) => ({
           ...item,
+          businessId,
           bought: index < 2,
           sortOrder: index,
         })),
@@ -135,6 +152,7 @@ async function main() {
 
   await prisma.job.create({
     data: {
+      businessId,
       userId: user.id,
       customerName: "Chidi Okonkwo",
       address: "8 Cable Street, Bedminster, Bristol, BS3 4QH",
@@ -148,7 +166,7 @@ async function main() {
       status: "ENQUIRY",
       shareToken: createShareToken(),
       materials: {
-        create: consumerUnit.map((item, index) => ({ ...item, bought: false, sortOrder: index })),
+        create: consumerUnit.map((item, index) => ({ ...item, businessId, bought: false, sortOrder: index })),
       },
     },
   });
@@ -156,6 +174,7 @@ async function main() {
   const brooksDescription = "Replace the kitchen mixer tap and reseal the sink.";
   const brooks = await prisma.job.create({
     data: {
+      businessId,
       userId: user.id,
       customerName: "Helen Brooks",
       address: "22 Harbour Lane, Clevedon, BS21 7QA",
@@ -169,7 +188,7 @@ async function main() {
       status: "IN_PROGRESS",
       shareToken: createShareToken(),
       materials: {
-        create: kitchenTap.map((item, index) => ({ ...item, bought: true, sortOrder: index })),
+        create: kitchenTap.map((item, index) => ({ ...item, businessId, bought: true, sortOrder: index })),
       },
     },
     include: { materials: { orderBy: { sortOrder: "asc" } } },
@@ -198,6 +217,7 @@ async function main() {
   );
   await prisma.signOff.create({
     data: {
+      businessId,
       jobId: brooks.id,
       signerName: brooksLocked.signerName,
       signedAt: new Date(brooksLocked.signedAt),
@@ -209,6 +229,7 @@ async function main() {
   const singhOriginal = "Repoint the rear garden wall and replace three spalled bricks.";
   const singh = await prisma.job.create({
     data: {
+      businessId,
       userId: user.id,
       customerName: "Dave Singh",
       address: "5 Quarry Cottages, Totterdown, Bristol, BS4 2JY",
@@ -222,7 +243,7 @@ async function main() {
       status: "COMPLETE",
       shareToken: createShareToken(),
       materials: {
-        create: repoint.map((item, index) => ({ ...item, bought: true, sortOrder: index })),
+        create: repoint.map((item, index) => ({ ...item, businessId, bought: true, sortOrder: index })),
       },
     },
     include: { materials: { orderBy: { sortOrder: "asc" } } },
@@ -250,6 +271,7 @@ async function main() {
   );
   await prisma.signOff.create({
     data: {
+      businessId,
       jobId: singh.id,
       signerName: singhLocked.signerName,
       signedAt: new Date(singhLocked.signedAt),
@@ -260,6 +282,7 @@ async function main() {
 
   await prisma.job.create({
     data: {
+      businessId,
       userId: user.id,
       customerName: "Priya Shah",
       address: "19 Elm Grove, Redland, Bristol, BS6 6AJ",
@@ -277,6 +300,7 @@ async function main() {
 
   await prisma.job.create({
     data: {
+      businessId,
       userId: user.id,
       customerName: "Tom Ellis",
       address: "3 Hillside Terrace, Nailsea, BS48 2AU",
@@ -292,6 +316,7 @@ async function main() {
       materials: {
         create: [
           {
+            businessId,
             name: "Natural slate",
             quantity: "3",
             unit: "each",
