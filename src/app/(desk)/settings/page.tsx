@@ -1,6 +1,14 @@
-import { canEditBusiness, deskLogoSrc } from "@/lib/branding";
+import { canEditBusiness, deskHeroSrc, deskLogoSrc } from "@/lib/branding";
 import type { SessionUser } from "@/lib/desk";
-import { removeBusinessLogo, uploadBusinessLogo, useSampleLogo } from "@/server/actions/branding";
+import {
+  removeBusinessLogo,
+  removeHeroPhoto,
+  saveAccent,
+  uploadBusinessLogo,
+  uploadHeroPhoto,
+  useLogoAccent,
+  useSampleLogo,
+} from "@/server/actions/branding";
 import { BusinessProfileForm } from "@/components/business-profile-form";
 import { InlineForm } from "@/components/inline-form";
 import { SubmitButton } from "@/components/submit-button";
@@ -17,9 +25,15 @@ function savedMessage(saved: string | undefined): string | null {
     case "logo":
       return "Logo saved.";
     case "removed":
-      return "Logo removed. The desk shows Builder Buddy again, and the customer agreement keeps your business name.";
+      return "Logo removed. The dashboard shows your business name, and the customer agreement has no picture.";
     case "sample":
       return "The AK Plastering logo is now on this business. You can replace it whenever you like.";
+    case "hero":
+      return "Hero photo saved. It shows on the dashboard.";
+    case "hero-removed":
+      return "Hero photo removed. The dashboard uses the plaster gradient again.";
+    case "accent":
+      return "Accent colour saved.";
     default:
       return null;
   }
@@ -31,6 +45,8 @@ function noticeMessage(notice: string | undefined): string | null {
       return "Only the owner can change the business details.";
     case "sample":
       return "That logo could not be used. Choose a PNG, JPG, or WebP picture instead.";
+    case "accent":
+      return "Add a logo first, then a colour can be taken from it.";
     default:
       return null;
   }
@@ -52,7 +68,7 @@ export default async function SettingsPage({
       <div>
         <h1 className="font-display text-4xl">Business</h1>
         <p className="mt-1 text-stone">
-          Your logo and contact details appear on the desk and on this business&apos;s customer agreement.
+          Your logo, colour, and contact details appear on the dashboard and on this business&apos;s customer agreement.
         </p>
       </div>
 
@@ -64,6 +80,8 @@ export default async function SettingsPage({
       ) : null}
 
       <LogoSection user={user} owner={owner} />
+      <HeroSection user={user} owner={owner} />
+      <AccentSection user={user} owner={owner} />
       <ProfileSection user={user} owner={owner} />
     </div>
   );
@@ -83,10 +101,7 @@ function LogoSection({ user, owner }: { user: SessionUser; owner: boolean }) {
           />
         </div>
       ) : (
-        <p className="text-stone">
-          No logo yet. The desk keeps the Builder Buddy mark, and the customer agreement shows your business name
-          without a picture.
-        </p>
+        <p className="text-stone">No logo yet. The dashboard shows your business name, and the customer agreement has no picture.</p>
       )}
       {owner ? (
         <>
@@ -119,6 +134,80 @@ function LogoSection({ user, owner }: { user: SessionUser; owner: boolean }) {
         </>
       ) : (
         <p className="font-bold">Only the owner can change the logo.</p>
+      )}
+    </section>
+  );
+}
+
+function HeroSection({ user, owner }: { user: SessionUser; owner: boolean }) {
+  return (
+    <section className="card grid gap-4">
+      <h2 className="font-display text-2xl">Dashboard photo</h2>
+      <p className="text-stone">
+        Optional. It fills the top card on the dashboard. With no photo, that card uses a plaster-coloured gradient.
+      </p>
+      {user.branding.hasHero ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={deskHeroSrc(user.branding.heroUpdatedAt)}
+          alt=""
+          className="max-h-48 w-full rounded-2xl object-cover"
+        />
+      ) : null}
+      {owner ? (
+        <>
+          <InlineForm action={uploadHeroPhoto} className="grid gap-3">
+            <label className="field">
+              Upload a photo
+              <span>PNG, JPG, or WebP. Up to 2 MB.</span>
+              <input name="hero" type="file" accept="image/png,image/jpeg,image/webp" required />
+            </label>
+            <SubmitButton>Save photo</SubmitButton>
+          </InlineForm>
+          {user.branding.hasHero ? (
+            <form action={removeHeroPhoto}>
+              <button className="btn btn-danger" type="submit">
+                Remove photo
+              </button>
+            </form>
+          ) : null}
+        </>
+      ) : (
+        <p className="font-bold">Only the owner can change the photo.</p>
+      )}
+    </section>
+  );
+}
+
+function AccentSection({ user, owner }: { user: SessionUser; owner: boolean }) {
+  return (
+    <section className="card grid gap-4">
+      <h2 className="font-display text-2xl">Accent colour</h2>
+      <p className="text-stone">
+        Used for the New job button, links, and the strip on the dashboard. Uploading a logo fills this in when you
+        have not chosen a colour yet.
+      </p>
+      <p className="flex items-center gap-3 font-bold">
+        <span className="inline-block h-8 w-8 rounded-full" style={{ background: user.branding.accentColour }} />
+        {user.branding.accentColour}
+      </p>
+      {owner ? (
+        <>
+          <InlineForm action={saveAccent} className="grid gap-3">
+            <label className="field">
+              Colour
+              <input name="accent" type="color" defaultValue={user.branding.accentColour} className="h-14 w-24 p-1" />
+            </label>
+            <SubmitButton>Save colour</SubmitButton>
+          </InlineForm>
+          <form action={useLogoAccent}>
+            <button className="btn btn-secondary" type="submit">
+              Use a colour from the logo
+            </button>
+          </form>
+        </>
+      ) : (
+        <p className="font-bold">Only the owner can change the colour.</p>
       )}
     </section>
   );

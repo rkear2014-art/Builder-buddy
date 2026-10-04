@@ -3,12 +3,13 @@ import { cache } from "react";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { isWellFormedShareToken } from "@/lib/access";
-import { letterheadFromRow, toBranding, type CustomerLetterhead } from "@/lib/branding";
+import { letterheadFromRow, toBranding, deskHeroSrc, deskLogoSrc, type CustomerLetterhead } from "@/lib/branding";
 import { isConfigured } from "@/lib/config";
 import type { JobStatus } from "@/lib/constants";
-import { addDays, isoToUtcDate, londonToday, utcDateToIso } from "@/lib/dates";
+import { addDays, isoToUtcDate, londonHour, londonToday, utcDateToIso, weekDates } from "@/lib/dates";
 import type { DeskJob, JobSummary, MaterialTemplateView, SavedItem, SessionUser } from "@/lib/desk";
-import { quantityFromStored } from "@/lib/materials";
+import { buildGlance, glanceChips, type GlanceJob, type GlancePage } from "@/lib/glance";
+import { materialsTotals, quantityFromStored } from "@/lib/materials";
 import { presentShare, type SharePresentation } from "@/lib/share";
 import { tenantWhere } from "@/lib/tenancy";
 import { SESSION_COOKIE, decryptSession } from "@/lib/session-token";
@@ -21,8 +22,11 @@ const businessBrandingSelect = {
   address: true,
   website: true,
   tagline: true,
+  accent: true,
   logoMime: true,
   logoUpdatedAt: true,
+  heroMime: true,
+  heroUpdatedAt: true,
 } as const;
 
 const jobInclude = {
@@ -219,6 +223,128 @@ export async function getHome(businessId: string): Promise<{
     upcoming: upcoming.map(mapSummary),
     counts,
     awaitingSignature: awaitingSignature.map(mapSummary),
+  };
+}
+
+const glanceInclude = {
+  materials: { select: { quantity: true, unitPricePence: true } },
+  signOff: { select: { id: true } },
+  user: { select: { name: true } },
+} as const;
+
+function monthEndIso(today: string): string {
+  const [year, month] = today.split("-").map(Number);
+  return new Date(Date.UTC(year, month, 0)).toISOString().slice(0, 10);
+}
+
+function mapGlanceJob(job: {
+  id: string;
+  customerName: string;
+  address: string;
+  trade: string;
+  status: JobStatus;
+  scheduledDate: Date;
+  timeSlot: string;
+  createdAt: Date;
+  updatedAt: Date;
+  user: { name: string };
+  signOff: { id: string } | null;
+  materials: Array<{ quantity: { toString(): string }; unitPricePence: number | null }>;
+}): GlanceJob {
+  return {
+    id: job.id,
+    customerName: job.customerName,
+    address: job.address,
+    trade: job.trade,
+    status: job.status,
+    scheduledDate: utcDateToIso(job.scheduledDate),
+    timeSlot: job.timeSlot,
+    createdAt: job.createdAt.toISOString(),
+    updatedAt: job.updatedAt.toISOString(),
+    assigneeName: job.user.name,
+    signed: Boolean(job.signOff),
+    totalPence: materialsTotals(
+      job.materials.map((material) => ({
+        quantity: quantityFromStored(material.quantity.toString()),
+        unitPricePence: material.unitPricePence,
+      })),
+    ).totalPence,
+  };
+}
+
+export async function countChase(businessId: string): Promise<number> {
+  const today = londonToday();
+  const start = isoToUtcDate(addDays(today, -90));
+  const todayDate = isoToUtcDate(today);
+  return getPrisma().job.count({
+    where: {
+      ...tenantWhere(businessId),
+      signOff: null,
+      OR: [
+        {
+          status: { in: ["BOOKED", "IN_PROGRESS"] },
+          scheduledDate: { gte: start, lte: todayDate },
+        },
+        { status: "ENQUIRY", scheduledDate: { gte: start, lt: todayDate } },
+      ],
+    },
+  });
+}
+
+export async function getGlance(
+  businessId: string,
+  branding: SessionUser["branding"],
+): Promise<GlancePage> {
+  const today = londonToday();
+  const now = new Date();
+  const start = addDays(today, -90);
+  const week = weekDates(today);
+  const end = monthEndIso(today) > week[6] ? monthEndIso(today) : week[6];
+  const freshSince = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+  const prisma = getPrisma();
+  const [ranged, fresh, recent, grouped] = await Promise.all([
+    prisma.job.findMany({
+      where: {
+        ...tenantWhere(businessId),
+        scheduledDate: { gte: isoToUtcDate(start), lte: isoToUtcDate(end) },
+      },
+      include: glanceInclude,
+    }),
+    prisma.job.findMany({
+      where: { ...tenantWhere(businessId), createdAt: { gte: freshSince } },
+      include: glanceInclude,
+    }),
+    prisma.job.findMany({
+      where: tenantWhere(businessId),
+      include: glanceInclude,
+      orderBy: { updatedAt: "desc" },
+      take: 6,
+    }),
+    prisma.job.groupBy({
+      by: ["status"],
+      where: tenantWhere(businessId),
+      _count: { _all: true },
+    }),
+  ]);
+  const byId = new Map<string, (typeof ranged)[number]>();
+  for (const job of [...ranged, ...fresh, ...recent]) byId.set(job.id, job);
+  const enquiryCount = grouped.find((row) => row.status === "ENQUIRY")?._count._all ?? 0;
+  const model = buildGlance({
+    today,
+    hour: londonHour(now),
+    now,
+    businessName: branding.name,
+    enquiryCount,
+    jobs: [...byId.values()].map(mapGlanceJob),
+  });
+  return {
+    ...model,
+    businessName: branding.name,
+    chips: glanceChips(branding.tagline, branding.address),
+    logoSrc: branding.hasLogo ? deskLogoSrc(branding.logoUpdatedAt) : null,
+    heroSrc: branding.hasHero ? deskHeroSrc(branding.heroUpdatedAt) : null,
+    accentColour: branding.accentColour,
+    accentInk: branding.accentInk,
   };
 }
 

@@ -27,9 +27,13 @@ model Business {
   address       String             @default("")
   website       String             @default("")
   tagline       String             @default("")
+  accent        String             @default("")
   logoBytes     Bytes?
   logoMime      String?
   logoUpdatedAt DateTime?
+  heroBytes     Bytes?
+  heroMime      String?
+  heroUpdatedAt DateTime?
   createdAt     DateTime           @default(now())
   users      User[]
   jobs       Job[]
