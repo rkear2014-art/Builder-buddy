@@ -1,0 +1,116 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum JobStatus {
+  ENQUIRY
+  BOOKED
+  IN_PROGRESS
+  COMPLETE
+}
+
+model User {
+  id           String             @id @default(cuid())
+  email        String             @unique
+  name         String
+  businessName String
+  passwordHash String
+  createdAt    DateTime           @default(now())
+  jobs         Job[]
+  templates    MaterialTemplate[]
+  savedItems   SavedMaterial[]
+}
+
+model Job {
+  id            String       @id @default(cuid())
+  userId        String
+  user          User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  customerName  String
+  address       String
+  phone         String
+  email         String       @default("")
+  trade         String
+  description   String
+  internalNotes String       @default("")
+  scheduledDate DateTime     @db.Date
+  timeSlot      String
+  status        JobStatus
+  shareToken    String       @unique
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+  materials     JobMaterial[]
+  signOff       SignOff?
+
+  @@index([userId, scheduledDate])
+}
+
+model JobMaterial {
+  id             String  @id @default(cuid())
+  jobId          String
+  job            Job     @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  name           String
+  quantity       Decimal @db.Decimal(10, 2)
+  unit           String
+  unitPricePence Int?
+  costPricePence Int?
+  bought         Boolean @default(false)
+  sortOrder      Int     @default(0)
+
+  @@index([jobId])
+}
+
+model SignOff {
+  id            String   @id @default(cuid())
+  jobId         String   @unique
+  job           Job      @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  signerName    String
+  signatureData String   @db.Text
+  signedAt      DateTime
+  snapshot      Json
+}
+
+model MaterialTemplate {
+  id        String                 @id @default(cuid())
+  userId    String
+  user      User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name      String
+  trade     String
+  createdAt DateTime               @default(now())
+  items     MaterialTemplateItem[]
+
+  @@index([userId, trade])
+}
+
+model MaterialTemplateItem {
+  id             String           @id @default(cuid())
+  templateId     String
+  template       MaterialTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  name           String
+  quantity       Decimal          @db.Decimal(10, 2)
+  unit           String
+  unitPricePence Int?
+  costPricePence Int?
+  sortOrder      Int              @default(0)
+
+  @@index([templateId])
+}
+
+model SavedMaterial {
+  id             String   @id @default(cuid())
+  userId         String
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  trade          String
+  name           String
+  unit           String
+  unitPricePence Int?
+  costPricePence Int?
+  createdAt      DateTime @default(now())
+
+  @@unique([userId, trade, name])
+  @@index([userId, trade])
+}
