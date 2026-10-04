@@ -1,4 +1,4 @@
-import { deskLogoSrc } from "@/lib/branding";
+import { deskSmallLogoSrc } from "@/lib/branding";
 import { DeskNav } from "@/components/desk-nav";
 import { DeskTopNav } from "@/components/desk-top-nav";
 import { countChase, requireUser } from "@/server/dal";
@@ -18,7 +18,8 @@ export default async function DeskLayout({ children }: { children: React.ReactNo
       </a>
       <DeskTopNav
         businessName={user.businessName}
-        logoSrc={user.branding.hasLogo ? deskLogoSrc(user.branding.logoUpdatedAt) : null}
+        logoSrc={deskSmallLogoSrc(user.branding)}
+        logoCompact={user.branding.hasMark}
         chaseCount={chaseCount}
         accentColour={user.branding.accentColour}
         accentInk={user.branding.accentInk}

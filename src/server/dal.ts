@@ -3,7 +3,7 @@ import { cache } from "react";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { isWellFormedShareToken } from "@/lib/access";
-import { letterheadFromRow, toBranding, deskHeroSrc, deskLogoSrc, type CustomerLetterhead } from "@/lib/branding";
+import { letterheadFromRow, toBranding, deskHeroSrc, deskSmallLogoSrc, type CustomerLetterhead } from "@/lib/branding";
 import { isConfigured } from "@/lib/config";
 import type { JobStatus } from "@/lib/constants";
 import { addDays, isoToUtcDate, londonHour, londonToday, utcDateToIso, weekDates } from "@/lib/dates";
@@ -25,6 +25,8 @@ const businessBrandingSelect = {
   accent: true,
   logoMime: true,
   logoUpdatedAt: true,
+  markMime: true,
+  markUpdatedAt: true,
   heroMime: true,
   heroUpdatedAt: true,
 } as const;
@@ -341,7 +343,7 @@ export async function getGlance(
     ...model,
     businessName: branding.name,
     chips: glanceChips(branding.tagline, branding.address),
-    logoSrc: branding.hasLogo ? deskLogoSrc(branding.logoUpdatedAt) : null,
+    logoSrc: deskSmallLogoSrc(branding),
     heroSrc: branding.hasHero ? deskHeroSrc(branding.heroUpdatedAt) : null,
     accentColour: branding.accentColour,
     accentInk: branding.accentInk,

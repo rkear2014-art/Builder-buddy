@@ -15,6 +15,8 @@ export type BusinessProfile = {
 export type BusinessBranding = BusinessProfile & {
   hasLogo: boolean;
   logoUpdatedAt: string | null;
+  hasMark: boolean;
+  markUpdatedAt: string | null;
   hasHero: boolean;
   heroUpdatedAt: string | null;
   accent: string;
@@ -26,6 +28,8 @@ export type BrandingRow = BusinessProfile & {
   accent: string;
   logoMime: string | null;
   logoUpdatedAt: Date | string | null;
+  markMime: string | null;
+  markUpdatedAt: Date | string | null;
   heroMime: string | null;
   heroUpdatedAt: Date | string | null;
 };
@@ -107,6 +111,8 @@ export function parseBusinessProfile(formData: FormData): FormParse<BusinessProf
 export function toBranding(row: BrandingRow): BusinessBranding {
   const logoUpdatedAt =
     row.logoUpdatedAt instanceof Date ? row.logoUpdatedAt.toISOString() : row.logoUpdatedAt;
+  const markUpdatedAt =
+    row.markUpdatedAt instanceof Date ? row.markUpdatedAt.toISOString() : row.markUpdatedAt;
   const heroUpdatedAt =
     row.heroUpdatedAt instanceof Date ? row.heroUpdatedAt.toISOString() : row.heroUpdatedAt;
   const accentColour = resolveAccent(row.accent);
@@ -119,6 +125,8 @@ export function toBranding(row: BrandingRow): BusinessBranding {
     tagline: row.tagline,
     hasLogo: Boolean(row.logoMime),
     logoUpdatedAt: row.logoMime ? logoUpdatedAt : null,
+    hasMark: Boolean(row.markMime),
+    markUpdatedAt: row.markMime ? markUpdatedAt : null,
     hasHero: Boolean(row.heroMime),
     heroUpdatedAt: row.heroMime ? heroUpdatedAt : null,
     accent: row.accent,
@@ -145,6 +153,20 @@ export function customerLogoSrc(token: string, hasLogo: boolean, logoUpdatedAt: 
 export function deskLogoSrc(logoUpdatedAt: string | null): string {
   const version = logoUpdatedAt ? `?v=${encodeURIComponent(logoUpdatedAt)}` : "";
   return `/branding/logo${version}`;
+}
+
+export function deskMarkSrc(markUpdatedAt: string | null): string {
+  const version = markUpdatedAt ? `?v=${encodeURIComponent(markUpdatedAt)}` : "";
+  return `/branding/mark${version}`;
+}
+
+/** The nav and dashboard use the compact mark when this business has one. */
+export function deskSmallLogoSrc(
+  branding: Pick<BusinessBranding, "hasMark" | "markUpdatedAt" | "hasLogo" | "logoUpdatedAt">,
+): string | null {
+  if (branding.hasMark) return deskMarkSrc(branding.markUpdatedAt);
+  if (branding.hasLogo) return deskLogoSrc(branding.logoUpdatedAt);
+  return null;
 }
 
 export function deskHeroSrc(heroUpdatedAt: string | null): string {
