@@ -142,11 +142,11 @@ export const PLASTERING_STARTER_TEMPLATES: StarterTemplate[] = [
     description: "Prepare the Artex and skim over it to a smooth finish on the ceilings and walls.",
     previousNames: ["Cover Artex"],
     items: [
-      line("Artex covering primer", "litre", null),
+      line("Artex covering primer", "10L tub", 8562, { previousUnits: ["litre"] }),
       line("PVA bonding agent", "5L tub", 1796, { previousUnits: ["litre"] }),
       line("Thistle MultiFinish plaster", "bag", 1310),
       line("Scrim tape", "roll", 490),
-      line("Wide angle bead", "length", null),
+      line("Wide angle bead", "length", 414),
     ],
   },
   {
@@ -186,9 +186,9 @@ export const PLASTERING_STARTER_TEMPLATES: StarterTemplate[] = [
     description: "Lime plaster the walls, suited to an older building, and leave a breathable finish ready for decoration.",
     previousNames: [],
     items: [
-      line("Lime putty", "kg", null),
+      line("Lime putty", "20kg bucket", 2508, { previousUnits: ["kg"] }),
       line("NHL lime", "bag", 5000),
-      line("Lime finish plaster", "bag", null),
+      line("Lime finish plaster", "bag", 1176),
       line("Hessian", "roll", 6967),
       line("Stainless angle bead", "length", 1166),
     ],
@@ -230,7 +230,7 @@ export const PLASTERING_STARTER_TEMPLATES: StarterTemplate[] = [
     items: [
       line("Plaster coving", "length", 1283),
       line("Coving adhesive", "5kg bag", 1979, { previousUnits: ["tube"] }),
-      line("Decorative plaster moulding", "length", null),
+      line("Decorative plaster moulding", "length", 3594),
     ],
   },
   {
@@ -243,7 +243,7 @@ export const PLASTERING_STARTER_TEMPLATES: StarterTemplate[] = [
       line("Building sand", "bag", 396),
       line("Cement", "bag", 814),
       line("Hydrated lime", "bag", 2749),
-      line("Alkali-resistant render mesh", "roll", null),
+      line("Alkali-resistant render mesh", "roll", 4000),
       line("Render stop bead", "length", 1385),
       line("Bellcast bead", "length", 890),
     ],
@@ -259,7 +259,7 @@ export const PLASTERING_STARTER_TEMPLATES: StarterTemplate[] = [
       line("Cement", "bag", 814),
       line("Self-levelling compound", "bag", 2437),
       line("Screed fibre", "bag", 1772),
-      line("Perimeter foam strip", "roll", null),
+      line("Perimeter foam strip", "roll", 2998),
     ],
   },
 ];

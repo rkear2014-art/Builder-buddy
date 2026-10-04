@@ -90,8 +90,8 @@ export default async function LibraryPage({
         </div>
         <p className="text-stone">
           These lists are built in for every plastering business, and each one has a short description the customer can
-          read on the sign-off page. Starter prices are Travis Perkins website prices from October 2026, including VAT,
-          and you can change any of them. Load plastering starter lists adds a missing list, brings an older saved name
+          read on the sign-off page. Starter prices are Travis Perkins and other UK merchant website prices from October
+          2026, including VAT, and you can change any of them. Load plastering starter lists adds a missing list, brings an older saved name
           up to date, and fills a blank price. A price you have already set is left as it was.
         </p>
         {PLASTERING_STARTER_TEMPLATES.map((starter) => (

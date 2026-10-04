@@ -43,17 +43,8 @@ describe("plastering starters", () => {
     assert.equal(ids.size, templates.length);
   });
 
-  it("uses a Travis Perkins price where one was published, and leaves the rest blank", () => {
-    const allowed = new Set<string>([...UNITS, "5L tub", "10L tub", "5kg bag", "310ml cartridge"]);
-    const blank = new Set([
-      "Artex covering primer",
-      "Wide angle bead",
-      "Lime putty",
-      "Lime finish plaster",
-      "Decorative plaster moulding",
-      "Alkali-resistant render mesh",
-      "Perimeter foam strip",
-    ]);
+  it("prices every starter line from a UK merchant website, including VAT", () => {
+    const allowed = new Set<string>([...UNITS, "5L tub", "10L tub", "5kg bag", "20kg bucket", "310ml cartridge"]);
     const seen = new Map<string, { unit: string; unitPricePence: number | null }>();
     for (const template of PLASTERING_STARTER_TEMPLATES) {
       assert.equal(template.trade, "Plasterer");
@@ -62,7 +53,7 @@ describe("plastering starters", () => {
       for (const item of template.items) {
         assert.equal(item.costPricePence, null);
         assert.ok(allowed.has(item.unit), item.unit);
-        assert.equal(blank.has(item.name), item.unitPricePence == null, item.name);
+        assert.equal(typeof item.unitPricePence, "number", item.name);
         const previous = seen.get(item.name);
         if (previous) {
           assert.equal(previous.unit, item.unit, item.name);
@@ -84,7 +75,15 @@ describe("plastering starters", () => {
     assert.equal(seen.get("Dado rail")?.unit, "m");
     assert.equal(seen.get("Dado rail")?.unitPricePence, 432);
     assert.equal(seen.get("Galvanised angle bead")?.unitPricePence, 384);
-    for (const name of blank) assert.equal(seen.get(name)?.unitPricePence, null, name);
+    assert.equal(seen.get("Wide angle bead")?.unitPricePence, 414);
+    assert.equal(seen.get("Lime putty")?.unit, "20kg bucket");
+    assert.equal(seen.get("Lime putty")?.unitPricePence, 2508);
+    assert.equal(seen.get("Lime finish plaster")?.unitPricePence, 1176);
+    assert.equal(seen.get("Decorative plaster moulding")?.unitPricePence, 3594);
+    assert.equal(seen.get("Perimeter foam strip")?.unitPricePence, 2998);
+    assert.equal(seen.get("Artex covering primer")?.unit, "10L tub");
+    assert.equal(seen.get("Artex covering primer")?.unitPricePence, 8562);
+    assert.equal(seen.get("Alkali-resistant render mesh")?.unitPricePence, 4000);
     for (const item of PLASTERING_STARTER_MATERIALS) {
       assert.equal(item.costPricePence, null);
       assert.equal(item.unitPricePence, seen.get(item.name)?.unitPricePence ?? null);
@@ -106,7 +105,27 @@ describe("plastering starters", () => {
       (item) => item.name === "Wide angle bead",
     );
     assert.ok(bead);
-    assert.equal(blankPriceUpdate({ name: "Wide angle bead", unit: "length", unitPricePence: null }, bead), null);
+    assert.deepEqual(blankPriceUpdate({ name: "Wide angle bead", unit: "length", unitPricePence: null }, bead), {
+      unit: "length",
+      unitPricePence: 414,
+    });
+    assert.equal(blankPriceUpdate({ name: "Wide angle bead", unit: "length", unitPricePence: 300 }, bead), null);
+    const putty = PLASTERING_STARTER_TEMPLATES.flatMap((template) => template.items).find(
+      (item) => item.name === "Lime putty",
+    );
+    assert.ok(putty);
+    assert.deepEqual(blankPriceUpdate({ name: "Lime putty", unit: "kg", unitPricePence: null }, putty), {
+      unit: "20kg bucket",
+      unitPricePence: 2508,
+    });
+    const primer = PLASTERING_STARTER_TEMPLATES.flatMap((template) => template.items).find(
+      (item) => item.name === "Artex covering primer",
+    );
+    assert.ok(primer);
+    assert.deepEqual(blankPriceUpdate({ name: "Artex covering primer", unit: "litre", unitPricePence: null }, primer), {
+      unit: "10L tub",
+      unitPricePence: 8562,
+    });
     const plaster = PLASTERING_STARTER_TEMPLATES[0].items[0];
     assert.equal(blankPriceUpdate({ name: plaster.name, unit: "bag", unitPricePence: 999 }, plaster), null);
     assert.deepEqual(blankPriceUpdate({ name: plaster.name, unit: "bag", unitPricePence: null }, plaster), {
