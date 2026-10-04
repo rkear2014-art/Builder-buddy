@@ -12,6 +12,10 @@ export type AgreementSource = {
   internalNotes?: string;
   scheduledDate: string;
   timeSlot: string;
+  showLinePrices?: boolean;
+  depositPence?: number | null;
+  vatRegistered?: boolean;
+  vatRatePercent?: number;
   materials: Array<{
     name: string;
     quantity: string;
@@ -43,6 +47,10 @@ export type PublicAgreement = {
   materials: PublicMaterialLine[];
   totalPence: number;
   unpricedCount: number;
+  showLinePrices: boolean;
+  depositPence: number | null;
+  vatRegistered: boolean;
+  vatRatePercent: number;
 };
 
 export type LockedAgreement = PublicAgreement & {
@@ -73,6 +81,10 @@ export const lockedAgreementSchema = z.object({
   materials: z.array(publicMaterialSchema),
   totalPence: z.number().int(),
   unpricedCount: z.number().int(),
+  showLinePrices: z.boolean().optional(),
+  depositPence: z.number().int().nullable().optional(),
+  vatRegistered: z.boolean().optional(),
+  vatRatePercent: z.number().int().optional(),
   signerName: z.string(),
   signedAt: z.string(),
 });
@@ -102,7 +114,16 @@ export function toPublicAgreement(job: AgreementSource): PublicAgreement {
     materials,
     totalPence: totals.totalPence,
     unpricedCount: totals.unpricedCount,
+    showLinePrices: job.showLinePrices !== false,
+    depositPence: job.depositPence != null && job.depositPence > 0 ? job.depositPence : null,
+    vatRegistered: job.vatRegistered === true,
+    vatRatePercent: normalVatRate(job.vatRatePercent),
   };
+}
+
+function normalVatRate(rate: number | undefined): number {
+  if (rate == null || !Number.isInteger(rate) || rate < 0 || rate > 30) return 20;
+  return rate;
 }
 
 /** Copies the customer-facing agreement so later edits cannot change it. */
@@ -121,7 +142,15 @@ export function lockAgreement(
 
 export function parseLockedAgreement(value: unknown): LockedAgreement | null {
   const parsed = lockedAgreementSchema.safeParse(value);
-  return parsed.success ? parsed.data : null;
+  if (!parsed.success) return null;
+  const data = parsed.data;
+  return {
+    ...data,
+    showLinePrices: data.showLinePrices !== false,
+    depositPence: data.depositPence != null && data.depositPence > 0 ? data.depositPence : null,
+    vatRegistered: data.vatRegistered === true,
+    vatRatePercent: normalVatRate(data.vatRatePercent),
+  };
 }
 
 export function keepExistingSignOff<T>(
@@ -159,5 +188,10 @@ export function agreementChanges(locked: LockedAgreement, current: PublicAgreeme
   if (locked.scheduledDate !== current.scheduledDate) changes.push("Date");
   if (locked.timeSlot !== current.timeSlot) changes.push("Time slot");
   if (!materialsMatch(locked.materials, current.materials)) changes.push("Materials or prices");
+  if (locked.vatRegistered !== current.vatRegistered || locked.vatRatePercent !== current.vatRatePercent) {
+    changes.push("VAT");
+  }
+  if (locked.depositPence !== current.depositPence) changes.push("Deposit");
+  if (locked.showLinePrices !== current.showLinePrices) changes.push("Item prices");
   return changes;
 }

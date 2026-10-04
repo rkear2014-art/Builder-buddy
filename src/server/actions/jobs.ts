@@ -33,6 +33,8 @@ export async function createJob(_state: ActionState, formData: FormData): Promis
         scheduledDate: isoToUtcDate(parsed.data.scheduledDate),
         timeSlot: parsed.data.timeSlot,
         status: parsed.data.status,
+        showLinePrices: parsed.data.showLinePrices,
+        depositPence: parsed.data.depositPence,
         shareToken: createShareToken(),
       },
       select: { id: true },
@@ -82,6 +84,8 @@ export async function updateJob(_state: ActionState, formData: FormData): Promis
       scheduledDate: isoToUtcDate(parsed.data.scheduledDate),
       timeSlot: parsed.data.timeSlot,
       status: parsed.data.status,
+      showLinePrices: parsed.data.showLinePrices,
+      depositPence: parsed.data.depositPence,
     },
   });
   revalidateDesk(existing.id, existing.shareToken);

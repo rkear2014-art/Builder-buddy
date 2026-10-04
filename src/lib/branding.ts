@@ -17,6 +17,10 @@ export type BusinessBranding = BusinessProfile & {
   logoUpdatedAt: string | null;
   hasMark: boolean;
   markUpdatedAt: string | null;
+  vatRegistered: boolean;
+  vatRatePercent: number;
+  quoteLetter: string;
+  quoteChips: string;
   accent: string;
   accentColour: string;
   accentInk: string;
@@ -28,6 +32,10 @@ export type BrandingRow = BusinessProfile & {
   logoUpdatedAt: Date | string | null;
   markMime: string | null;
   markUpdatedAt: Date | string | null;
+  vatRegistered: boolean;
+  vatRatePercent: number;
+  quoteLetter: string;
+  quoteChips: string;
 };
 
 type FormParse<T> = { ok: true; data: T } | { ok: false; error: string };
@@ -117,6 +125,10 @@ export function toBranding(row: BrandingRow): BusinessBranding {
     address: row.address,
     website: row.website,
     tagline: row.tagline,
+    vatRegistered: row.vatRegistered,
+    vatRatePercent: row.vatRatePercent,
+    quoteLetter: row.quoteLetter,
+    quoteChips: row.quoteChips,
     hasLogo: Boolean(row.logoMime),
     logoUpdatedAt: row.logoMime ? logoUpdatedAt : null,
     hasMark: Boolean(row.markMime),
@@ -159,6 +171,12 @@ export function deskSmallLogoSrc(
   if (branding.hasMark) return deskMarkSrc(branding.markUpdatedAt);
   if (branding.hasLogo) return deskLogoSrc(branding.logoUpdatedAt);
   return null;
+}
+
+export function customerHeroSrc(token: string, photoId: string, updatedAt: string | null): string | null {
+  if (!isWellFormedShareToken(token) || !/^[a-z0-9-]{8,80}$/i.test(photoId)) return null;
+  const version = updatedAt ? `?v=${encodeURIComponent(updatedAt)}` : "";
+  return `/sign/${token}/hero/${encodeURIComponent(photoId)}${version}`;
 }
 
 export function deskHeroSrc(photoId: string, updatedAt: string | null): string {

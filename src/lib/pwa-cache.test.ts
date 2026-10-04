@@ -25,7 +25,14 @@ function request(overrides: Partial<CacheInput> & Pick<CacheInput, "pathname">):
 describe("service worker cache policy", () => {
   it("never stores a customer sign-off, even as a document or a React Server Component", () => {
     const token = "a".repeat(43);
-    for (const pathname of [`/sign/${token}`, `/sign/${token}/`, `/sign/${token}/print`, `/sign/${token}/logo`, "/sign"]) {
+    for (const pathname of [
+      `/sign/${token}`,
+      `/sign/${token}/`,
+      `/sign/${token}/print`,
+      `/sign/${token}/logo`,
+      `/sign/${token}/hero/photo-id`,
+      "/sign",
+    ]) {
       assert.equal(
         decideCache(request({ pathname, destination: "document", mode: "navigate", accept: "text/html" })),
         "network-only",

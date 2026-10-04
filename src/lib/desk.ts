@@ -32,6 +32,10 @@ export type DeskJob = {
   internalNotes: string;
   scheduledDate: string;
   timeSlot: string;
+  showLinePrices: boolean;
+  depositPence: number | null;
+  vatRegistered: boolean;
+  vatRatePercent: number;
   materials: DeskMaterial[];
   signOff: DeskSignOff | null;
 };
