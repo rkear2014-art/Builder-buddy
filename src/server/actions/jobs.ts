@@ -6,6 +6,7 @@ import { isJobStatus } from "@/lib/constants";
 import { isoToUtcDate } from "@/lib/dates";
 import type { ActionState } from "@/lib/form-state";
 import { tenantWhere } from "@/lib/tenancy";
+import { findStarterTemplate } from "@/lib/trade-starters";
 import { parseJobForm, parseTemplateForm } from "@/lib/validators";
 import { requireUser } from "@/server/dal";
 import { getPrisma, isUniqueConstraint } from "@/server/prisma";
@@ -15,23 +16,44 @@ export async function createJob(_state: ActionState, formData: FormData): Promis
   const user = await requireUser();
   const parsed = parseJobForm(formData);
   if (!parsed.ok) return { error: parsed.error };
-  const job = await getPrisma().job.create({
-    data: {
-      ...tenantWhere(user.businessId),
-      userId: user.id,
-      customerName: parsed.data.customerName,
-      address: parsed.data.address,
-      phone: parsed.data.phone,
-      email: parsed.data.email,
-      trade: parsed.data.trade,
-      description: parsed.data.description,
-      internalNotes: parsed.data.internalNotes,
-      scheduledDate: isoToUtcDate(parsed.data.scheduledDate),
-      timeSlot: parsed.data.timeSlot,
-      status: parsed.data.status,
-      shareToken: createShareToken(),
-    },
-    select: { id: true },
+  const starter = findStarterTemplate(String(formData.get("starterId") ?? ""));
+  const useStarter = starter && starter.trade === parsed.data.trade ? starter : null;
+  const job = await getPrisma().$transaction(async (tx) => {
+    const created = await tx.job.create({
+      data: {
+        ...tenantWhere(user.businessId),
+        userId: user.id,
+        customerName: parsed.data.customerName,
+        address: parsed.data.address,
+        phone: parsed.data.phone,
+        email: parsed.data.email,
+        trade: parsed.data.trade,
+        description: parsed.data.description,
+        internalNotes: parsed.data.internalNotes,
+        scheduledDate: isoToUtcDate(parsed.data.scheduledDate),
+        timeSlot: parsed.data.timeSlot,
+        status: parsed.data.status,
+        shareToken: createShareToken(),
+      },
+      select: { id: true },
+    });
+    if (useStarter) {
+      for (const [index, item] of useStarter.items.entries()) {
+        await tx.jobMaterial.create({
+          data: {
+            businessId: user.businessId,
+            jobId: created.id,
+            name: item.name,
+            quantity: item.quantity,
+            unit: item.unit,
+            unitPricePence: null,
+            costPricePence: null,
+            sortOrder: index,
+          },
+        });
+      }
+    }
+    return created;
   });
   revalidateDesk(job.id);
   redirect(`/jobs/${job.id}`);

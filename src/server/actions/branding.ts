@@ -5,8 +5,10 @@ import { redirect } from "next/navigation";
 import { accentFromImage, normaliseAccent } from "@/lib/accent";
 import { businessLogoQuery, canEditBusiness, parseBusinessProfile } from "@/lib/branding";
 import type { ActionState } from "@/lib/form-state";
-import { detectLogoMime, MAX_LOGO_UPLOAD_BYTES, prepareHero, prepareLogo } from "@/lib/logo";
+import { AK_HERO_CAPTION, MAX_HERO_PHOTOS, missingSampleHeroKeys } from "@/lib/heroes";
+import { detectLogoMime, MAX_HERO_STORED_BYTES, MAX_LOGO_UPLOAD_BYTES, prepareHero, prepareLogo } from "@/lib/logo";
 import { requireUser } from "@/server/dal";
+import { readSampleHero } from "@/server/sample-heroes";
 import { readBundledLogo, readBundledMark } from "@/server/sample-logo";
 import { getPrisma } from "@/server/prisma";
 import { revalidateDesk } from "@/server/revalidate";
@@ -141,39 +143,115 @@ export async function useSampleLogo(): Promise<void> {
   redirect("/settings?saved=sample");
 }
 
+function captionFromForm(formData: FormData): string {
+  return String(formData.get("caption") ?? "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 80);
+}
+
 export async function uploadHeroPhoto(_state: ActionState, formData: FormData): Promise<ActionState> {
   const owner = await ownerBusinessId();
   if ("error" in owner) return { error: owner.error };
-  const file = formData.get("hero");
-  if (!(file instanceof File) || file.size === 0) {
-    return { error: "Choose a PNG, JPG, or WebP photo." };
+  const files = formData
+    .getAll("hero")
+    .filter((file): file is File => file instanceof File && file.size > 0);
+  if (files.length === 0) return { error: "Choose a PNG, JPG, or WebP photo." };
+  if (files.length > 6) return { error: "Add up to 6 photos at a time." };
+  const existing = await getPrisma().heroPhoto.findMany({
+    where: { businessId: owner.id },
+    select: { sortOrder: true },
+  });
+  if (existing.length + files.length > MAX_HERO_PHOTOS) {
+    return { error: "This business can keep 12 dashboard photos. Remove one before adding more." };
   }
-  if (file.size > MAX_LOGO_UPLOAD_BYTES) {
-    return { error: "That photo is larger than 2 MB. Choose a smaller picture." };
+  const prepared: Array<{ bytes: Uint8Array; mime: "image/webp" }> = [];
+  for (const file of files) {
+    if (file.size > MAX_LOGO_UPLOAD_BYTES) {
+      return { error: "That photo is larger than 2 MB. Choose a smaller picture." };
+    }
+    const result = await prepareHero(new Uint8Array(await file.arrayBuffer()));
+    if ("error" in result) return { error: result.error };
+    prepared.push(result);
   }
-  const prepared = await prepareHero(new Uint8Array(await file.arrayBuffer()));
-  if ("error" in prepared) return { error: prepared.error };
-  await getPrisma().business.update({
-    where: { id: owner.id },
-    data: {
-      heroBytes: Buffer.from(prepared.bytes),
-      heroMime: prepared.mime,
-      heroUpdatedAt: new Date(),
-    },
+  const caption = captionFromForm(formData);
+  let sortOrder = existing.reduce((max, photo) => Math.max(max, photo.sortOrder), -1) + 1;
+  await getPrisma().$transaction(async (tx) => {
+    for (const photo of prepared) {
+      await tx.heroPhoto.create({
+        data: {
+          businessId: owner.id,
+          bytes: Buffer.from(photo.bytes),
+          mime: photo.mime,
+          caption,
+          sourceKey: `upload:${crypto.randomUUID()}`,
+          sortOrder,
+        },
+      });
+      sortOrder += 1;
+    }
   });
   refreshBranding();
-  redirect("/settings?saved=hero");
+  redirect(`/settings?saved=hero&added=${prepared.length}`);
 }
 
-export async function removeHeroPhoto(): Promise<void> {
+export async function removeHeroPhoto(formData: FormData): Promise<void> {
   const owner = await ownerBusinessId();
   if ("error" in owner) redirect("/settings?notice=owner");
-  await getPrisma().business.update({
-    where: { id: owner.id },
-    data: { heroBytes: null, heroMime: null, heroUpdatedAt: new Date() },
-  });
+  const photoId = String(formData.get("photoId") ?? "");
+  if (!photoId) redirect("/settings");
+  await getPrisma().heroPhoto.deleteMany({ where: { id: photoId, businessId: owner.id } });
   refreshBranding();
   redirect("/settings?saved=hero-removed");
+}
+
+export async function useSampleHeroes(): Promise<void> {
+  const owner = await ownerBusinessId();
+  if ("error" in owner) redirect("/settings?notice=owner");
+  const existing = await getPrisma().heroPhoto.findMany({
+    where: { businessId: owner.id },
+    select: { sourceKey: true, sortOrder: true },
+  });
+  const missing = missingSampleHeroKeys(existing.map((photo) => photo.sourceKey));
+  const room = MAX_HERO_PHOTOS - existing.length;
+  if (missing.length === 0) redirect("/settings?saved=heroes&added=0");
+  if (room <= 0) redirect("/settings?notice=heroes-full");
+  const chosen = missing.slice(0, room);
+  const ready: Array<{ sourceKey: string; bytes: Uint8Array }> = [];
+  for (const sourceKey of chosen) {
+    let bytes: Uint8Array;
+    try {
+      bytes = await readSampleHero(sourceKey);
+    } catch {
+      redirect("/settings?notice=heroes");
+    }
+    if (
+      detectLogoMime(bytes) !== "image/webp" ||
+      bytes.byteLength === 0 ||
+      bytes.byteLength > MAX_HERO_STORED_BYTES
+    ) {
+      redirect("/settings?notice=heroes");
+    }
+    ready.push({ sourceKey, bytes });
+  }
+  let sortOrder = existing.reduce((max, photo) => Math.max(max, photo.sortOrder), -1) + 1;
+  await getPrisma().$transaction(async (tx) => {
+    for (const photo of ready) {
+      await tx.heroPhoto.create({
+        data: {
+          businessId: owner.id,
+          bytes: Buffer.from(photo.bytes),
+          mime: "image/webp",
+          caption: AK_HERO_CAPTION,
+          sourceKey: photo.sourceKey,
+          sortOrder,
+        },
+      });
+      sortOrder += 1;
+    }
+  });
+  refreshBranding();
+  redirect(`/settings?saved=heroes&added=${ready.length}`);
 }
 
 export async function saveAccent(_state: ActionState, formData: FormData): Promise<ActionState> {

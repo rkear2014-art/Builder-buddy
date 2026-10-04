@@ -19,10 +19,10 @@ Each business is its own tenant. Jobs, customer details, materials, saved items,
 - See the week and month in a diary.
 - Keep materials on each job: quantity, unit, optional customer price, optional cost (hidden from the customer), and a bought tick.
 - Save items and templates per trade, and drop them onto a job.
-- On a plastering job, add a built-in starter list (skim, dry lining, rendering, screeding, covering Artex, and the other common plastering jobs). Prices are left blank. Any business can copy a starter into its own library. The lists are not tied to one company.
+- On a plastering job, pick a built-in starter when booking in, or add one later. The lists follow a plasterer’s usual services (skim, hardwall, dot and dab, stud walls, Artex, wire mesh, repairs, lime, tape and jointing, cornices, coving, rendering, and screeding). Prices are left blank, and each list has a short description the customer reads on the sign-off page. Any plastering business can copy them into its own library. Load plastering starter lists adds only the ones that are missing, and updates an older saved name instead of making a second copy.
 - Send an unguessable link. The customer sees the work, materials, and prices, then signs. The signature, name, and time are stored. Later edits do not change the signed copy.
 - Open on a dashboard for this business: today, tomorrow, agreements waiting for a signature, follow-ups, and jobs added in the last day, plus this week, this month’s priced work, and recent jobs. **Hide £** is remembered on this device. There is no invoice list and no “quotes sent” list.
-- Put an optional logo, dashboard photo, accent colour, and letterhead (phone, email, address, website, tagline) on the business. The owner sets these on **Business**. A new logo suggests a colour when none has been chosen. The AK Plastering sample can be applied again to replace an older copy: the agreement keeps the full logo, and the dashboard uses a smaller mark on a light tile. With no photo, the dashboard uses a plaster-coloured gradient. With no logo, the agreement shows the business name only. The home-screen icon stays Builder Buddy.
+- Put an optional logo, dashboard photos, accent colour, and letterhead (phone, email, address, website, tagline) on the business. The owner sets these on **Business**. A new logo suggests a colour when none has been chosen. The AK Plastering sample can be applied again to replace an older copy: the agreement keeps the full logo, and the dashboard uses a smaller mark on a light tile. A business can keep several dashboard photos. Each visit shows a different one, with a dark overlay so the greeting stays readable, and an optional caption. Use the AK Plastering photos adds any sample photos that are not already stored. With no photo, the dashboard uses a plaster-coloured gradient. With no logo, the agreement shows the business name only. The home-screen icon stays Builder Buddy.
 - Print the agreement, or use the browser’s “Save as PDF”.
 
 Internal notes and your costs never appear on the customer page.
@@ -126,5 +126,5 @@ The tests cover the rules that matter without a database:
 - missing configuration never counts as “allowed in”
 - first-account setup opens only with zero users, and a second overlapping claim is refused
 - a query for one business cannot read another business’s jobs, materials, templates, signatures, or logo
-- a logo upload must be a PNG, JPG, or WebP within 2 MB, and plastering starter lists leave prices blank
+- a logo upload must be a PNG, JPG, or WebP within 2 MB, plastering starter lists leave prices blank, and a dashboard photo rotates to a different picture on the next visit
 - the home-screen manifest, icons, and service worker keep customer pages and sign-off links off the device cache

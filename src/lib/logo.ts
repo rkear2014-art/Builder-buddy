@@ -2,7 +2,8 @@ import sharp from "sharp";
 
 export const MAX_LOGO_UPLOAD_BYTES = 2 * 1024 * 1024;
 export const MAX_LOGO_EDGE = 960;
-export const MAX_HERO_EDGE = 1400;
+export const MAX_HERO_EDGE = 1600;
+export const MAX_HERO_STORED_BYTES = 250 * 1024;
 
 const PNG_SIGNATURE = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];
 const JPEG_SIGNATURE = [0xff, 0xd8, 0xff];
@@ -51,7 +52,28 @@ export async function prepareLogo(
 export async function prepareHero(
   bytes: Uint8Array,
 ): Promise<{ bytes: Uint8Array; mime: "image/webp" } | { error: string }> {
-  return preparePicture(bytes, MAX_HERO_EDGE);
+  const rejected = logoUploadError(bytes);
+  if (rejected) return { error: rejected.replace(/logo/g, "photo") };
+  try {
+    for (const quality of [76, 66, 56, 46]) {
+      const output = await sharp(bytes, { limitInputPixels: 40_000_000, sequentialRead: true })
+        .rotate()
+        .resize({
+          width: MAX_HERO_EDGE,
+          height: MAX_HERO_EDGE,
+          fit: "inside",
+          withoutEnlargement: true,
+        })
+        .webp({ quality })
+        .toBuffer();
+      if (output.length > 0 && output.length <= MAX_HERO_STORED_BYTES) {
+        return { bytes: new Uint8Array(output), mime: "image/webp" };
+      }
+    }
+    return { error: "That photo could not be saved small enough. Try a different picture." };
+  } catch {
+    return { error: "That photo could not be read. Use a PNG, JPG, or WebP picture." };
+  }
 }
 
 async function preparePicture(

@@ -34,9 +34,6 @@ model Business {
   markBytes     Bytes?
   markMime      String?
   markUpdatedAt DateTime?
-  heroBytes     Bytes?
-  heroMime      String?
-  heroUpdatedAt DateTime?
   createdAt     DateTime           @default(now())
   users      User[]
   jobs       Job[]
@@ -44,6 +41,24 @@ model Business {
   signOffs   SignOff[]
   templates  MaterialTemplate[]
   savedItems SavedMaterial[]
+  heroes     HeroPhoto[]
+}
+
+/// A dashboard photo. Several can belong to one business. sourceKey is unique per business so a sample can be added once.
+model HeroPhoto {
+  id         String   @id @default(cuid())
+  businessId String
+  business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  bytes      Bytes
+  mime       String
+  caption    String   @default("")
+  sourceKey  String
+  sortOrder  Int      @default(0)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@unique([businessId, sourceKey])
+  @@index([businessId, sortOrder])
 }
 
 /// Single row (id = 1). Once claimed, first-account setup never opens again.

@@ -193,7 +193,7 @@ export default async function JobPage({ params }: { params: Promise<{ id: string
               Starter list
               <span>
                 Built in for plastering, for any business. Prices are left blank. It does not remove what is already
-                on the job.
+                on the job. If this job has no work description yet, the customer wording from the list is used.
               </span>
               <select name="starterId" required defaultValue={starters[0]?.id}>
                 {starters.map((starter) => (
@@ -256,7 +256,7 @@ export default async function JobPage({ params }: { params: Promise<{ id: string
             <input type="hidden" name="trade" value={job.trade} />
             <label className="field">
               Template name
-              <input name="name" required placeholder="Skim a room" />
+              <input name="name" required placeholder="Skimming for a smooth finish" />
             </label>
             <SubmitButton variant="secondary">Save template</SubmitButton>
           </InlineForm>

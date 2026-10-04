@@ -1,9 +1,13 @@
 "use client";
 
+import { useState } from "react";
 import { JOB_STATUSES, STATUS_LABELS, TIME_SLOTS, TRADES } from "@/lib/constants";
 import type { ActionState } from "@/lib/form-state";
+import { starterTemplatesFor } from "@/lib/trade-starters";
 import { InlineForm } from "@/components/inline-form";
 import { SubmitButton } from "@/components/submit-button";
+
+const PLASTERING_TEMPLATES = starterTemplatesFor("Plasterer");
 
 export function JobForm({
   action,
@@ -28,6 +32,16 @@ export function JobForm({
     status: string;
   };
 }) {
+  const [trade, setTrade] = useState(job?.trade ?? "");
+  const [description, setDescription] = useState(job?.description ?? "");
+  const [starterId, setStarterId] = useState("");
+
+  function chooseStarter(id: string) {
+    setStarterId(id);
+    const starter = PLASTERING_TEMPLATES.find((template) => template.id === id);
+    if (starter) setDescription(starter.description);
+  }
+
   return (
     <InlineForm action={action} className="grid gap-4">
       {job ? <input type="hidden" name="jobId" value={job.id} /> : null}
@@ -58,21 +72,70 @@ export function JobForm({
       </div>
       <label className="field">
         Trade
-        <select name="trade" required defaultValue={job?.trade ?? ""}>
+        <select
+          name="trade"
+          required
+          value={trade}
+          onChange={(event) => {
+            const next = event.target.value;
+            setTrade(next);
+            if (next !== "Plasterer") setStarterId("");
+          }}
+        >
           <option value="" disabled>
             Choose a trade
           </option>
-          {TRADES.map((trade) => (
-            <option key={trade} value={trade}>
-              {trade}
+          {TRADES.map((option) => (
+            <option key={option} value={option}>
+              {option}
             </option>
           ))}
         </select>
       </label>
+      {!job && trade === "Plasterer" ? (
+        <fieldset className="grid gap-2">
+          <legend className="font-extrabold">Job template</legend>
+          <p className="text-sm text-stone">
+            Optional. Choosing one fills the work the customer will read, and adds the materials with blank prices. You
+            can change the wording afterwards.
+          </p>
+          <div className="grid gap-2">
+            <label className="flex items-center gap-3 rounded-2xl border border-line bg-white px-3 py-2">
+              <input
+                type="radio"
+                name="starterId"
+                value=""
+                checked={starterId === ""}
+                onChange={() => setStarterId("")}
+              />
+              <span>No template</span>
+            </label>
+            {PLASTERING_TEMPLATES.map((template) => (
+              <label
+                key={template.id}
+                className="flex items-start gap-3 rounded-2xl border border-line bg-white px-3 py-2"
+              >
+                <input
+                  type="radio"
+                  name="starterId"
+                  value={template.id}
+                  checked={starterId === template.id}
+                  onChange={() => chooseStarter(template.id)}
+                  className="mt-1"
+                />
+                <span>
+                  <span className="block font-bold">{template.name}</span>
+                  <span className="text-sm text-stone">{template.description}</span>
+                </span>
+              </label>
+            ))}
+          </div>
+        </fieldset>
+      ) : null}
       <label className="field">
         Work
         <span>This is what the customer will read and sign.</span>
-        <textarea name="description" required defaultValue={job?.description} />
+        <textarea name="description" required value={description} onChange={(event) => setDescription(event.target.value)} />
       </label>
       <div className="grid gap-4 sm:grid-cols-2">
         <label className="field">

@@ -4,6 +4,7 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { isWellFormedShareToken } from "@/lib/access";
 import { letterheadFromRow, toBranding, deskHeroSrc, deskSmallLogoSrc, type CustomerLetterhead } from "@/lib/branding";
+import { HERO_VISIT_COOKIE, pickRotatingHero } from "@/lib/heroes";
 import { isConfigured } from "@/lib/config";
 import type { JobStatus } from "@/lib/constants";
 import { addDays, isoToUtcDate, londonHour, londonToday, utcDateToIso, weekDates } from "@/lib/dates";
@@ -27,8 +28,6 @@ const businessBrandingSelect = {
   logoUpdatedAt: true,
   markMime: true,
   markUpdatedAt: true,
-  heroMime: true,
-  heroUpdatedAt: true,
 } as const;
 
 const jobInclude = {
@@ -331,6 +330,15 @@ export async function getGlance(
   const byId = new Map<string, (typeof ranged)[number]>();
   for (const job of [...ranged, ...fresh, ...recent]) byId.set(job.id, job);
   const enquiryCount = grouped.find((row) => row.status === "ENQUIRY")?._count._all ?? 0;
+  const [photos, previousHeroId] = await Promise.all([
+    prisma.heroPhoto.findMany({
+      where: tenantWhere(businessId),
+      select: { id: true, caption: true, updatedAt: true },
+      orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
+    }),
+    cookies().then((jar) => jar.get(HERO_VISIT_COOKIE)?.value ?? null),
+  ]);
+  const hero = pickRotatingHero(photos, previousHeroId);
   const model = buildGlance({
     today,
     hour: londonHour(now),
@@ -344,10 +352,28 @@ export async function getGlance(
     businessName: branding.name,
     chips: glanceChips(branding.tagline, branding.address),
     logoSrc: deskSmallLogoSrc(branding),
-    heroSrc: branding.hasHero ? deskHeroSrc(branding.heroUpdatedAt) : null,
+    heroSrc: hero ? deskHeroSrc(hero.id, hero.updatedAt.toISOString()) : null,
+    heroId: hero?.id ?? null,
+    heroCaption: hero?.caption.trim() ? hero.caption.trim() : null,
     accentColour: branding.accentColour,
     accentInk: branding.accentInk,
   };
+}
+
+export async function listHeroPhotos(businessId: string): Promise<
+  Array<{ id: string; caption: string; sourceKey: string; updatedAt: string }>
+> {
+  const photos = await getPrisma().heroPhoto.findMany({
+    where: tenantWhere(businessId),
+    select: { id: true, caption: true, sourceKey: true, updatedAt: true },
+    orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
+  });
+  return photos.map((photo) => ({
+    id: photo.id,
+    caption: photo.caption,
+    sourceKey: photo.sourceKey,
+    updatedAt: photo.updatedAt.toISOString(),
+  }));
 }
 
 export async function getDiaryJobs(businessId: string, fromIso: string, toIso: string): Promise<JobSummary[]> {

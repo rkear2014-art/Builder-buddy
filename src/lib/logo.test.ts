@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { describe, it } from "node:test";
 import sharp from "sharp";
-import { detectLogoMime, logoUploadError, MAX_LOGO_UPLOAD_BYTES, prepareLogo } from "./logo";
+import { detectLogoMime, logoUploadError, MAX_HERO_STORED_BYTES, MAX_LOGO_UPLOAD_BYTES, prepareHero, prepareLogo } from "./logo";
 
 const TINY_PNG = Buffer.from(
   "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==",
@@ -40,6 +40,22 @@ describe("logo upload", () => {
     assert.equal(detectLogoMime(prepared.bytes), "image/webp");
     assert.ok(prepared.bytes.byteLength > 0);
     assert.ok(prepared.bytes.byteLength <= MAX_LOGO_UPLOAD_BYTES);
+  });
+
+  it("resizes a dashboard photo to a WebP no wider than 1600px", async () => {
+    const jpeg = await sharp({
+      create: { width: 2000, height: 1200, channels: 3, background: { r: 210, g: 196, b: 170 } },
+    })
+      .jpeg()
+      .toBuffer();
+    const prepared = await prepareHero(jpeg);
+    assert.ok(!("error" in prepared));
+    if ("error" in prepared) return;
+    assert.equal(prepared.mime, "image/webp");
+    assert.ok(prepared.bytes.byteLength <= MAX_HERO_STORED_BYTES);
+    const meta = await sharp(prepared.bytes).metadata();
+    assert.ok((meta.width ?? 0) > 0 && (meta.width ?? 0) <= 1600);
+    assert.ok((meta.height ?? 0) <= 1600);
   });
 
   it("keeps the bundled plastering logo as a small WebP and a smaller mark", async () => {

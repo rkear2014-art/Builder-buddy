@@ -83,6 +83,8 @@ export type GlancePage = GlanceModel & {
   chips: string[];
   logoSrc: string | null;
   heroSrc: string | null;
+  heroId: string | null;
+  heroCaption: string | null;
   accentColour: string;
   accentInk: string;
 };
