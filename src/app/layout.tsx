@@ -22,7 +22,7 @@ export const metadata: Metadata = {
     default: "Builder Buddy",
     template: "%s · Builder Buddy",
   },
-  description: "Job diary, materials lists, and customer sign-off for UK tradespeople.",
+  description: "Job diary, materials lists, and customer sign-off for plastering.",
   robots: { index: false, follow: false },
   appleWebApp: {
     capable: true,

@@ -5,7 +5,7 @@ export default function manifest(): MetadataRoute.Manifest {
     id: "/",
     name: "Builder Buddy",
     short_name: "Buddy",
-    description: "Job diary, materials lists, and customer sign-off for UK tradespeople.",
+    description: "Job diary, materials lists, and customer sign-off for plastering.",
     lang: "en-GB",
     start_url: "/",
     scope: "/",

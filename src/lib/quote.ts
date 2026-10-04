@@ -1,4 +1,5 @@
 import { websiteHref, websiteLabel } from "./branding";
+import { formatPence } from "./money";
 
 export const DEFAULT_QUOTE_LETTER = `Thank you for asking us to quote for this work.
 
@@ -96,6 +97,26 @@ export function quoteFooter(input: { name: string; website: string; email: strin
   const href = websiteHref(input.website);
   const site = href ? websiteLabel(href) : "";
   return [input.name.trim(), site, input.email.trim()].filter(Boolean).join(" · ");
+}
+
+export function paymentNote(depositPence: number | null): string {
+  if (depositPence == null) return "No deposit required. Full payment due on completion.";
+  return `A deposit of ${formatPence(depositPence)} is due before the work starts. The rest is due when the work is finished.`;
+}
+
+/** Turns a percentage of the priced total into the deposit stored on the job. */
+export function depositFromPercent(totalPence: number, percent: number): number | null {
+  if (!Number.isInteger(percent) || percent < 1 || percent > 90) return null;
+  if (!Number.isInteger(totalPence) || totalPence <= 0) return null;
+  const pence = Math.round((totalPence * percent) / 100);
+  return pence > 0 ? pence : null;
+}
+
+export function percentFromDeposit(totalPence: number, depositPence: number | null): number | null {
+  if (depositPence == null || depositPence <= 0 || totalPence <= 0) return null;
+  const percent = Math.round((depositPence * 100) / totalPence);
+  if (percent < 1 || percent > 90) return null;
+  return percent;
 }
 
 export function stripTitle(captions: string[]): string {

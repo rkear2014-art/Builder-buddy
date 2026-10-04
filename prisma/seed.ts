@@ -26,24 +26,22 @@ const plasterRoom: Line[] = [
   { name: "Angle bead", quantity: "4", unit: "length", unitPricePence: 215, costPricePence: 140 },
 ];
 
-const consumerUnit: Line[] = [
-  { name: "Consumer unit", quantity: "1", unit: "each", unitPricePence: 8500, costPricePence: 6200 },
-  { name: "RCBO 32A", quantity: "6", unit: "each", unitPricePence: 1800, costPricePence: 1250 },
-  { name: "Meter tails", quantity: "1", unit: "each", unitPricePence: 1400, costPricePence: 800 },
-  { name: "Earth sleeving", quantity: "1", unit: "roll", unitPricePence: 350, costPricePence: 180 },
+const skimQuote: Line[] = [
+  { name: "Thistle MultiFinish plaster", quantity: "4", unit: "bag", unitPricePence: 940, costPricePence: 710 },
+  { name: "PVA bonding agent", quantity: "1", unit: "litre", unitPricePence: 600, costPricePence: 420 },
+  { name: "Scrim tape", quantity: "2", unit: "roll", unitPricePence: 450, costPricePence: 280 },
 ];
 
-const kitchenTap: Line[] = [
-  { name: "Kitchen mixer tap", quantity: "1", unit: "each", unitPricePence: 7900, costPricePence: 4800 },
-  { name: "Flexible tap connectors", quantity: "2", unit: "each", unitPricePence: 450, costPricePence: 220 },
-  { name: "PTFE tape", quantity: "1", unit: "roll", unitPricePence: 120, costPricePence: 45 },
-  { name: "Silicone sealant", quantity: "1", unit: "tube", unitPricePence: 550, costPricePence: 310 },
+const repairs: Line[] = [
+  { name: "Thistle Bonding Coat", quantity: "1", unit: "bag", unitPricePence: 890, costPricePence: 640 },
+  { name: "Thistle MultiFinish plaster", quantity: "1", unit: "bag", unitPricePence: 940, costPricePence: 710 },
+  { name: "Scrim tape", quantity: "1", unit: "roll", unitPricePence: 450, costPricePence: 280 },
 ];
 
-const repoint: Line[] = [
-  { name: "Mortar", quantity: "4", unit: "bag", unitPricePence: 680, costPricePence: 490 },
+const renderPatch: Line[] = [
   { name: "Building sand", quantity: "2", unit: "bag", unitPricePence: 340, costPricePence: 210 },
-  { name: "Facing bricks", quantity: "10", unit: "each", unitPricePence: 110, costPricePence: 72 },
+  { name: "Cement", quantity: "1", unit: "bag", unitPricePence: 680, costPricePence: 490 },
+  { name: "Render stop bead", quantity: "2", unit: "length", unitPricePence: 215, costPricePence: 140 },
 ];
 
 async function main() {
@@ -84,21 +82,16 @@ async function main() {
 
   await prisma.savedMaterial.createMany({
     data: [
-      { businessId, userId: user.id, trade: "Plasterer", name: "Multi-finish plaster", unit: "bag", unitPricePence: 940, costPricePence: 710 },
+      { businessId, userId: user.id, trade: "Plasterer", name: "Thistle MultiFinish plaster", unit: "bag", unitPricePence: 940, costPricePence: 710 },
       { businessId, userId: user.id, trade: "Plasterer", name: "Scrim tape", unit: "roll", unitPricePence: 450, costPricePence: 280 },
-      { businessId, userId: user.id, trade: "Electrician", name: "RCBO 32A", unit: "each", unitPricePence: 1800, costPricePence: 1250 },
-      { businessId, userId: user.id, trade: "Plumber", name: "PTFE tape", unit: "roll", unitPricePence: 120, costPricePence: 45 },
-      { businessId, userId: user.id, trade: "Builder", name: "Mortar", unit: "bag", unitPricePence: 680, costPricePence: 490 },
-      { businessId, userId: user.id, trade: "Decorator", name: "Contract matt emulsion", unit: "litre", unitPricePence: 750, costPricePence: 490 },
-      { businessId, userId: user.id, trade: "Roofer", name: "Natural slate", unit: "each", unitPricePence: 280, costPricePence: 160 },
+      { businessId, userId: user.id, trade: "Plasterer", name: "PVA bonding agent", unit: "litre", unitPricePence: 600, costPricePence: 420 },
+      { businessId, userId: user.id, trade: "Plasterer", name: "Thistle Hardwall plaster", unit: "bag", unitPricePence: 980, costPricePence: 740 },
     ],
   });
 
   const templates = [
     { name: "Skim a room", trade: "Plasterer", items: plasterRoom },
-    { name: "Consumer unit swap", trade: "Electrician", items: consumerUnit },
-    { name: "Kitchen tap", trade: "Plumber", items: kitchenTap },
-    { name: "Repoint a small wall", trade: "Builder", items: repoint },
+    { name: "Plaster repairs", trade: "Plasterer", items: repairs },
   ];
   for (const template of templates) {
     await prisma.materialTemplate.create({
@@ -158,20 +151,20 @@ async function main() {
       address: "8 Cable Street, Bedminster, Bristol, BS3 4QH",
       phone: "07700 900124",
       email: "chidi.okonkwo@example.com",
-      trade: "Electrician",
-      description: "Quote to swap the old fuse board for a metal consumer unit and label the circuits.",
+      trade: "Plasterer",
+      description: "Quote to skim the lounge and hall after the ceiling leak.",
       internalNotes: "Wants the price before he commits. Call after 6pm.",
       scheduledDate: isoToUtcDate(addDays(today, 5)),
       timeSlot: "afternoon",
       status: "ENQUIRY",
       shareToken: createShareToken(),
       materials: {
-        create: consumerUnit.map((item, index) => ({ ...item, businessId, bought: false, sortOrder: index })),
+        create: skimQuote.map((item, index) => ({ ...item, businessId, bought: false, sortOrder: index })),
       },
     },
   });
 
-  const brooksDescription = "Replace the kitchen mixer tap and reseal the sink.";
+  const brooksDescription = "Skim the kitchen walls and make good the window board.";
   const brooks = await prisma.job.create({
     data: {
       businessId,
@@ -180,7 +173,7 @@ async function main() {
       address: "22 Harbour Lane, Clevedon, BS21 7QA",
       phone: "07700 900222",
       email: "helen.brooks@example.com",
-      trade: "Plumber",
+      trade: "Plasterer",
       description: brooksDescription,
       internalNotes: "Stopcock is under the sink, on the left.",
       scheduledDate: isoToUtcDate(today),
@@ -188,7 +181,7 @@ async function main() {
       status: "IN_PROGRESS",
       shareToken: createShareToken(),
       materials: {
-        create: kitchenTap.map((item, index) => ({ ...item, businessId, bought: true, sortOrder: index })),
+        create: plasterRoom.map((item, index) => ({ ...item, businessId, bought: true, sortOrder: index })),
       },
     },
     include: { materials: { orderBy: { sortOrder: "asc" } } },
@@ -226,7 +219,7 @@ async function main() {
     },
   });
 
-  const singhOriginal = "Repoint the rear garden wall and replace three spalled bricks.";
+  const singhOriginal = "Cut out the damaged plaster on the rear wall and skim the patches flush.";
   const singh = await prisma.job.create({
     data: {
       businessId,
@@ -235,15 +228,15 @@ async function main() {
       address: "5 Quarry Cottages, Totterdown, Bristol, BS4 2JY",
       phone: "07700 900333",
       email: "dave.singh@example.com",
-      trade: "Builder",
-      description: `${singhOriginal} Also straighten the gate pier.`,
+      trade: "Plasterer",
+      description: `${singhOriginal} Also make good the corner bead by the doorway.`,
       internalNotes: "He agreed the gate pier after signing. Do not change his signed copy.",
       scheduledDate: isoToUtcDate(addDays(today, -5)),
       timeSlot: "all-day",
       status: "COMPLETE",
       shareToken: createShareToken(),
       materials: {
-        create: repoint.map((item, index) => ({ ...item, businessId, bought: true, sortOrder: index })),
+        create: repairs.map((item, index) => ({ ...item, businessId, bought: true, sortOrder: index })),
       },
     },
     include: { materials: { orderBy: { sortOrder: "asc" } } },
@@ -288,9 +281,9 @@ async function main() {
       address: "19 Elm Grove, Redland, Bristol, BS6 6AJ",
       phone: "07700 900444",
       email: "",
-      trade: "Decorator",
-      description: "Paint the hallway and stairs. Colour still to be chosen on the day.",
-      internalNotes: "No email on file. Text the phone number with photos of the colour cards.",
+      trade: "Plasterer",
+      description: "Skim the hallway and stairs. The finish is still to be agreed on the day.",
+      internalNotes: "No email on file. Text the phone number before the visit.",
       scheduledDate: isoToUtcDate(addDays(today, 3)),
       timeSlot: "all-day",
       status: "BOOKED",
@@ -306,26 +299,15 @@ async function main() {
       address: "3 Hillside Terrace, Nailsea, BS48 2AU",
       phone: "07700 900555",
       email: "tom.ellis@example.com",
-      trade: "Roofer",
-      description: "Replace one slipped slate on the front slope and check the neighbouring courses.",
-      internalNotes: "Loft access is a pull-down ladder in the landing cupboard.",
+      trade: "Plasterer",
+      description: "Render a patch on the front wall and check the neighbouring finish.",
+      internalNotes: "The front is reached from the side gate.",
       scheduledDate: isoToUtcDate(addDays(today, 8)),
       timeSlot: "early",
       status: "ENQUIRY",
       shareToken: createShareToken(),
       materials: {
-        create: [
-          {
-            businessId,
-            name: "Natural slate",
-            quantity: "3",
-            unit: "each",
-            unitPricePence: 280,
-            costPricePence: 160,
-            bought: false,
-            sortOrder: 0,
-          },
-        ],
+        create: renderPatch.map((item, index) => ({ ...item, businessId, bought: false, sortOrder: index })),
       },
     },
   });

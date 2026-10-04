@@ -1,5 +1,4 @@
-import type { JobStatus } from "./constants";
-import { slotLabel } from "./constants";
+import { slotLabel, visibleTradeLabel, type JobStatus } from "./constants";
 import { addDays, formatIsoDate, greetingForHour, weekDates } from "./dates";
 import { initials, postcodeFromAddress, townFromAddress } from "./place";
 
@@ -135,7 +134,7 @@ function rowFor(job: GlanceJob, today: string, primary?: string): GlanceListRow 
     id: job.id,
     href: `/jobs/${job.id}`,
     primary: primary ?? job.customerName,
-    secondary: [postcode, job.trade].filter(Boolean).join(" · "),
+    secondary: [postcode, visibleTradeLabel(job.trade)].filter(Boolean).join(" · "),
     meta: due.text,
     metaTone: due.tone,
   };
@@ -244,7 +243,7 @@ export function buildGlance(input: {
       title: "Today",
       meta: metaDate(today),
       value: String(todayJobs.length),
-      sub: todayJobs.length === 1 ? todayJobs[0].trade : "bookings",
+      sub: todayJobs.length === 1 ? (visibleTradeLabel(todayJobs[0].trade) ?? "booking") : "bookings",
       href: "/diary",
       empty: "Nothing in the diary today.",
       rows: todayJobs.slice(0, 2).map((job) => ({
@@ -259,7 +258,7 @@ export function buildGlance(input: {
       title: "Tomorrow",
       meta: metaDate(tomorrow),
       value: String(tomorrowJobs.length),
-      sub: tomorrowJobs.length === 1 ? tomorrowJobs[0].trade : "bookings",
+      sub: tomorrowJobs.length === 1 ? (visibleTradeLabel(tomorrowJobs[0].trade) ?? "booking") : "bookings",
       href: "/diary",
       empty: "Nothing booked tomorrow.",
       rows: tomorrowJobs.slice(0, 2).map((job) => ({
@@ -353,7 +352,7 @@ export function buildGlance(input: {
         href: `/jobs/${job.id}`,
         initials: initials(job.customerName),
         customerName: job.customerName,
-        detail: [postcodeFromAddress(job.address), job.trade].filter(Boolean).join(" · "),
+        detail: [postcodeFromAddress(job.address), visibleTradeLabel(job.trade)].filter(Boolean).join(" · "),
         status: job.status,
         when: relativeTime(job.updatedAt, input.now),
       })),

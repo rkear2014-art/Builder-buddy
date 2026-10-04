@@ -15,9 +15,9 @@ export async function GET(
   }
   const job = await getPrisma().job.findUnique({
     where: { shareToken: token },
-    select: { business: { select: { logoBytes: true, logoMime: true } } },
+    select: { shareActive: true, business: { select: { logoBytes: true, logoMime: true } } },
   });
-  if (!job?.business.logoBytes || !job.business.logoMime) {
+  if (!job?.shareActive || !job.business.logoBytes || !job.business.logoMime) {
     return new Response(null, { status: 404, headers: { "Cache-Control": "private, no-store" } });
   }
   return logoHttpResponse(job.business.logoBytes, job.business.logoMime);

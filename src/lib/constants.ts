@@ -11,6 +11,48 @@ export const TRADES = [
 
 export type Trade = (typeof TRADES)[number];
 
+/**
+ * Trades the desk offers right now. Add a name from TRADES to switch it back on.
+ * Jobs already saved under another trade still open.
+ */
+export const ENABLED_TRADES = ["Plasterer"] as const satisfies readonly Trade[];
+
+const TRADE_LABELS: Record<Trade, string> = {
+  Plasterer: "Plastering",
+  Builder: "Building",
+  Electrician: "Electrical",
+  Plumber: "Plumbing",
+  Carpenter: "Carpentry",
+  Decorator: "Decorating",
+  Roofer: "Roofing",
+  Other: "Other",
+};
+
+export function enabledTrades(): Trade[] {
+  return [...ENABLED_TRADES];
+}
+
+export function singleEnabledTrade(): Trade | null {
+  return ENABLED_TRADES.length === 1 ? ENABLED_TRADES[0] : null;
+}
+
+export function isEnabledTrade(value: string): value is Trade {
+  return (ENABLED_TRADES as readonly string[]).includes(value);
+}
+
+export function tradeLabel(value: string): string {
+  if (isTrade(value)) return TRADE_LABELS[value];
+  return value;
+}
+
+/** The only switched-on trade is not repeated on every card. Any other saved trade still shows. */
+export function visibleTradeLabel(value: string): string | null {
+  const only = singleEnabledTrade();
+  if (!value.trim()) return null;
+  if (only && value === only) return null;
+  return tradeLabel(value);
+}
+
 export const JOB_STATUSES = ["ENQUIRY", "BOOKED", "IN_PROGRESS", "COMPLETE"] as const;
 
 export type JobStatus = (typeof JOB_STATUSES)[number];

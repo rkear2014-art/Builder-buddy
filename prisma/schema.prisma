@@ -46,6 +46,22 @@ model Business {
   templates  MaterialTemplate[]
   savedItems SavedMaterial[]
   heroes     HeroPhoto[]
+  catalogue  CataloguePhoto[]
+}
+
+/// A picture for one chooser tile. catalogueKey is a built-in list id or a saved template id.
+model CataloguePhoto {
+  id           String   @id @default(cuid())
+  businessId   String
+  business     Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  catalogueKey String
+  bytes        Bytes
+  mime         String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@unique([businessId, catalogueKey])
+  @@index([businessId])
 }
 
 /// A dashboard photo. Several can belong to one business. sourceKey is unique per business so a sample can be added once.
@@ -103,6 +119,8 @@ model Job {
   internalNotes String       @default("")
   showLinePrices Boolean     @default(true)
   depositPence   Int?
+  shareActive    Boolean     @default(true)
+  surveyDone     String      @default("")
   scheduledDate DateTime     @db.Date
   timeSlot      String
   status        JobStatus

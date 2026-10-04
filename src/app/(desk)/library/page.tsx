@@ -1,9 +1,11 @@
-import { TRADES } from "@/lib/constants";
+import { canEditBusiness, deskCatalogueSrc } from "@/lib/branding";
+import { enabledTrades, isEnabledTrade, singleEnabledTrade, tradeLabel } from "@/lib/constants";
 import { formatPence } from "@/lib/money";
 import { PLASTERING_STARTER_MATERIALS, PLASTERING_STARTER_TEMPLATES } from "@/lib/trade-starters";
+import { removeCataloguePhoto, saveCataloguePhoto } from "@/server/actions/catalogue";
 import { addTemplateItem, createSavedItem, createTemplate, deleteSavedItem, deleteTemplate } from "@/server/actions/library";
 import { loadPlasteringStarters, saveStarterItem, saveStarterTemplate } from "@/server/actions/starters";
-import { getLibrary, requireUser } from "@/server/dal";
+import { getLibrary, listCataloguePhotos, requireUser } from "@/server/dal";
 import { InlineForm } from "@/components/inline-form";
 import { SubmitButton } from "@/components/submit-button";
 import { UnitSelect } from "@/components/unit-select";
@@ -22,6 +24,10 @@ function countParam(value: string | undefined): number {
 }
 
 function libraryNotice(notice: string | undefined, added: string | undefined, renamed: string | undefined): string | null {
+  if (notice === "photo-saved") return "Tile photo saved. It shows on the chooser for that list.";
+  if (notice === "photo-removed") return "Tile photo removed. The chooser uses a work photo or a plain tile.";
+  if (notice === "photo") return "That picture could not be used. Choose a PNG, JPG, or WebP under 2 MB.";
+  if (notice === "owner") return "Only the owner can change tile photos.";
   if (notice === "saved") return "Saved into your library. Set a price when you add it to a job, or leave it blank.";
   if (notice === "already") return "That is already in your library.";
   if (notice === "missing") return "That starter list could not be found.";
@@ -46,14 +52,20 @@ export default async function LibraryPage({
 }) {
   const user = await requireUser();
   const library = await getLibrary(user.businessId);
+  const tiles = await listCataloguePhotos(user.businessId);
+  const tileUpdated = new Map(tiles.map((tile) => [tile.catalogueKey, tile.updatedAt]));
+  const owner = canEditBusiness(user.role);
+  const onlyTrade = singleEnabledTrade();
   const { notice, added, renamed } = await searchParams;
   const noticeText = libraryNotice(notice, added, renamed);
+  const savedItems = library.savedItems.filter((item) => isEnabledTrade(item.trade));
+  const templates = library.templates.filter((template) => isEnabledTrade(template.trade));
 
   return (
     <div className="grid gap-6">
       <div>
         <h1 className="font-display text-4xl">Library</h1>
-        <p className="mt-1 text-stone">Saved items and templates, kept by trade, so a list is quick to build on site.</p>
+        <p className="mt-1 text-stone">Saved items and templates, so a list is quick to build on site.</p>
       </div>
       {noticeText ? <p className="card font-bold">{noticeText}</p> : null}
 
@@ -75,7 +87,7 @@ export default async function LibraryPage({
           <article key={starter.id} className="card grid gap-3">
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
-                <p className="text-sm font-bold text-stone">{starter.trade}</p>
+                {onlyTrade ? null : <p className="text-sm font-bold text-stone">{tradeLabel(starter.trade)}</p>}
                 <h3 className="font-display text-2xl">{starter.name}</h3>
                 <p className="mt-1 text-stone">{starter.description}</p>
               </div>
@@ -86,6 +98,11 @@ export default async function LibraryPage({
                 </button>
               </form>
             </div>
+            <TilePhoto
+              catalogueKey={starter.id}
+              updatedAt={tileUpdated.get(starter.id) ?? null}
+              owner={owner}
+            />
             <ul className="grid gap-1">
               {starter.items.map((item) => (
                 <li key={item.name}>
@@ -118,12 +135,12 @@ export default async function LibraryPage({
 
       <section className="grid gap-3">
         <h2 className="font-display text-3xl">Saved items</h2>
-        {library.savedItems.length === 0 ? <p className="card text-stone">None yet.</p> : null}
+        {savedItems.length === 0 ? <p className="card text-stone">None yet.</p> : null}
         <ul className="grid gap-2">
-          {library.savedItems.map((item) => (
+          {savedItems.map((item) => (
             <li key={item.id} className="card flex flex-wrap items-center justify-between gap-3">
               <div>
-                <p className="text-sm font-bold text-stone">{item.trade}</p>
+                {onlyTrade ? null : <p className="text-sm font-bold text-stone">{tradeLabel(item.trade)}</p>}
                 <p className="text-lg font-bold">{item.name}</p>
                 <p>
                   per {item.unit} · <Price pence={item.unitPricePence} />
@@ -142,14 +159,7 @@ export default async function LibraryPage({
         <div className="card">
           <h3 className="font-display text-2xl">Add a saved item</h3>
           <InlineForm action={createSavedItem} className="mt-3 grid gap-3">
-            <label className="field">
-              Trade
-              <select name="trade" required defaultValue="Plasterer">
-                {TRADES.map((trade) => (
-                  <option key={trade}>{trade}</option>
-                ))}
-              </select>
-            </label>
+            <TradeChoice />
             <label className="field">
               Name
               <input name="name" required />
@@ -181,12 +191,12 @@ export default async function LibraryPage({
 
       <section className="grid gap-3">
         <h2 className="font-display text-3xl">Templates</h2>
-        {library.templates.length === 0 ? <p className="card text-stone">None yet.</p> : null}
-        {library.templates.map((template) => (
+        {templates.length === 0 ? <p className="card text-stone">None yet.</p> : null}
+        {templates.map((template) => (
           <article key={template.id} className="card grid gap-3">
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
-                <p className="text-sm font-bold text-stone">{template.trade}</p>
+                {onlyTrade ? null : <p className="text-sm font-bold text-stone">{tradeLabel(template.trade)}</p>}
                 <h3 className="font-display text-2xl">{template.name}</h3>
               </div>
               <form action={deleteTemplate}>
@@ -196,6 +206,11 @@ export default async function LibraryPage({
                 </button>
               </form>
             </div>
+            <TilePhoto
+              catalogueKey={template.id}
+              updatedAt={tileUpdated.get(template.id) ?? null}
+              owner={owner}
+            />
             <ul className="grid gap-1">
               {template.items.map((item) => (
                 <li key={item.id}>
@@ -241,14 +256,7 @@ export default async function LibraryPage({
               Name
               <input name="name" required placeholder="Skimming for a smooth finish" />
             </label>
-            <label className="field">
-              Trade
-              <select name="trade" required defaultValue="Plasterer">
-                {TRADES.map((trade) => (
-                  <option key={trade}>{trade}</option>
-                ))}
-              </select>
-            </label>
+            <TradeChoice />
             <label className="field">
               First item
               <input name="itemName" required />
@@ -275,6 +283,65 @@ export default async function LibraryPage({
           </InlineForm>
         </div>
       </section>
+    </div>
+  );
+}
+
+function TradeChoice() {
+  const only = singleEnabledTrade();
+  if (only) return <input type="hidden" name="trade" value={only} />;
+  return (
+    <label className="field">
+      Trade
+      <select name="trade" required defaultValue={enabledTrades()[0]}>
+        {enabledTrades().map((trade) => (
+          <option key={trade} value={trade}>
+            {tradeLabel(trade)}
+          </option>
+        ))}
+      </select>
+    </label>
+  );
+}
+
+function TilePhoto({
+  catalogueKey,
+  updatedAt,
+  owner,
+}: {
+  catalogueKey: string;
+  updatedAt: string | null;
+  owner: boolean;
+}) {
+  const src = updatedAt ? deskCatalogueSrc(catalogueKey, updatedAt) : null;
+  if (!owner && !src) return null;
+  return (
+    <div className="grid gap-2">
+      {src ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={src} alt="" className="h-28 w-full rounded-xl object-cover" />
+      ) : (
+        <p className="text-sm text-stone">No tile photo yet. The chooser uses a work photo where one fits, or a plain tile.</p>
+      )}
+      {owner ? (
+        <div className="flex flex-wrap items-center gap-2">
+          <form action={saveCataloguePhoto} className="flex flex-wrap items-center gap-2">
+            <input type="hidden" name="catalogueKey" value={catalogueKey} />
+            <input name="photo" type="file" accept="image/png,image/jpeg,image/webp" required />
+            <button className="btn btn-secondary" type="submit">
+              {src ? "Replace tile photo" : "Set tile photo"}
+            </button>
+          </form>
+          {src ? (
+            <form action={removeCataloguePhoto}>
+              <input type="hidden" name="catalogueKey" value={catalogueKey} />
+              <button className="btn btn-danger" type="submit">
+                Remove photo
+              </button>
+            </form>
+          ) : null}
+        </div>
+      ) : null}
     </div>
   );
 }

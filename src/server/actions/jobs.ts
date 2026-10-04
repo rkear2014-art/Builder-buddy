@@ -115,9 +115,21 @@ export async function rotateShareLink(formData: FormData): Promise<void> {
   });
   if (!existing || existing.signOff) return;
   const shareToken = createShareToken();
-  await getPrisma().job.update({ where: { id: existing.id }, data: { shareToken } });
+  await getPrisma().job.update({ where: { id: existing.id }, data: { shareToken, shareActive: true } });
   revalidateDesk(existing.id, existing.shareToken);
   revalidateDesk(existing.id, shareToken);
+}
+
+export async function revokeShareLink(formData: FormData): Promise<void> {
+  const user = await requireUser();
+  const jobId = String(formData.get("jobId") ?? "");
+  const existing = await getPrisma().job.findFirst({
+    where: { id: jobId, ...tenantWhere(user.businessId) },
+    select: { id: true, shareToken: true, signOff: { select: { id: true } } },
+  });
+  if (!existing || existing.signOff) return;
+  await getPrisma().job.update({ where: { id: existing.id }, data: { shareActive: false } });
+  revalidateDesk(existing.id, existing.shareToken);
 }
 
 export async function deleteJob(formData: FormData): Promise<void> {

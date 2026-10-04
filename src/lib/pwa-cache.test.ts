@@ -56,6 +56,7 @@ describe("service worker cache policy", () => {
     assert.equal(decideCache(request({ pathname: "/branding/hero", destination: "image" })), "network-only");
     assert.equal(decideCache(request({ pathname: "/branding/hero/photo", destination: "image" })), "network-only");
     assert.equal(decideCache(request({ pathname: "/branding/mark", destination: "image" })), "network-only");
+    assert.equal(decideCache(request({ pathname: "/branding/catalogue/plaster-skim", destination: "image" })), "network-only");
     assert.equal(
       PRECACHE_PATHS.some((path) => path.includes("branding") || path.includes("/sign/")),
       false,

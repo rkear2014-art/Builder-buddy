@@ -75,6 +75,8 @@ function mapJob(job: JobWithRelations): DeskJob {
     timeSlot: job.timeSlot,
     showLinePrices: job.showLinePrices,
     depositPence: job.depositPence,
+    shareActive: job.shareActive,
+    surveyDone: job.surveyDone,
     vatRegistered: job.business.vatRegistered,
     vatRatePercent: job.business.vatRatePercent,
     materials: job.materials.map((material) => ({
@@ -405,6 +407,19 @@ export async function getDiaryJobs(businessId: string, fromIso: string, toIso: s
   return jobs.map(mapSummary);
 }
 
+export async function listCataloguePhotos(
+  businessId: string,
+): Promise<Array<{ catalogueKey: string; updatedAt: string }>> {
+  const photos = await getPrisma().cataloguePhoto.findMany({
+    where: tenantWhere(businessId),
+    select: { catalogueKey: true, updatedAt: true },
+  });
+  return photos.map((photo) => ({
+    catalogueKey: photo.catalogueKey,
+    updatedAt: photo.updatedAt.toISOString(),
+  }));
+}
+
 export async function getJob(businessId: string, jobId: string): Promise<DeskJob | null> {
   const job = await findJobRow({ id: jobId, ...tenantWhere(businessId) });
   return job ? mapJob(job) : null;
@@ -465,7 +480,9 @@ export const getShareView = cache(async (token: string): Promise<ShareView> => {
     where: { shareToken: token },
     include: jobInclude,
   });
-  if (!job) return { presentation: presentShare({ token, record: null, signOff: null }), letterhead: null, quote: null };
+  if (!job || !job.shareActive) {
+    return { presentation: presentShare({ token, record: null, signOff: null }), letterhead: null, quote: null };
+  }
   const mapped = mapJob(job);
   const photos = await getPrisma().heroPhoto.findMany({
     where: tenantWhere(job.businessId),

@@ -31,7 +31,7 @@ export async function signAgreement(_state: ActionState, formData: FormData): Pr
       business: { select: { name: true, vatRegistered: true, vatRatePercent: true } },
     },
   });
-  if (!job) return { error: "This link is not valid." };
+  if (!job || !job.shareActive) return { error: "This link is not valid." };
 
   const incoming = lockAgreement(
     {

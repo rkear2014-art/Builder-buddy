@@ -326,8 +326,100 @@ summary.btn::-webkit-details-marker {
     padding: 0;
   }
 
-  .brand-logo-letter {
-    max-height: 4.5rem;
-    max-width: 14rem;
-  }
+.brand-logo-letter {
+  max-height: 4.5rem;
+  max-width: 14rem;
+}
+}
+
+.job-contact {
+  border-radius: 0.9rem;
+  background: color-mix(in srgb, var(--job-accent, #395571) 12%, white);
+  color: var(--job-accent, #395571);
+  padding: 0.75rem 1rem;
+  font-weight: 800;
+}
+
+.job-status-pill {
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--job-accent, #395571) 12%, white);
+  color: var(--job-accent, #395571);
+  padding: 0.35rem 0.8rem;
+  font-size: 0.92rem;
+  font-weight: 800;
+}
+
+.job-progress {
+  height: 0.45rem;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #e6e8ec;
+}
+
+.job-progress > span {
+  display: block;
+  height: 100%;
+  background: var(--job-accent, #395571);
+}
+
+.job-choice {
+  display: flex;
+  min-height: 7.5rem;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  border-radius: 1.1rem;
+  border: 2px solid var(--job-accent, #395571);
+  background: white;
+  padding: 1rem;
+  font-size: 1.15rem;
+  font-weight: 800;
+  text-align: center;
+}
+
+.job-choice-fill {
+  border-color: transparent;
+}
+
+.job-mail {
+  display: flex;
+  min-height: 3.25rem;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--job-accent, #395571) 12%, white);
+  padding: 0.7rem 1rem;
+  color: var(--job-accent, #395571);
+  font-weight: 800;
+  text-align: center;
+}
+
+.btn-whatsapp {
+  background: #128c7e;
+  color: white;
+}
+
+.choice-card {
+  border: 2px solid var(--color-line);
+  border-radius: 1rem;
+  background: white;
+  padding: 0.9rem 1rem;
+}
+
+.choice-card:has(input:checked) {
+  border-color: var(--job-accent, #395571);
+  box-shadow: inset 0 0 0 1px var(--job-accent, #395571);
+}
+
+.catalogue-chip {
+  position: absolute;
+  top: 0.7rem;
+  left: 0.7rem;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.55);
+  padding: 0.15rem 0.6rem;
+  color: white;
+  font-size: 0.75rem;
+  font-weight: 800;
 }
