@@ -1,9 +1,10 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { databaseFailureMessage } from "@/lib/database";
 import { isConfigured } from "@/lib/config";
-import { requiredSetupToken } from "@/lib/setup-gate";
+import { isFrameworkControlFlow, requiredSetupToken, type SetupCheck } from "@/lib/setup-gate";
 import { getCurrentUser } from "@/server/dal";
-import { firstAccountIsOpen } from "@/server/setup";
+import { checkFirstAccount } from "@/server/setup";
 import { SetupForm } from "@/app/setup/setup-form";
 
 export const dynamic = "force-dynamic";
@@ -19,18 +20,30 @@ export default async function SetupPage() {
       </main>
     );
   }
-  const user = await getCurrentUser();
-  if (user) redirect("/");
-  const open = await firstAccountIsOpen();
+  let check: SetupCheck;
+  try {
+    const user = await getCurrentUser();
+    if (user) redirect("/");
+    check = await checkFirstAccount();
+  } catch (error) {
+    if (isFrameworkControlFlow(error)) throw error;
+    check = { state: "unavailable", message: databaseFailureMessage(error) };
+  }
   return (
     <main className="mx-auto flex min-h-dvh max-w-lg flex-col justify-center px-4 py-10">
       <p className="font-bold text-stone">First account</p>
       <h1 className="font-display text-5xl leading-none">Create your account</h1>
-      {open ? (
+      {check.state !== "closed" ? (
         <>
-          <p className="mt-3 text-lg">
-            This sets up your business. It can only be done once, while Builder Buddy has no accounts.
-          </p>
+          {check.state === "unavailable" ? (
+            <p role="alert" className="mt-3 rounded-xl bg-blush px-3 py-2 font-bold text-clay">
+              {check.message}
+            </p>
+          ) : (
+            <p className="mt-3 text-lg">
+              This sets up your business. It can only be done once, while Builder Buddy has no accounts.
+            </p>
+          )}
           <div className="card mt-6">
             <SetupForm tokenRequired={requiredSetupToken(process.env.SETUP_TOKEN) !== null} />
           </div>

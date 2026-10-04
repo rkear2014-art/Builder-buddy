@@ -1,5 +1,12 @@
 import bcrypt from "bcryptjs";
-import { evaluateSetupClaim, requiredSetupToken, setupIsOpen, type SetupSnapshot } from "@/lib/setup-gate";
+import { databaseFailureMessage } from "@/lib/database";
+import {
+  evaluateSetupClaim,
+  requiredSetupToken,
+  settleSetupCheck,
+  type SetupCheck,
+  type SetupSnapshot,
+} from "@/lib/setup-gate";
 import type { AccountInput } from "@/lib/validators";
 import { getPrisma, isUniqueConstraint } from "@/server/prisma";
 
@@ -12,8 +19,8 @@ export async function readSetupSnapshot(): Promise<SetupSnapshot> {
   return { userCount, claimed: lock ? lock.claimed : null };
 }
 
-export async function firstAccountIsOpen(): Promise<boolean> {
-  return setupIsOpen(await readSetupSnapshot());
+export async function checkFirstAccount(): Promise<SetupCheck> {
+  return settleSetupCheck(readSetupSnapshot);
 }
 
 /**
@@ -68,6 +75,6 @@ export async function claimFirstAccount(
     if (isUniqueConstraint(error)) {
       return { ok: false, error: "An account already exists. Sign in instead." };
     }
-    throw error;
+    return { ok: false, error: databaseFailureMessage(error) };
   }
 }

@@ -37,7 +37,8 @@ Fill in `.env`:
 
 | Variable | Required | Purpose |
 | --- | --- | --- |
-| `DATABASE_URL` | Yes | Postgres URL, for example `postgresql://USER:PASSWORD@HOST:5432/builder_buddy` |
+| `DATABASE_URL` | Yes | Postgres URL, for example `postgresql://USER:PASSWORD@HOST:5432/builder_buddy`. Use a `postgres://` address. A `prisma+postgres://` address is only for the Prisma CLI |
+| `DIRECT_URL` | No | Direct Postgres URL for migrations when `DATABASE_URL` goes through a pool |
 | `AUTH_SECRET` | Yes | At least 32 characters. Create one with `openssl rand -base64 32` |
 | `APP_ORIGIN` | No | Public site URL used when copying a customer link, such as `https://jobs.example.com` |
 | `SHOW_DEMO_LOGIN` | No | Set to `true` only on a private demo to show the seeded password on the sign-in page |
@@ -86,9 +87,11 @@ A new email becomes the owner of a new business and closes first-account setup. 
 
 The app is ready for Vercel with a hosted Postgres database (Neon, Supabase, RDS, or similar).
 
-1. Set `DATABASE_URL`, `AUTH_SECRET`, and `APP_ORIGIN` in the project environment.
-2. Build command: `prisma generate && prisma migrate deploy && next build`
+1. Set `DATABASE_URL` to the `postgres://` connection string (pooled is fine for the app). Set `DIRECT_URL` to the direct string when you have one, so migrations do not go through the pool. Also set `AUTH_SECRET` and `APP_ORIGIN`.
+2. The build command applies the migrations and then checks that this app can read `SetupLock`, before it builds the site: `prisma generate && prisma migrate deploy && tsx scripts/check-database.ts && next build`
 3. Leave `SHOW_DEMO_LOGIN` unset in production, and change or remove the demo password before real customer details go in.
+
+If the database cannot be read, the sign-in and first-account pages still open. They explain the problem instead of showing a server error. Create your account appears when the database is empty and the setup lock is free.
 
 Customer links look like `/sign/<token>`. Treat them as private: anyone with the link can view and sign that one job. Use “New link” on an unsigned job if the wrong person received it. After a signature, the link stays so the customer can reopen the agreed copy.
 
