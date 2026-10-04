@@ -295,6 +295,7 @@ summary.btn::-webkit-details-marker {
   }
 
   .quote {
+    display: block !important;
     gap: 0;
   }
 
