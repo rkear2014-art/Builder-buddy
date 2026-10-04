@@ -2,7 +2,9 @@
 
 import bcrypt from "bcryptjs";
 import { redirect } from "next/navigation";
+import { databaseFailureMessage } from "@/lib/database";
 import { isConfigured } from "@/lib/config";
+import { isFrameworkControlFlow } from "@/lib/setup-gate";
 import type { ActionState } from "@/lib/form-state";
 import { getPrisma } from "@/server/prisma";
 import { createSession, deleteSession } from "@/server/session";
@@ -18,7 +20,13 @@ export async function login(_state: ActionState, formData: FormData): Promise<Ac
   if (!email || !password || password.length > 200) {
     return { error: "Email or password is not right." };
   }
-  const user = await getPrisma().user.findUnique({ where: { email } });
+  let user: { id: string; passwordHash: string } | null;
+  try {
+    user = await getPrisma().user.findUnique({ where: { email } });
+  } catch (error) {
+    if (isFrameworkControlFlow(error)) throw error;
+    return { error: databaseFailureMessage(error) };
+  }
   const hash = user?.passwordHash ?? DUMMY_HASH;
   const matches = await bcrypt.compare(password, hash);
   if (!user || !matches) {

@@ -1,15 +1,19 @@
 import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "../generated/prisma/client";
+import { DatabaseConfigError, postgresRuntimeUrl } from "../lib/database";
 
 const globalForPrisma = globalThis as unknown as { prisma?: PrismaClient };
 
 export function getPrisma(): PrismaClient {
-  const connectionString = process.env.DATABASE_URL;
-  if (!connectionString) {
-    throw new Error("DATABASE_URL is not set.");
+  const parsed = postgresRuntimeUrl(process.env.DATABASE_URL);
+  if (!parsed.ok) {
+    throw new DatabaseConfigError(parsed.message);
   }
   if (!globalForPrisma.prisma) {
-    const adapter = new PrismaPg({ connectionString });
+    const adapter = new PrismaPg({
+      connectionString: parsed.connectionString,
+      connectionTimeoutMillis: 8_000,
+    });
     globalForPrisma.prisma = new PrismaClient({ adapter });
   }
   return globalForPrisma.prisma;

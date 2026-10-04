@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "prisma generate && next build",
+    "build": "prisma generate && prisma migrate deploy && tsx scripts/check-database.ts && next build",
     "start": "next start",
     "lint": "eslint",
     "test": "node --import tsx --test src/lib/*.test.ts",

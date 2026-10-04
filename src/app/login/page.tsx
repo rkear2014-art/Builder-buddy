@@ -1,8 +1,10 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { databaseFailureMessage } from "@/lib/database";
 import { isConfigured } from "@/lib/config";
+import { isFrameworkControlFlow, loginOffersCreate, type SetupCheck } from "@/lib/setup-gate";
 import { getCurrentUser } from "@/server/dal";
-import { firstAccountIsOpen } from "@/server/setup";
+import { checkFirstAccount } from "@/server/setup";
 import { LoginForm } from "@/app/login/login-form";
 
 export const dynamic = "force-dynamic";
@@ -20,9 +22,16 @@ export default async function LoginPage() {
       </main>
     );
   }
-  const user = await getCurrentUser();
-  if (user) redirect("/");
-  const setupOpen = await firstAccountIsOpen();
+  let check: SetupCheck;
+  try {
+    const user = await getCurrentUser();
+    if (user) redirect("/");
+    check = await checkFirstAccount();
+  } catch (error) {
+    if (isFrameworkControlFlow(error)) throw error;
+    check = { state: "unavailable", message: databaseFailureMessage(error) };
+  }
+  const offerCreate = loginOffersCreate(check);
   return (
     <main className="mx-auto flex min-h-dvh max-w-lg flex-col justify-center px-4 py-10">
       <p className="font-bold text-stone">For the tradesperson</p>
@@ -30,9 +39,13 @@ export default async function LoginPage() {
       <p className="mt-3 text-lg">Jobs, materials, and a signature the customer can give on their own phone.</p>
       <div className="card mt-6">
         <LoginForm showDemo={process.env.SHOW_DEMO_LOGIN === "true"} />
-        {setupOpen ? (
+        {offerCreate ? (
           <div className="mt-4 border-t border-line pt-4">
-            <p className="mb-3">First time on this tablet? Create the account for your business. This can only be done once.</p>
+            <p className="mb-3">
+              {check.state === "unavailable"
+                ? check.message
+                : "First time on this tablet? Create the account for your business. This can only be done once."}
+            </p>
             <Link href="/setup" className="btn btn-secondary w-full">
               Create your account
             </Link>
