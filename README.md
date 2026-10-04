@@ -95,6 +95,18 @@ If the database cannot be read, the sign-in and first-account pages still open. 
 
 Customer links look like `/sign/<token>`. Treat them as private: anyone with the link can view and sign that one job. Use “New link” on an unsigned job if the wrong person received it. After a signature, the link stays so the customer can reopen the agreed copy.
 
+## Install on a phone or tablet
+
+The production site can be added to a home screen. That needs HTTPS, which the live address already has.
+
+**Android (Chrome, including a tablet)**  
+Open the site and sign in. Tap **Install app** when it appears at the top. You can also open the Chrome menu and choose **Install app** or **Add to Home screen**. The icon then opens the tradesperson desk on its own, without the browser bar.
+
+**iPhone or iPad (Safari)**  
+Open the site in Safari. Tap **Share**, then **Add to Home Screen**. The page says the same thing. Use Safari for this: Chrome on an iPhone cannot add it.
+
+Logging out clears anything the app stored on the device. Customer sign-off links are always loaded from the server. With no connection, a short offline page asks you to try again.
+
 ## Tests
 
 ```bash
@@ -109,3 +121,4 @@ The tests cover the rules that matter without a database:
 - missing configuration never counts as “allowed in”
 - first-account setup opens only with zero users, and a second overlapping claim is refused
 - a query for one business cannot read another business’s jobs, materials, templates or signatures
+- the home-screen manifest, icons, and service worker keep customer pages and sign-off links off the device cache

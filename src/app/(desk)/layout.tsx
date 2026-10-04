@@ -1,7 +1,7 @@
 import Link from "next/link";
-import { logout } from "@/server/actions/auth";
 import { requireUser } from "@/server/dal";
 import { DeskNav } from "@/components/desk-nav";
+import { LogoutButton } from "@/components/logout-button";
 
 export const dynamic = "force-dynamic";
 
@@ -21,11 +21,7 @@ export default async function DeskLayout({ children }: { children: React.ReactNo
               <span className="text-sm font-semibold text-stone">{user.businessName}</span>
             </span>
           </Link>
-          <form action={logout}>
-            <button className="btn btn-secondary !min-h-12" type="submit">
-              Log out
-            </button>
-          </form>
+          <LogoutButton />
         </div>
       </header>
       <div className="mx-auto grid max-w-6xl md:grid-cols-[13rem_1fr]">

@@ -38,7 +38,13 @@ export function decideAccess(input: {
 }): AccessDecision {
   const pathname = normalisePath(input.pathname);
 
-  if (pathname === "/robots.txt" || pathname === "/manifest.webmanifest") {
+  if (
+    pathname === "/robots.txt" ||
+    pathname === "/manifest.webmanifest" ||
+    pathname === "/sw.js" ||
+    pathname === "/offline.html" ||
+    pathname.startsWith("/icons/")
+  ) {
     return { type: "next" };
   }
 

@@ -82,4 +82,18 @@ describe("fail closed access", () => {
       { type: "unavailable" },
     );
   });
+
+  it("serves the install files with no session, even when the app is not configured", () => {
+    for (const pathname of [
+      "/sw.js",
+      "/offline.html",
+      "/manifest.webmanifest",
+      "/icons/icon-192.png",
+      "/icons/icon-maskable-512.png",
+      "/robots.txt",
+    ]) {
+      assert.deepEqual(decideAccess({ pathname, configured: false, hasValidSession: false }), { type: "next" }, pathname);
+      assert.deepEqual(decideAccess({ pathname, configured: true, hasValidSession: false }), { type: "next" }, pathname);
+    }
+  });
 });
