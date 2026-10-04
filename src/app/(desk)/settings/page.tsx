@@ -7,18 +7,25 @@ import {
   uploadBusinessLogo,
   uploadHeroPhoto,
   useLogoAccent,
+  useSampleHeroes,
   useSampleLogo,
 } from "@/server/actions/branding";
 import { BusinessProfileForm } from "@/components/business-profile-form";
 import { InlineForm } from "@/components/inline-form";
 import { SubmitButton } from "@/components/submit-button";
-import { requireUser } from "@/server/dal";
+import { listHeroPhotos, requireUser } from "@/server/dal";
 
 export const dynamic = "force-dynamic";
 
 export const metadata = { title: "Business" };
 
-function savedMessage(saved: string | undefined): string | null {
+function countParam(value: string | undefined): number | null {
+  if (!value || !/^\d{1,2}$/.test(value)) return null;
+  return Number(value);
+}
+
+function savedMessage(saved: string | undefined, added: string | undefined): string | null {
+  const count = countParam(added);
   switch (saved) {
     case "profile":
       return "Business details saved.";
@@ -29,9 +36,13 @@ function savedMessage(saved: string | undefined): string | null {
     case "sample":
       return "The AK Plastering logo is now on this business. You can replace it whenever you like.";
     case "hero":
-      return "Hero photo saved. It shows on the dashboard.";
+      return count === 1 ? "Photo added. The dashboard shows one of your photos each visit." : "Photos added. The dashboard shows a different one each visit.";
     case "hero-removed":
-      return "Hero photo removed. The dashboard uses the plaster gradient again.";
+      return "Photo removed. With none left, the dashboard uses the plaster gradient again.";
+    case "heroes":
+      if (count === 0) return "Those AK Plastering photos are already on this business. Nothing new was added.";
+      if (count === 1) return "Added 1 AK Plastering photo. The dashboard shows a different photo each visit.";
+      return `Added ${count ?? "the"} AK Plastering photos. The dashboard shows a different one each visit.`;
     case "accent":
       return "Accent colour saved.";
     default:
@@ -47,6 +58,10 @@ function noticeMessage(notice: string | undefined): string | null {
       return "That logo could not be used. Choose a PNG, JPG, or WebP picture instead.";
     case "accent":
       return "Add a logo first, then a colour can be taken from it.";
+    case "heroes":
+      return "Those photos could not be added. Try again, or upload your own.";
+    case "heroes-full":
+      return "This business already has 12 dashboard photos. Remove one before adding more.";
     default:
       return null;
   }
@@ -55,11 +70,12 @@ function noticeMessage(notice: string | undefined): string | null {
 export default async function SettingsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ saved?: string; notice?: string }>;
+  searchParams: Promise<{ saved?: string; notice?: string; added?: string }>;
 }) {
   const user = await requireUser();
+  const photos = await listHeroPhotos(user.businessId);
   const query = await searchParams;
-  const saved = savedMessage(query.saved);
+  const saved = savedMessage(query.saved, query.added);
   const notice = noticeMessage(query.notice);
   const owner = canEditBusiness(user.role);
 
@@ -80,7 +96,7 @@ export default async function SettingsPage({
       ) : null}
 
       <LogoSection user={user} owner={owner} />
-      <HeroSection user={user} owner={owner} />
+      <HeroSection user={user} owner={owner} photos={photos} />
       <AccentSection user={user} owner={owner} />
       <ProfileSection user={user} owner={owner} />
     </div>
@@ -119,6 +135,11 @@ function LogoSection({ user, owner }: { user: SessionUser; owner: boolean }) {
                 Use the AK Plastering logo
               </button>
             </form>
+            <form action={useSampleHeroes}>
+              <button className="btn btn-secondary" type="submit">
+                Use the AK Plastering photos
+              </button>
+            </form>
             {user.branding.hasLogo ? (
               <form action={removeBusinessLogo}>
                 <button className="btn btn-danger" type="submit">
@@ -130,7 +151,8 @@ function LogoSection({ user, owner }: { user: SessionUser; owner: boolean }) {
           <p className="text-sm font-semibold text-stone">
             The AK Plastering logo is a sample for this business. Pressing it again replaces the logo already saved
             here, including an older copy of this sample. The agreement uses the full logo. The dashboard uses a smaller
-            mark of the AK. Other businesses are not given it unless their owner uploads their own.
+            mark of the AK. Use the AK Plastering photos adds any sample photos that are not already on this business.
+            Other businesses are not given either unless their owner chooses them.
           </p>
         </>
       ) : (
@@ -140,41 +162,65 @@ function LogoSection({ user, owner }: { user: SessionUser; owner: boolean }) {
   );
 }
 
-function HeroSection({ user, owner }: { user: SessionUser; owner: boolean }) {
+function HeroSection({
+  user,
+  owner,
+  photos,
+}: {
+  user: SessionUser;
+  owner: boolean;
+  photos: Array<{ id: string; caption: string; updatedAt: string }>;
+}) {
   return (
     <section className="card grid gap-4">
-      <h2 className="font-display text-2xl">Dashboard photo</h2>
+      <h2 className="font-display text-2xl">Dashboard photos</h2>
       <p className="text-stone">
-        Optional. It fills the top card on the dashboard. With no photo, that card uses a plaster-coloured gradient.
+        Optional. The top card on the dashboard shows a different photo each visit, with a dark overlay so the greeting
+        stays readable. With no photo, that card uses a plaster-coloured gradient.
       </p>
-      {user.branding.hasHero ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
-          src={deskHeroSrc(user.branding.heroUpdatedAt)}
-          alt=""
-          className="max-h-48 w-full rounded-2xl object-cover"
-        />
-      ) : null}
-      {owner ? (
-        <>
-          <InlineForm action={uploadHeroPhoto} className="grid gap-3">
-            <label className="field">
-              Upload a photo
-              <span>PNG, JPG, or WebP. Up to 2 MB.</span>
-              <input name="hero" type="file" accept="image/png,image/jpeg,image/webp" required />
-            </label>
-            <SubmitButton>Save photo</SubmitButton>
-          </InlineForm>
-          {user.branding.hasHero ? (
-            <form action={removeHeroPhoto}>
-              <button className="btn btn-danger" type="submit">
-                Remove photo
-              </button>
-            </form>
-          ) : null}
-        </>
+      {photos.length > 0 ? (
+        <ul className="grid gap-3">
+          {photos.map((photo) => (
+            <li key={photo.id} className="grid gap-2">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={deskHeroSrc(photo.id, photo.updatedAt)}
+                alt={photo.caption || `${user.businessName} dashboard photo`}
+                className="max-h-40 w-full rounded-2xl object-cover"
+              />
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <p className="text-sm font-bold text-stone">{photo.caption || "No caption"}</p>
+                {owner ? (
+                  <form action={removeHeroPhoto}>
+                    <input type="hidden" name="photoId" value={photo.id} />
+                    <button className="btn btn-danger" type="submit">
+                      Remove
+                    </button>
+                  </form>
+                ) : null}
+              </div>
+            </li>
+          ))}
+        </ul>
       ) : (
-        <p className="font-bold">Only the owner can change the photo.</p>
+        <p className="text-stone">No photos yet.</p>
+      )}
+      {owner ? (
+        <InlineForm action={uploadHeroPhoto} className="grid gap-3">
+          <label className="field">
+            Add photos
+            <span>PNG, JPG, or WebP. Up to 6 at a time, 2 MB each. You can keep 12.</span>
+            <input name="hero" type="file" accept="image/png,image/jpeg,image/webp" multiple required />
+          </label>
+          <label className="field">
+            Caption
+            <span>Optional. Shown as a small label on the photo.</span>
+            <input name="caption" maxLength={80} placeholder="Recent work" />
+          </label>
+          <SubmitButton>Add photos</SubmitButton>
+        </InlineForm>
+      ) : (
+        <p className="font-bold">Only the owner can change the photos.</p>
       )}
     </section>
   );

@@ -17,8 +17,6 @@ export type BusinessBranding = BusinessProfile & {
   logoUpdatedAt: string | null;
   hasMark: boolean;
   markUpdatedAt: string | null;
-  hasHero: boolean;
-  heroUpdatedAt: string | null;
   accent: string;
   accentColour: string;
   accentInk: string;
@@ -30,8 +28,6 @@ export type BrandingRow = BusinessProfile & {
   logoUpdatedAt: Date | string | null;
   markMime: string | null;
   markUpdatedAt: Date | string | null;
-  heroMime: string | null;
-  heroUpdatedAt: Date | string | null;
 };
 
 type FormParse<T> = { ok: true; data: T } | { ok: false; error: string };
@@ -113,8 +109,6 @@ export function toBranding(row: BrandingRow): BusinessBranding {
     row.logoUpdatedAt instanceof Date ? row.logoUpdatedAt.toISOString() : row.logoUpdatedAt;
   const markUpdatedAt =
     row.markUpdatedAt instanceof Date ? row.markUpdatedAt.toISOString() : row.markUpdatedAt;
-  const heroUpdatedAt =
-    row.heroUpdatedAt instanceof Date ? row.heroUpdatedAt.toISOString() : row.heroUpdatedAt;
   const accentColour = resolveAccent(row.accent);
   return {
     name: row.name,
@@ -127,8 +121,6 @@ export function toBranding(row: BrandingRow): BusinessBranding {
     logoUpdatedAt: row.logoMime ? logoUpdatedAt : null,
     hasMark: Boolean(row.markMime),
     markUpdatedAt: row.markMime ? markUpdatedAt : null,
-    hasHero: Boolean(row.heroMime),
-    heroUpdatedAt: row.heroMime ? heroUpdatedAt : null,
     accent: row.accent,
     accentColour,
     accentInk: accentInk(accentColour),
@@ -169,9 +161,9 @@ export function deskSmallLogoSrc(
   return null;
 }
 
-export function deskHeroSrc(heroUpdatedAt: string | null): string {
-  const version = heroUpdatedAt ? `?v=${encodeURIComponent(heroUpdatedAt)}` : "";
-  return `/branding/hero${version}`;
+export function deskHeroSrc(photoId: string, updatedAt: string | null): string {
+  const version = updatedAt ? `?v=${encodeURIComponent(updatedAt)}` : "";
+  return `/branding/hero/${encodeURIComponent(photoId)}${version}`;
 }
 
 export type CustomerLetterhead = {

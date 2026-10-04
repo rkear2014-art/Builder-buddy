@@ -1,9 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { useSyncExternalStore } from "react";
+import { useEffect, useSyncExternalStore } from "react";
 import type { JobStatus } from "@/lib/constants";
 import type { GlanceCard, GlanceListRow, GlancePage } from "@/lib/glance";
+import { HERO_VISIT_COOKIE } from "@/lib/heroes";
 import { formatPence } from "@/lib/money";
 import { StatusBadge } from "@/components/status-badge";
 
@@ -70,9 +71,13 @@ export function GlanceBoard({ data }: { data: GlancePage }) {
 
 function Hero({ data }: { data: GlancePage }) {
   const accent = data.accentColour;
+  useEffect(() => {
+    if (!data.heroId) return;
+    document.cookie = `${HERO_VISIT_COOKIE}=${encodeURIComponent(data.heroId)}; Path=/; Max-Age=31536000; SameSite=Lax`;
+  }, [data.heroId]);
   return (
     <section
-      className="relative overflow-hidden rounded-[1.6rem] text-white shadow-sm"
+      className={`relative overflow-hidden rounded-[1.6rem] text-white shadow-sm ${data.heroSrc ? "min-h-80" : ""}`}
       style={{
         background: data.heroSrc
           ? "#12161c"
@@ -87,7 +92,7 @@ function Hero({ data }: { data: GlancePage }) {
         className="absolute inset-0"
         style={{
           background: data.heroSrc
-            ? "linear-gradient(100deg, rgba(12,16,22,0.94) 0%, rgba(12,16,22,0.78) 46%, rgba(12,16,22,0.28) 100%)"
+            ? "linear-gradient(105deg, rgba(8,10,14,0.92) 0%, rgba(8,10,14,0.78) 42%, rgba(8,10,14,0.55) 100%)"
             : "linear-gradient(100deg, rgba(12,16,22,0.2) 0%, rgba(12,16,22,0) 70%)",
         }}
       />
@@ -98,7 +103,7 @@ function Hero({ data }: { data: GlancePage }) {
         </div>
       ) : null}
       <div
-        className={`relative z-10 px-5 pb-5 pt-6 sm:px-7 sm:pt-7 ${data.logoSrc && !data.heroSrc ? "sm:pr-44" : "max-w-xl"}`}
+        className={`relative z-10 px-5 pb-5 pt-6 sm:px-7 sm:pt-7 ${data.logoSrc && !data.heroSrc ? "sm:pr-44" : "max-w-xl"} ${data.heroSrc ? "drop-shadow-md" : ""}`}
       >
         <p className="text-xs font-extrabold tracking-wide" style={{ color: `color-mix(in srgb, ${accent} 58%, white)` }}>
           {data.eyebrow}
@@ -107,7 +112,7 @@ function Hero({ data }: { data: GlancePage }) {
           {data.greeting}
           <span style={{ color: `color-mix(in srgb, ${accent} 58%, white)` }}>.</span>
         </h1>
-        <p className="mt-3 text-base text-white/85 sm:text-lg">{data.summary}</p>
+        <p className="mt-3 text-base text-white/90 sm:text-lg">{data.summary}</p>
         {data.chips.length > 0 ? (
           <ul className="mt-4 flex flex-wrap gap-2">
             {data.chips.map((chip) => (
@@ -116,6 +121,11 @@ function Hero({ data }: { data: GlancePage }) {
               </li>
             ))}
           </ul>
+        ) : null}
+        {data.heroCaption ? (
+          <p className="mt-4 inline-flex rounded-full bg-black/55 px-3 py-1 text-xs font-extrabold tracking-wide text-white ring-1 ring-white/30">
+            {data.heroCaption}
+          </p>
         ) : null}
       </div>
       <div className="relative z-10 h-1.5" style={{ background: accent }} />

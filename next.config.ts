@@ -3,11 +3,20 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   poweredByHeader: false,
   outputFileTracingIncludes: {
-    "/*": ["./src/fixtures/ak-plastering-logo.webp", "./src/fixtures/ak-plastering-mark.webp"],
+    "/*": [
+      "./src/fixtures/ak-plastering-logo.webp",
+      "./src/fixtures/ak-plastering-mark.webp",
+      "./src/fixtures/ak-heroes/ak-flats.webp",
+      "./src/fixtures/ak-heroes/ak-house-front.webp",
+      "./src/fixtures/ak-heroes/ak-house-side.webp",
+      "./src/fixtures/ak-heroes/ak-vans.webp",
+      "./src/fixtures/ak-heroes/ak-extension.webp",
+      "./src/fixtures/ak-heroes/ak-living-room.webp",
+    ],
   },
   experimental: {
     serverActions: {
-      bodySizeLimit: "3mb",
+      bodySizeLimit: "12mb",
     },
   },
   async headers() {

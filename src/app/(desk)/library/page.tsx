@@ -2,7 +2,7 @@ import { TRADES } from "@/lib/constants";
 import { formatPence } from "@/lib/money";
 import { PLASTERING_STARTER_MATERIALS, PLASTERING_STARTER_TEMPLATES } from "@/lib/trade-starters";
 import { addTemplateItem, createSavedItem, createTemplate, deleteSavedItem, deleteTemplate } from "@/server/actions/library";
-import { saveStarterItem, saveStarterTemplate } from "@/server/actions/starters";
+import { loadPlasteringStarters, saveStarterItem, saveStarterTemplate } from "@/server/actions/starters";
 import { getLibrary, requireUser } from "@/server/dal";
 import { InlineForm } from "@/components/inline-form";
 import { SubmitButton } from "@/components/submit-button";
@@ -16,22 +16,38 @@ function Price({ pence }: { pence: number | null }) {
   return <span>{pence == null ? "No price" : formatPence(pence)}</span>;
 }
 
+function countParam(value: string | undefined): number {
+  if (!value || !/^\d{1,2}$/.test(value)) return 0;
+  return Number(value);
+}
+
+function libraryNotice(notice: string | undefined, added: string | undefined, renamed: string | undefined): string | null {
+  if (notice === "saved") return "Saved into your library. Set a price when you add it to a job, or leave it blank.";
+  if (notice === "already") return "That is already in your library.";
+  if (notice === "missing") return "That starter list could not be found.";
+  if (notice !== "starters") return null;
+  const addedCount = countParam(added);
+  const renamedCount = countParam(renamed);
+  if (addedCount === 0 && renamedCount === 0) {
+    return "Your library already has these plastering lists. Nothing new was added.";
+  }
+  const parts: string[] = [];
+  if (addedCount === 1) parts.push("Added 1 plastering list. Prices are blank.");
+  else if (addedCount > 1) parts.push(`Added ${addedCount} plastering lists. Prices are blank.`);
+  if (renamedCount === 1) parts.push("Updated 1 older name so it is not listed twice.");
+  else if (renamedCount > 1) parts.push(`Updated ${renamedCount} older names so they are not listed twice.`);
+  return parts.join(" ");
+}
+
 export default async function LibraryPage({
   searchParams,
 }: {
-  searchParams: Promise<{ notice?: string }>;
+  searchParams: Promise<{ notice?: string; added?: string; renamed?: string }>;
 }) {
   const user = await requireUser();
   const library = await getLibrary(user.businessId);
-  const { notice } = await searchParams;
-  const noticeText =
-    notice === "saved"
-      ? "Saved into your library. Set a price when you add it to a job, or leave it blank."
-      : notice === "already"
-        ? "That is already in your library."
-        : notice === "missing"
-          ? "That starter list could not be found."
-          : null;
+  const { notice, added, renamed } = await searchParams;
+  const noticeText = libraryNotice(notice, added, renamed);
 
   return (
     <div className="grid gap-6">
@@ -42,10 +58,18 @@ export default async function LibraryPage({
       {noticeText ? <p className="card font-bold">{noticeText}</p> : null}
 
       <section className="grid gap-3">
-        <h2 className="font-display text-3xl">Plastering starters</h2>
+        <div className="flex flex-wrap items-end justify-between gap-3">
+          <h2 className="font-display text-3xl">Plastering starters</h2>
+          <form action={loadPlasteringStarters}>
+            <button className="btn btn-secondary" type="submit">
+              Load plastering starter lists
+            </button>
+          </form>
+        </div>
         <p className="text-stone">
-          These lists are built in for every business that does plastering. Prices are blank. Saving one copies it into
-          your library, where you can use it on a plastering job.
+          These lists are built in for every plastering business. Prices are blank, and each one has a short description
+          the customer can read on the sign-off page. Load plastering starter lists adds only the ones missing from
+          your library. A list you already saved under an older name is kept, and that name is brought up to date.
         </p>
         {PLASTERING_STARTER_TEMPLATES.map((starter) => (
           <article key={starter.id} className="card grid gap-3">
@@ -53,6 +77,7 @@ export default async function LibraryPage({
               <div>
                 <p className="text-sm font-bold text-stone">{starter.trade}</p>
                 <h3 className="font-display text-2xl">{starter.name}</h3>
+                <p className="mt-1 text-stone">{starter.description}</p>
               </div>
               <form action={saveStarterTemplate}>
                 <input type="hidden" name="starterId" value={starter.id} />
@@ -214,7 +239,7 @@ export default async function LibraryPage({
           <InlineForm action={createTemplate} className="mt-3 grid gap-3">
             <label className="field">
               Name
-              <input name="name" required placeholder="Skim a room" />
+              <input name="name" required placeholder="Skimming for a smooth finish" />
             </label>
             <label className="field">
               Trade
