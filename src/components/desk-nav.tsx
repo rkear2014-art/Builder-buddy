@@ -23,7 +23,7 @@ export function DeskNav({ variant }: { variant: "side" | "tab" }) {
   const className =
     variant === "side"
       ? "hidden flex-col gap-2 p-4 md:flex"
-      : "tab-nav fixed inset-x-0 bottom-0 z-20 grid grid-cols-4 border-t border-line bg-card md:hidden";
+      : "tab-nav fixed inset-x-0 bottom-0 z-20 grid grid-cols-4 border-t border-line bg-card sm:hidden";
 
   return (
     <nav className={className} aria-label="Main">

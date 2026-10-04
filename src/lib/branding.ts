@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { isWellFormedShareToken } from "./access";
+import { accentInk, resolveAccent } from "./accent";
 import { tenantWhere } from "./tenancy";
 
 export type BusinessProfile = {
@@ -14,11 +15,19 @@ export type BusinessProfile = {
 export type BusinessBranding = BusinessProfile & {
   hasLogo: boolean;
   logoUpdatedAt: string | null;
+  hasHero: boolean;
+  heroUpdatedAt: string | null;
+  accent: string;
+  accentColour: string;
+  accentInk: string;
 };
 
 export type BrandingRow = BusinessProfile & {
+  accent: string;
   logoMime: string | null;
   logoUpdatedAt: Date | string | null;
+  heroMime: string | null;
+  heroUpdatedAt: Date | string | null;
 };
 
 type FormParse<T> = { ok: true; data: T } | { ok: false; error: string };
@@ -97,9 +106,10 @@ export function parseBusinessProfile(formData: FormData): FormParse<BusinessProf
 
 export function toBranding(row: BrandingRow): BusinessBranding {
   const logoUpdatedAt =
-    row.logoUpdatedAt instanceof Date
-      ? row.logoUpdatedAt.toISOString()
-      : row.logoUpdatedAt;
+    row.logoUpdatedAt instanceof Date ? row.logoUpdatedAt.toISOString() : row.logoUpdatedAt;
+  const heroUpdatedAt =
+    row.heroUpdatedAt instanceof Date ? row.heroUpdatedAt.toISOString() : row.heroUpdatedAt;
+  const accentColour = resolveAccent(row.accent);
   return {
     name: row.name,
     phone: row.phone,
@@ -109,6 +119,11 @@ export function toBranding(row: BrandingRow): BusinessBranding {
     tagline: row.tagline,
     hasLogo: Boolean(row.logoMime),
     logoUpdatedAt: row.logoMime ? logoUpdatedAt : null,
+    hasHero: Boolean(row.heroMime),
+    heroUpdatedAt: row.heroMime ? heroUpdatedAt : null,
+    accent: row.accent,
+    accentColour,
+    accentInk: accentInk(accentColour),
   };
 }
 
@@ -130,6 +145,11 @@ export function customerLogoSrc(token: string, hasLogo: boolean, logoUpdatedAt: 
 export function deskLogoSrc(logoUpdatedAt: string | null): string {
   const version = logoUpdatedAt ? `?v=${encodeURIComponent(logoUpdatedAt)}` : "";
   return `/branding/logo${version}`;
+}
+
+export function deskHeroSrc(heroUpdatedAt: string | null): string {
+  const version = heroUpdatedAt ? `?v=${encodeURIComponent(heroUpdatedAt)}` : "";
+  return `/branding/hero${version}`;
 }
 
 export type CustomerLetterhead = {

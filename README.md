@@ -21,7 +21,8 @@ Each business is its own tenant. Jobs, customer details, materials, saved items,
 - Save items and templates per trade, and drop them onto a job.
 - On a plastering job, add a built-in starter list (skim, dry lining, rendering, screeding, covering Artex, and the other common plastering jobs). Prices are left blank. Any business can copy a starter into its own library. The lists are not tied to one company.
 - Send an unguessable link. The customer sees the work, materials, and prices, then signs. The signature, name, and time are stored. Later edits do not change the signed copy.
-- Put an optional logo and letterhead (phone, email, address, website, tagline) on the customer agreement. The owner sets these on **Business**, from the header. With no logo, the desk keeps the Builder Buddy mark and the agreement shows the business name only. The home-screen icon stays Builder Buddy.
+- Open on a dashboard for this business: today, tomorrow, agreements waiting for a signature, follow-ups, and jobs added in the last day, plus this week, this month’s priced work, and recent jobs. **Hide £** is remembered on this device. There is no invoice list and no “quotes sent” list.
+- Put an optional logo, dashboard photo, accent colour, and letterhead (phone, email, address, website, tagline) on the business. The owner sets these on **Business**. A new logo suggests a colour when none has been chosen. With no photo, the dashboard uses a plaster-coloured gradient. With no logo, the agreement shows the business name only. The home-screen icon stays Builder Buddy.
 - Print the agreement, or use the browser’s “Save as PDF”.
 
 Internal notes and your costs never appear on the customer page.

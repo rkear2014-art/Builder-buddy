@@ -28,7 +28,7 @@ async function clearAppCaches(): Promise<void> {
   }
 }
 
-export function LogoutButton() {
+export function LogoutButton({ compact = false }: { compact?: boolean }) {
   const [pending, setPending] = useState(false);
 
   return (
@@ -41,7 +41,11 @@ export function LogoutButton() {
         void clearAppCaches().then(() => logout());
       }}
     >
-      <button className="btn btn-secondary !min-h-12" type="submit" disabled={pending}>
+      <button
+        className={compact ? "rounded-full px-3 py-2 text-sm font-bold text-white/80 hover:bg-white/10" : "btn btn-secondary !min-h-12"}
+        type="submit"
+        disabled={pending}
+      >
         Log out
       </button>
     </form>

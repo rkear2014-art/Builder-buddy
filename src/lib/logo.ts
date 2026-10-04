@@ -2,6 +2,7 @@ import sharp from "sharp";
 
 export const MAX_LOGO_UPLOAD_BYTES = 2 * 1024 * 1024;
 export const MAX_LOGO_EDGE = 960;
+export const MAX_HERO_EDGE = 1400;
 
 const PNG_SIGNATURE = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];
 const JPEG_SIGNATURE = [0xff, 0xd8, 0xff];
@@ -44,14 +45,27 @@ export function logoUploadError(bytes: Uint8Array): string | null {
 export async function prepareLogo(
   bytes: Uint8Array,
 ): Promise<{ bytes: Uint8Array; mime: "image/webp" } | { error: string }> {
+  return preparePicture(bytes, MAX_LOGO_EDGE);
+}
+
+export async function prepareHero(
+  bytes: Uint8Array,
+): Promise<{ bytes: Uint8Array; mime: "image/webp" } | { error: string }> {
+  return preparePicture(bytes, MAX_HERO_EDGE);
+}
+
+async function preparePicture(
+  bytes: Uint8Array,
+  edge: number,
+): Promise<{ bytes: Uint8Array; mime: "image/webp" } | { error: string }> {
   const error = logoUploadError(bytes);
   if (error) return { error };
   try {
     const output = await sharp(bytes, { limitInputPixels: 40_000_000, sequentialRead: true })
       .rotate()
       .resize({
-        width: MAX_LOGO_EDGE,
-        height: MAX_LOGO_EDGE,
+        width: edge,
+        height: edge,
         fit: "inside",
         withoutEnlargement: true,
       })
