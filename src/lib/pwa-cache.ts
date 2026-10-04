@@ -35,6 +35,7 @@ export const decideCacheSource = `function decideCache(input) {
   let pathname = input.pathname;
   if (pathname.length > 1 && pathname.endsWith("/")) pathname = pathname.slice(0, -1);
   if (pathname === "/sign" || pathname.startsWith("/sign/")) return "network-only";
+  if (pathname === "/invoice" || pathname.startsWith("/invoice/")) return "network-only";
   if (pathname.startsWith("/api/")) return "network-only";
   if (input.rsc === "1" || input.prefetch === "1") return "network-only";
   if (

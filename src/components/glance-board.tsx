@@ -54,7 +54,7 @@ export function GlanceBoard({ data }: { data: GlancePage }) {
         </div>
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {data.cards.map((card) => (
-            <GlanceCardView key={card.id} card={card} accent={accent} />
+            <GlanceCardView key={card.id} card={card} accent={accent} hideMoney={hideMoney} />
           ))}
         </div>
       </section>
@@ -133,7 +133,7 @@ function Hero({ data }: { data: GlancePage }) {
   );
 }
 
-function GlanceCardView({ card, accent }: { card: GlanceCard; accent: string }) {
+function GlanceCardView({ card, accent, hideMoney }: { card: GlanceCard; accent: string; hideMoney: boolean }) {
   return (
     <article id={card.id === "chase" ? "to-chase" : undefined} className="flex flex-col rounded-3xl bg-white p-4 shadow-sm">
       <div className="flex items-start justify-between gap-3">
@@ -143,10 +143,14 @@ function GlanceCardView({ card, accent }: { card: GlanceCard; accent: string }) 
         </div>
         <p className="text-right text-[0.7rem] font-extrabold tracking-wide text-stone">{card.meta}</p>
       </div>
-      <p className="mt-3 font-display text-4xl leading-none">{card.value}</p>
+      <p className="mt-3 font-display text-4xl leading-none">{hideMoney && card.moneyPence != null ? "Hidden" : card.value}</p>
       <p className="mt-1 text-sm text-stone">{card.sub}</p>
       <div className="mt-3 grid gap-2 border-t border-line pt-3">
-        {card.rows.length === 0 ? <p className="text-sm text-stone">{card.empty}</p> : card.rows.map((row) => <CardRow key={row.id} row={row} accent={accent} />)}
+        {card.rows.length === 0 ? (
+          card.moneyPence ? null : <p className="text-sm text-stone">{card.empty}</p>
+        ) : (
+          card.rows.map((row) => <CardRow key={row.id} row={row} accent={accent} />)
+        )}
       </div>
       <Link href={card.href} className="mt-auto pt-3 text-right text-sm font-extrabold" style={{ color: accent }}>
         Open →

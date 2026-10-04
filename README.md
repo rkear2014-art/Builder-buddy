@@ -21,10 +21,14 @@ Each business is its own tenant. Jobs, customer details, materials, saved items,
 - Save items and templates, and add them to a job from a chooser of plastering work. The owner can set a photo on each tile from Library.
 - On a plastering job, pick a built-in starter when booking in, or add one later. The lists follow a plasterer’s usual services (skim, hardwall, dot and dab, stud walls, Artex, wire mesh, repairs, lime, tape and jointing, cornices, coving, rendering, and screeding). Each list has a short description the customer reads on the sign-off page, and a starting price from Travis Perkins and other UK merchant websites in October 2026. Any plastering business can copy them into its own library and change the prices. Load plastering starter lists adds only the ones that are missing, updates an older saved name instead of making a second copy, and fills a blank price without changing a price already set.
 - Send an unguessable link. The customer sees a quotation: a cover, a short letter, the price, and a contract for the works, then signs. The signature, name, and time are stored. Later edits do not change the signed copy. VAT, any deposit, and whether each price is shown are frozen with that copy.
-- Open on a dashboard for this business: today, tomorrow, agreements waiting for a signature, follow-ups, and jobs added in the last day, plus this week, this month’s priced work, and recent jobs. **Hide £** is remembered on this device. There is no invoice list and no “quotes sent” list.
+- Open on a dashboard for this business: today, tomorrow, agreements waiting for a signature, follow-ups, and jobs added in the last day, plus this week, this month’s priced work, and recent jobs. **Hide £** is remembered on this device and also hides invoice totals on the dashboard and the Invoices list. There is no “quotes sent” list. Quotes and invoices each have their own list.
+- Raise an invoice from a job. It copies the quote lines, can show a deposit already taken, and uses the next number for this business (INV-0001). Record cash, bank transfer, or card. Overdue is worked out from the due date.
+- Each quote has a number (Q-0001) and a valid until date. After that date the customer link says Expired and cannot be signed. When the customer opens the link, the job shows a Viewed tick. Your own signed-in views are not counted.
 - Put an optional logo, dashboard photos, accent colour, and letterhead (phone, email, address, website, tagline) on the business. The owner sets these on **Business**. A new logo suggests a colour when none has been chosen. The AK Plastering sample can be applied again to replace an older copy: the agreement keeps the full logo, and the dashboard uses a smaller mark on a light tile. A business can keep several dashboard photos. Each visit shows a different one, with a dark overlay so the greeting stays readable, and an optional caption. Use the AK Plastering photos adds any sample photos that are not already stored. With no photo, the dashboard uses a plaster-coloured gradient. With no logo, the agreement shows the business name only. The home-screen icon stays Builder Buddy.
 - On Business, the owner can write the covering letter and extra badges, such as Fully insured, and turn VAT on with a rate. VAT stays off until then. A job can ask for a deposit, or show only the overall price.
-- On a job, tick a survey checklist, choose a deposit or no deposit, and open the quote in email, WhatsApp, or text. Nothing is sent until you send it from your own app. You can hide prices, print a job sheet with no prices, and revoke the customer link.
+- On a job, tick a survey checklist, choose a deposit or no deposit, and open the quote in email, WhatsApp, or text. Nothing is sent until you send it from your own app, unless branded email is switched on. You can hide prices, print a job sheet with no prices, and revoke the customer link.
+- Add before, during, and after photos on a job. They are made smaller on the tablet before they are saved. The job sheet shows them, and you can turn on a before-and-after section on the customer link. Download or share a photo for Facebook or your website.
+- On Business, add a review link, public liability, a workmanship guarantee, and membership badges. They show on quotes, invoices, and customer links. When a job is complete, or an invoice is paid, Ask for a review opens your own email, WhatsApp, or text with that link.
 - Print the quotation, or use the browser’s “Save as PDF”. Each section starts on its own page.
 
 Internal notes and your costs never appear on the customer page.
@@ -45,7 +49,10 @@ Fill in `.env`:
 | `DATABASE_URL` | Yes | Postgres URL, for example `postgresql://USER:PASSWORD@HOST:5432/builder_buddy`. Use a `postgres://` address. A `prisma+postgres://` address is only for the Prisma CLI |
 | `DIRECT_URL` | No | Direct Postgres URL for migrations when `DATABASE_URL` goes through a pool |
 | `AUTH_SECRET` | Yes | At least 32 characters. Create one with `openssl rand -base64 32` |
-| `APP_ORIGIN` | No | Public site URL used when copying a customer link, such as `https://jobs.example.com` |
+| `APP_BASE_URL` | No | Public site URL used in every customer link and email, such as `https://app.plastererinredditch.co.uk`. No trailing slash |
+| `APP_ORIGIN` | No | Older name for the same URL. Used only when `APP_BASE_URL` is unset |
+| `RESEND_API_KEY` | No | Resend API key. Leave unset to keep opening your own email app |
+| `RESEND_FROM_EMAIL` | No | From address on a domain verified in Resend, such as `quotes@plastererinredditch.co.uk` |
 | `SHOW_DEMO_LOGIN` | No | Set to `true` only on a private demo to show the seeded password on the sign-in page |
 | `SEED_DEMO_PASSWORD` | No | Password for the seeded demo user. Defaults to `Plaster-tea-1` |
 | `SETUP_TOKEN` | No | Extra code for the one-time account page. Leave unset to set up with no code |
@@ -94,13 +101,42 @@ A new email becomes the owner of a new business and closes first-account setup. 
 
 The app is ready for Vercel with a hosted Postgres database (Neon, Supabase, RDS, or similar).
 
-1. Set `DATABASE_URL` to the `postgres://` connection string (pooled is fine for the app). Set `DIRECT_URL` to the direct string when you have one, so migrations do not go through the pool. Also set `AUTH_SECRET` and `APP_ORIGIN`.
-2. The build command applies the migrations and then checks that this app can read `SetupLock`, before it builds the site: `prisma generate && prisma migrate deploy && tsx scripts/check-database.ts && next build`
-3. Leave `SHOW_DEMO_LOGIN` unset in production, and change or remove the demo password before real customer details go in.
+1. Set `DATABASE_URL` to the `postgres://` connection string (pooled is fine for the app). Set `DIRECT_URL` to the direct string when you have one, so migrations do not go through the pool. Also set `AUTH_SECRET`. Set `APP_BASE_URL` to the public address once you have one (`APP_ORIGIN` still works if that is what you already set).
+
+### Your own web address
+
+Customer links, share messages, and emails use `APP_BASE_URL`. Until that is set, they use the address of the request.
+
+To use `app.plastererinredditch.co.uk`:
+
+1. In the Vercel project, open **Settings → Domains** and add `app.plastererinredditch.co.uk`.
+2. At the DNS host for `plastererinredditch.co.uk`, add this record:
+
+   | Type | Name | Value |
+   | --- | --- | --- |
+   | CNAME | `app` | `cname.vercel-dns.com` |
+
+3. Wait until Vercel says the domain is valid, then set `APP_BASE_URL` to `https://app.plastererinredditch.co.uk` (no trailing slash) and redeploy.
+
+### Branded email
+
+Quotes, invoices, customer links, and review requests can be sent as HTML email with the logo, colour, and badges. Replies go to the business email, and the from name is the business name on the Business page.
+
+Leave `RESEND_API_KEY` unset and the app keeps opening your own email app instead. The branded option is hidden.
+
+1. In [Resend](https://resend.com), create an API key and add it as `RESEND_API_KEY` on Vercel.
+2. In Resend, add the sending domain (for example `plastererinredditch.co.uk`).
+3. Resend shows the DNS records to publish, including SPF and DKIM. Add those records exactly as Resend lists them. The DKIM host name is the one Resend gives you.
+4. Set `RESEND_FROM_EMAIL` to an address on that domain, such as `quotes@plastererinredditch.co.uk`.
+5. On **Business**, use **Send test email**. It goes to the business email.
+
+The build command applies the migrations and then checks that this app can read `SetupLock`, before it builds the site: `prisma generate && prisma migrate deploy && tsx scripts/check-database.ts && next build`
+
+Leave `SHOW_DEMO_LOGIN` unset in production, and change or remove the demo password before real customer details go in.
 
 If the database cannot be read, the sign-in and first-account pages still open. They explain the problem instead of showing a server error. Create your account appears when the database is empty and the setup lock is free.
 
-Customer links look like `/sign/<token>`. Treat them as private: anyone with the link can view and sign that one job. Use “New link” on an unsigned job if the wrong person received it. After a signature, the link stays so the customer can reopen the agreed copy.
+Customer links look like `/sign/<token>`. Invoice links look like `/invoice/<token>`. Treat them as private: anyone with the link can view that one job or invoice. Use “New link” on an unsigned job if the wrong person received it. After a signature, the quote link stays so the customer can reopen the agreed copy.
 
 ## Install on a phone or tablet
 

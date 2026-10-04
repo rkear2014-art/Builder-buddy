@@ -1,3 +1,13 @@
+export function invoiceMessage(input: { customerName: string; businessName: string; url: string }): string {
+  const customer = input.customerName.trim() || "there";
+  return `Hello ${customer},\n\nHere is your invoice from ${input.businessName}:\n${input.url}\n\nThe bank details are on the invoice if you are paying by transfer.`;
+}
+
+export function reviewMessage(input: { customerName: string; businessName: string; url: string }): string {
+  const customer = input.customerName.trim() || "there";
+  return `Hello ${customer},\n\nThank you for choosing ${input.businessName}. If you were happy with the work, a short review would mean a lot:\n${input.url}`;
+}
+
 export function quoteMessage(input: { customerName: string; businessName: string; url: string }): string {
   const customer = input.customerName.trim() || "there";
   return `Hello ${customer},\n\nHere is your quotation from ${input.businessName}:\n${input.url}\n\nPlease read it, and sign on that page if you would like us to go ahead.`;

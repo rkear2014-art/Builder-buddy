@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getShareView } from "@/server/dal";
+import { CustomerPhotos } from "@/components/customer-photos";
 import { QuotationDocument } from "@/components/quotation-document";
 import { SignForm } from "@/components/sign-form";
 
@@ -36,7 +37,9 @@ export default async function SignPage({ params }: { params: Promise<{ token: st
         <>
           <p className="mb-4 text-lg">
             {share.kind === "pending"
-              ? "Please read the quotation. Sign at the end if you agree."
+              ? quote.expired
+                ? "This quotation has passed its valid until date."
+                : "Please read the quotation. Sign at the end if you agree."
               : "Thank you. This is the copy you agreed."}
           </p>
           <QuotationDocument
@@ -55,7 +58,14 @@ export default async function SignPage({ params }: { params: Promise<{ token: st
               Print or save as PDF
             </Link>
           </div>
-          {share.kind === "pending" ? (
+          <CustomerPhotos photos={view.photos} />
+          {share.kind === "pending" && quote.expired ? (
+            <div className="card mt-4">
+              <h2 className="font-display text-3xl">Expired</h2>
+              <p className="mt-2">This quotation is no longer valid. Please ask {share.agreement.businessName} for a new one.</p>
+            </div>
+          ) : null}
+          {share.kind === "pending" && !quote.expired ? (
             <div className="card mt-4">
               <SignForm token={token} />
             </div>

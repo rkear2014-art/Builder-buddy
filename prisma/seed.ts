@@ -115,6 +115,7 @@ async function main() {
   }
 
   const today = londonToday();
+  let nextSeedQuote = 1;
   const signature = sampleSignatureDataUrl();
 
   const patel = await prisma.job.create({
@@ -132,6 +133,8 @@ async function main() {
       timeSlot: "morning",
       status: "BOOKED",
       shareToken: createShareToken(),
+      quoteNumber: nextSeedQuote++,
+      validUntil: isoToUtcDate(addDays(today, 30)),
       materials: {
         create: plasterRoom.map((item, index) => ({
           ...item,
@@ -158,6 +161,8 @@ async function main() {
       timeSlot: "afternoon",
       status: "ENQUIRY",
       shareToken: createShareToken(),
+      quoteNumber: nextSeedQuote++,
+      validUntil: isoToUtcDate(addDays(today, 30)),
       materials: {
         create: skimQuote.map((item, index) => ({ ...item, businessId, bought: false, sortOrder: index })),
       },
@@ -180,6 +185,8 @@ async function main() {
       timeSlot: "afternoon",
       status: "IN_PROGRESS",
       shareToken: createShareToken(),
+      quoteNumber: nextSeedQuote++,
+      validUntil: isoToUtcDate(addDays(today, 30)),
       materials: {
         create: plasterRoom.map((item, index) => ({ ...item, businessId, bought: true, sortOrder: index })),
       },
@@ -235,6 +242,8 @@ async function main() {
       timeSlot: "all-day",
       status: "COMPLETE",
       shareToken: createShareToken(),
+      quoteNumber: nextSeedQuote++,
+      validUntil: isoToUtcDate(addDays(today, 30)),
       materials: {
         create: repairs.map((item, index) => ({ ...item, businessId, bought: true, sortOrder: index })),
       },
@@ -288,6 +297,8 @@ async function main() {
       timeSlot: "all-day",
       status: "BOOKED",
       shareToken: createShareToken(),
+      quoteNumber: nextSeedQuote++,
+      validUntil: isoToUtcDate(addDays(today, 30)),
     },
   });
 
@@ -306,10 +317,17 @@ async function main() {
       timeSlot: "early",
       status: "ENQUIRY",
       shareToken: createShareToken(),
+      quoteNumber: nextSeedQuote++,
+      validUntil: isoToUtcDate(addDays(today, 30)),
       materials: {
         create: renderPatch.map((item, index) => ({ ...item, businessId, bought: false, sortOrder: index })),
       },
     },
+  });
+
+  await prisma.business.update({
+    where: { id: businessId },
+    data: { nextQuoteNumber: nextSeedQuote },
   });
 
   console.log(`Seeded ${DEMO_EMAIL}. Sample jobs include ${patel.customerName} and two signed agreements.`);

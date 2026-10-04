@@ -3,7 +3,8 @@ import { notFound } from "next/navigation";
 import { slotLabel } from "@/lib/constants";
 import { formatIsoDate } from "@/lib/dates";
 import { surveyForTrade, surveyKeys } from "@/lib/survey";
-import { getJob, requireUser } from "@/server/dal";
+import { PHOTO_STAGE_LABELS } from "@/lib/photos";
+import { getJob, listJobPhotos, requireUser } from "@/server/dal";
 import { PrintButton } from "@/components/print-button";
 
 export const dynamic = "force-dynamic";
@@ -20,6 +21,7 @@ export default async function JobSheetPage({ params }: { params: Promise<{ id: s
   const user = await requireUser();
   const job = await getJob(user.businessId, id);
   if (!job) notFound();
+  const photos = await listJobPhotos(user.businessId, job.id);
   const ticked = new Set(surveyKeys(job.surveyDone));
   const done = surveyForTrade(job.trade).filter((item) => ticked.has(item.key));
 
@@ -67,6 +69,24 @@ export default async function JobSheetPage({ params }: { params: Promise<{ id: s
             <ul className="mt-2 grid gap-1">
               {done.map((item) => (
                 <li key={item.key}>Done · {item.label}</li>
+              ))}
+            </ul>
+          </section>
+        ) : null}
+        {photos.length > 0 ? (
+          <section>
+            <h2 className="font-display text-2xl">Before and after</h2>
+            <ul className="mt-3 grid gap-4 sm:grid-cols-2">
+              {photos.map((photo) => (
+                <li key={photo.id}>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={`/jobs/${job.id}/photos/${photo.id}`}
+                    alt=""
+                    className="aspect-[4/3] w-full rounded-2xl object-cover"
+                  />
+                  <p className="mt-1 font-extrabold">{PHOTO_STAGE_LABELS[photo.stage]}</p>
+                </li>
               ))}
             </ul>
           </section>

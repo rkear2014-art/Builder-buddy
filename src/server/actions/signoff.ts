@@ -4,6 +4,8 @@ import { redirect } from "next/navigation";
 import { isWellFormedShareToken } from "@/lib/access";
 import { keepExistingSignOff, lockAgreement, parseLockedAgreement } from "@/lib/agreement";
 import { isConfigured } from "@/lib/config";
+import { quoteIsExpired } from "@/lib/documents";
+import { londonToday, utcDateToIso } from "@/lib/dates";
 import type { ActionState } from "@/lib/form-state";
 import { acceptedSignature } from "@/lib/signature";
 import { parseSignerName } from "@/lib/validators";
@@ -32,6 +34,9 @@ export async function signAgreement(_state: ActionState, formData: FormData): Pr
     },
   });
   if (!job || !job.shareActive) return { error: "This link is not valid." };
+  if (!job.signOff && quoteIsExpired(utcDateToIso(job.validUntil), londonToday(), false)) {
+    return { error: "This quotation has expired. Ask for a new one." };
+  }
 
   const incoming = lockAgreement(
     {
