@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { getPrisma } from "../server/prisma";
 import { recordsForBusiness, tenantWhere } from "./tenancy";
+import { businessLogoQuery } from "./branding";
 
 describe("business isolation", () => {
   it("refuses a query that is not scoped to a business", () => {
@@ -138,6 +139,31 @@ describe("business isolation", () => {
           false,
         );
         assert.ok(ownerA.id);
+
+        await tx.business.update({
+          where: { id: businessB.id },
+          data: {
+            phone: "07000000000",
+            logoMime: "image/webp",
+            logoBytes: Uint8Array.from([1, 2, 3, 4]),
+            logoUpdatedAt: new Date("2026-10-04T12:00:00.000Z"),
+          },
+        });
+        const logoForA = await tx.business.findFirst({
+          where: businessLogoQuery(businessA.id),
+          select: { logoMime: true, phone: true },
+        });
+        const logoForB = await tx.business.findFirst({
+          where: businessLogoQuery(businessB.id),
+          select: { logoMime: true, phone: true, logoBytes: true },
+        });
+        assert.equal(logoForA?.logoMime ?? null, null);
+        assert.equal(logoForA?.phone ?? "", "");
+        assert.equal(logoForB?.logoMime, "image/webp");
+        assert.equal(logoForB?.phone, "07000000000");
+        assert.ok(logoForB?.logoBytes && logoForB.logoBytes.byteLength > 0);
+        assert.notEqual(businessLogoQuery(businessA.id).id, businessB.id);
+
         throw new Error("ROLLBACK");
       });
     } catch (error) {

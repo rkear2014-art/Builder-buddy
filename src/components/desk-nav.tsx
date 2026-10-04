@@ -4,10 +4,11 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 const items = [
-  { href: "/diary", label: "Diary" },
-  { href: "/jobs", label: "Jobs" },
-  { href: "/jobs/new", label: "Book in" },
-  { href: "/library", label: "Library" },
+  { href: "/diary", label: "Diary", tab: true },
+  { href: "/jobs", label: "Jobs", tab: true },
+  { href: "/jobs/new", label: "Book in", tab: true },
+  { href: "/library", label: "Library", tab: true },
+  { href: "/settings", label: "Business", tab: false },
 ];
 
 function isActive(pathname: string, href: string): boolean {
@@ -18,6 +19,7 @@ function isActive(pathname: string, href: string): boolean {
 
 export function DeskNav({ variant }: { variant: "side" | "tab" }) {
   const pathname = usePathname();
+  const visible = variant === "tab" ? items.filter((item) => item.tab) : items;
   const className =
     variant === "side"
       ? "hidden flex-col gap-2 p-4 md:flex"
@@ -25,7 +27,7 @@ export function DeskNav({ variant }: { variant: "side" | "tab" }) {
 
   return (
     <nav className={className} aria-label="Main">
-      {items.map((item) => {
+      {visible.map((item) => {
         const active = isActive(pathname, item.href);
         return (
           <Link

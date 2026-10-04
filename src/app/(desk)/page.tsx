@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { deskLogoSrc } from "@/lib/branding";
 import { JOB_STATUSES, STATUS_LABELS } from "@/lib/constants";
 import { formatIsoDate, greetingForHour, londonHour } from "@/lib/dates";
 import { getHome, requireUser } from "@/server/dal";
@@ -13,6 +14,16 @@ export default async function HomePage() {
 
   return (
     <div className="grid gap-6">
+      {user.branding.hasLogo ? (
+        <div className="card flex justify-center bg-white py-4">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={deskLogoSrc(user.branding.logoUpdatedAt)}
+            alt={`${user.businessName} logo`}
+            className="brand-logo brand-logo-home"
+          />
+        </div>
+      ) : null}
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <p className="font-bold text-stone">{formatIsoDate(home.today, "long")}</p>
