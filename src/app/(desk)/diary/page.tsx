@@ -18,7 +18,7 @@ export default async function DiaryPage({
   const selected = params.date && isIsoDate(params.date) ? params.date : today;
   const weeks = monthMatrix(selected);
   const week = weekDates(selected);
-  const jobs = await getDiaryJobs(user.id, weeks[0][0], weeks[weeks.length - 1][6]);
+  const jobs = await getDiaryJobs(user.businessId, weeks[0][0], weeks[weeks.length - 1][6]);
   const counts = new Map<string, number>();
   for (const job of jobs) {
     counts.set(job.scheduledDate, (counts.get(job.scheduledDate) ?? 0) + 1);

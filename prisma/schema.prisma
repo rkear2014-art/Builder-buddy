@@ -14,20 +14,50 @@ enum JobStatus {
   COMPLETE
 }
 
+enum BusinessRole {
+  OWNER
+  MEMBER
+}
+
+model Business {
+  id         String             @id @default(cuid())
+  name       String
+  createdAt  DateTime           @default(now())
+  users      User[]
+  jobs       Job[]
+  materials  JobMaterial[]
+  signOffs   SignOff[]
+  templates  MaterialTemplate[]
+  savedItems SavedMaterial[]
+}
+
+/// Single row (id = 1). Once claimed, first-account setup never opens again.
+model SetupLock {
+  id        Int       @id
+  claimed   Boolean   @default(false)
+  claimedAt DateTime?
+}
+
 model User {
   id           String             @id @default(cuid())
   email        String             @unique
   name         String
-  businessName String
   passwordHash String
+  role         BusinessRole       @default(MEMBER)
+  businessId   String
+  business     Business           @relation(fields: [businessId], references: [id], onDelete: Cascade)
   createdAt    DateTime           @default(now())
   jobs         Job[]
   templates    MaterialTemplate[]
   savedItems   SavedMaterial[]
+
+  @@index([businessId])
 }
 
 model Job {
   id            String       @id @default(cuid())
+  businessId    String
+  business      Business     @relation(fields: [businessId], references: [id], onDelete: Cascade)
   userId        String
   user          User         @relation(fields: [userId], references: [id], onDelete: Cascade)
   customerName  String
@@ -47,12 +77,15 @@ model Job {
   signOff       SignOff?
 
   @@index([userId, scheduledDate])
+  @@index([businessId, scheduledDate])
 }
 
 model JobMaterial {
-  id             String  @id @default(cuid())
+  id             String   @id @default(cuid())
+  businessId     String
+  business       Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
   jobId          String
-  job            Job     @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  job            Job      @relation(fields: [jobId], references: [id], onDelete: Cascade)
   name           String
   quantity       Decimal @db.Decimal(10, 2)
   unit           String
@@ -62,28 +95,36 @@ model JobMaterial {
   sortOrder      Int     @default(0)
 
   @@index([jobId])
+  @@index([businessId])
 }
 
 model SignOff {
   id            String   @id @default(cuid())
+  businessId    String
+  business      Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
   jobId         String   @unique
   job           Job      @relation(fields: [jobId], references: [id], onDelete: Cascade)
   signerName    String
   signatureData String   @db.Text
   signedAt      DateTime
   snapshot      Json
+
+  @@index([businessId])
 }
 
 model MaterialTemplate {
-  id        String                 @id @default(cuid())
-  userId    String
-  user      User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id         String                 @id @default(cuid())
+  businessId String
+  business   Business               @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  userId     String
+  user       User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
   name      String
   trade     String
   createdAt DateTime               @default(now())
   items     MaterialTemplateItem[]
 
   @@index([userId, trade])
+  @@index([businessId, trade])
 }
 
 model MaterialTemplateItem {
@@ -102,6 +143,8 @@ model MaterialTemplateItem {
 
 model SavedMaterial {
   id             String   @id @default(cuid())
+  businessId     String
+  business       Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
   userId         String
   user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   trade          String
@@ -111,6 +154,7 @@ model SavedMaterial {
   costPricePence Int?
   createdAt      DateTime @default(now())
 
-  @@unique([userId, trade, name])
+  @@unique([businessId, trade, name])
   @@index([userId, trade])
+  @@index([businessId, trade])
 }

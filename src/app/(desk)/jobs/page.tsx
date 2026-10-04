@@ -16,7 +16,7 @@ export default async function JobsPage({
   const params = await searchParams;
   const status = params.status && isJobStatus(params.status) ? params.status : undefined;
   const query = params.q?.trim() ?? "";
-  const jobs = await listJobs(user.id, { status, query });
+  const jobs = await listJobs(user.businessId, { status, query });
 
   function filterHref(nextStatus?: string) {
     const search = new URLSearchParams();

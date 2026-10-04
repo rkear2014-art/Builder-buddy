@@ -78,5 +78,7 @@ export type SessionUser = {
   id: string;
   email: string;
   name: string;
+  businessId: string;
   businessName: string;
+  role: "OWNER" | "MEMBER";
 };

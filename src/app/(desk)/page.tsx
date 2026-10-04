@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic";
 
 export default async function HomePage() {
   const user = await requireUser();
-  const home = await getHome(user.id);
+  const home = await getHome(user.businessId);
   const firstName = user.name.split(" ")[0] || user.name;
 
   return (

@@ -8,6 +8,7 @@ import {
 import { isIsoDate } from "./dates";
 import { isValidQuantity, normaliseQuantity } from "./materials";
 import { parsePoundsToPence } from "./money";
+import { passwordProblem } from "./password";
 
 export type JobInput = {
   customerName: string;
@@ -137,6 +138,38 @@ export function parseTemplateForm(formData: FormData): FormParse<{ name: string;
   }
   if (!isTrade(trade)) return { ok: false, error: "Choose a trade." };
   return { ok: true, data: { name, trade } };
+}
+
+export type AccountInput = {
+  businessName: string;
+  name: string;
+  email: string;
+  password: string;
+  setupToken: string;
+};
+
+export function parseAccountForm(formData: FormData): FormParse<AccountInput> {
+  const businessName = field(formData, "businessName");
+  const name = field(formData, "name");
+  const email = field(formData, "email").toLowerCase();
+  const password = typeof formData.get("password") === "string" ? String(formData.get("password")) : "";
+  const confirm = typeof formData.get("confirmPassword") === "string" ? String(formData.get("confirmPassword")) : "";
+  const setupToken = typeof formData.get("setupToken") === "string" ? String(formData.get("setupToken")) : "";
+  if (businessName.length < 2 || businessName.length > 80) {
+    return { ok: false, error: "Enter your business name." };
+  }
+  if (name.length < 2 || name.length > 80) {
+    return { ok: false, error: "Enter your name." };
+  }
+  if (!z.email().safeParse(email).success) {
+    return { ok: false, error: "Enter a valid email address." };
+  }
+  const passwordError = passwordProblem(password, email);
+  if (passwordError) return { ok: false, error: passwordError };
+  if (password !== confirm) {
+    return { ok: false, error: "Type the same password in both boxes." };
+  }
+  return { ok: true, data: { businessName, name, email, password, setupToken } };
 }
 
 export function parseSignerName(value: string): FormParse<{ signerName: string }> {

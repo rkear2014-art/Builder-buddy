@@ -18,7 +18,7 @@ describe("fail closed access", () => {
   });
 
   it("never opens the tradesperson app when configuration is missing", () => {
-    for (const pathname of ["/", "/jobs", "/jobs/new", "/diary", "/library", "/login", `/sign/${token}`]) {
+    for (const pathname of ["/", "/jobs", "/jobs/new", "/diary", "/library", "/login", "/setup", `/sign/${token}`]) {
       const decision = decideAccess({ pathname, configured: false, hasValidSession: true });
       assert.deepEqual(decision, { type: "unavailable" }, pathname);
     }
@@ -38,6 +38,16 @@ describe("fail closed access", () => {
     assert.deepEqual(decideAccess({ pathname: "/login", configured: true, hasValidSession: true }), {
       type: "redirect",
       to: "/",
+    });
+    assert.deepEqual(decideAccess({ pathname: "/setup", configured: true, hasValidSession: false }), {
+      type: "next",
+    });
+    assert.deepEqual(decideAccess({ pathname: "/setup", configured: true, hasValidSession: true }), {
+      type: "redirect",
+      to: "/",
+    });
+    assert.deepEqual(decideAccess({ pathname: "/setup", configured: false, hasValidSession: false }), {
+      type: "unavailable",
     });
   });
 
