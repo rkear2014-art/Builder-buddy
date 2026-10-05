@@ -283,7 +283,7 @@ export function buildGlance(input: {
       title: "Today",
       meta: metaDate(today),
       value: String(todayJobs.length),
-      sub: todayJobs.length === 1 ? (visibleTradeLabel(todayJobs[0].trade) ?? "booking") : "bookings",
+      sub: todayJobs.length === 1 ? "booking" : "bookings",
       href: "/diary",
       empty: "Nothing in the diary today.",
       rows: todayJobs.slice(0, 2).map((job) => ({
@@ -298,7 +298,7 @@ export function buildGlance(input: {
       title: "Tomorrow",
       meta: metaDate(tomorrow),
       value: String(tomorrowJobs.length),
-      sub: tomorrowJobs.length === 1 ? (visibleTradeLabel(tomorrowJobs[0].trade) ?? "booking") : "bookings",
+      sub: tomorrowJobs.length === 1 ? "booking" : "bookings",
       href: "/diary",
       empty: "Nothing booked tomorrow.",
       rows: tomorrowJobs.slice(0, 2).map((job) => ({

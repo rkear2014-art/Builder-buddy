@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { LogoutButton } from "@/components/logout-button";
+import { initials } from "@/lib/place";
 import { NavIcon, type NavIconName } from "@/components/nav-icons";
 
 const links: Array<{ href: string; label: string; icon: NavIconName; chase?: boolean }> = [
@@ -54,7 +55,7 @@ export function DeskTopNav({
 
   return (
     <header className="no-print sticky top-0 z-30 bg-[#17171a] text-white">
-      <div className="mx-auto flex max-w-6xl items-center gap-2 px-3 py-2.5">
+      <div className="mx-auto flex max-w-6xl items-center gap-2 px-3 py-2">
         <Link href="/" className="flex min-w-0 items-center gap-2.5">
           {logoSrc ? (
             // eslint-disable-next-line @next/next/no-img-element
@@ -63,13 +64,13 @@ export function DeskTopNav({
               alt=""
               className={
                 logoCompact
-                  ? "h-11 w-11 rounded-full bg-white object-cover p-0.5"
-                  : "h-11 w-11 rounded-full bg-white object-contain p-1"
+                  ? "h-10 w-10 rounded-full bg-white object-cover p-0.5"
+                  : "h-10 w-10 rounded-full bg-white object-contain p-1"
               }
             />
           ) : (
-            <span className="grid h-11 w-11 place-items-center rounded-full bg-white text-xs font-extrabold text-ink">
-              {businessName.slice(0, 2).toUpperCase()}
+            <span className="grid h-10 w-10 place-items-center rounded-full bg-white text-xs font-extrabold text-ink">
+              {initials(businessName)}
             </span>
           )}
           <span className="min-w-0">

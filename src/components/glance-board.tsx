@@ -5,6 +5,7 @@ import { useEffect, useSyncExternalStore } from "react";
 import type { JobStatus } from "@/lib/constants";
 import type { GlanceCard, GlanceListRow, GlancePage } from "@/lib/glance";
 import { HERO_VISIT_COOKIE } from "@/lib/heroes";
+import { initials } from "@/lib/place";
 import { formatPence } from "@/lib/money";
 import { EmptyState } from "@/components/empty-state";
 import { StatusBadge } from "@/components/status-badge";
@@ -49,11 +50,11 @@ export function GlanceBoard({ data }: { data: GlancePage }) {
   const cards = hideEmpty ? data.cards.filter((card) => !cardIsEmpty(card)) : data.cards;
 
   return (
-    <div className="grid gap-3">
+    <div className="grid gap-1.5">
       <Hero data={data} />
       <DeskShortcuts data={data} />
 
-      <section className="grid gap-3">
+      <section className="grid gap-1.5">
         <div className="flex items-center justify-between gap-3">
           <h2 className="text-lg font-extrabold">At a glance</h2>
           <button
@@ -66,7 +67,7 @@ export function GlanceBoard({ data }: { data: GlancePage }) {
             <EyeIcon off={hideEmpty} />
           </button>
         </div>
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+        <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-3">
           {cards.map((card) => (
             <GlanceCardView key={card.id} card={card} accent={accent} />
           ))}
@@ -112,29 +113,31 @@ function Hero({ data }: { data: GlancePage }) {
             : "linear-gradient(100deg, rgba(12,16,22,0.35) 0%, rgba(12,16,22,0) 70%)",
         }}
       />
-      {data.logoSrc ? (
-        <div className="absolute right-4 top-1/2 z-10 flex h-[4.5rem] w-[4.5rem] -translate-y-[60%] items-center justify-center rounded-full bg-white p-1.5 shadow-md sm:h-20 sm:w-20">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
+      <div className="absolute right-4 top-1/2 z-10 flex h-16 w-16 -translate-y-[58%] items-center justify-center rounded-full bg-white p-1 shadow-md sm:h-[4.5rem] sm:w-[4.5rem]">
+        {data.logoSrc ? (
+          // eslint-disable-next-line @next/next/no-img-element
           <img src={data.logoSrc} alt="" className="h-full w-full rounded-full object-contain" />
-        </div>
-      ) : null}
-      <div className={`relative z-10 px-5 pb-5 pt-6 sm:px-6 ${data.logoSrc ? "pr-24 sm:pr-28" : ""}`}>
+        ) : (
+          <span className="text-sm font-extrabold text-ink">{initials(data.businessName)}</span>
+        )}
+      </div>
+      <div className="relative z-10 pb-2.5 pl-4 pr-24 pt-2.5 sm:pl-5">
         <p className="text-xs font-extrabold tracking-wide" style={{ color: accent, textShadow: "0 1px 2px rgba(0,0,0,0.45)" }}>
           {data.businessName.toUpperCase()}
         </p>
         <h1
-          className="mt-1 max-w-[18rem] font-display text-4xl leading-none tracking-tight text-white sm:text-5xl"
+          className="mt-1 font-display text-[1.85rem] leading-none tracking-tight text-white sm:text-4xl"
           style={{ color: "#fff", textShadow: "0 1px 2px rgba(0,0,0,0.7)" }}
         >
           {data.greeting}
           <span style={{ color: accent }}>.</span>
         </h1>
-        <p className="mt-3 max-w-xs text-sm text-white sm:text-base" style={{ textShadow: "0 1px 2px rgba(0,0,0,0.65)" }}>
+        <p className="mt-1.5 max-w-[16rem] text-sm leading-snug text-white" style={{ textShadow: "0 1px 2px rgba(0,0,0,0.65)" }}>
           Here&apos;s what&apos;s happening with your business today.
         </p>
         <Link
           href="/library"
-          className="mt-4 inline-flex items-center gap-2 rounded-full border border-white/80 px-3.5 py-2 text-sm font-bold text-white"
+          className="mt-2 inline-flex items-center gap-2 rounded-full border border-white/80 px-3 py-1 text-sm font-bold text-white"
         >
           <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
             <path d="M7 3h7l5 5v13a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z" strokeLinecap="round" strokeLinejoin="round" />
@@ -151,22 +154,22 @@ function Hero({ data }: { data: GlancePage }) {
 function DeskShortcuts({ data }: { data: GlancePage }) {
   const accent = data.accentColour;
   return (
-    <section className="grid gap-3" aria-label="Shortcuts">
-      <div className="grid gap-3 sm:grid-cols-2">
+    <section className="grid gap-2" aria-label="Shortcuts">
+      <div className="grid gap-2 sm:grid-cols-2">
         <Link
           href="/jobs/new"
-          className="flex min-h-[5.5rem] items-center gap-3 rounded-3xl px-4 py-4 shadow-sm"
+          className="flex items-center gap-2.5 rounded-2xl px-3 py-2.5 shadow-sm"
           style={{ background: accent, color: data.accentInk }}
         >
-          <span className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-white/15">
-            <svg viewBox="0 0 24 24" className="h-7 w-7" fill="none" stroke="currentColor" strokeWidth="1.7" aria-hidden="true">
+          <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-white/15">
+            <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="1.7" aria-hidden="true">
               <path d="M7 3h7l5 5v13a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z" strokeLinecap="round" strokeLinejoin="round" />
               <path d="M14 3v5h5M12 12v6M9 15h6" strokeLinecap="round" />
             </svg>
           </span>
           <span className="min-w-0 flex-1">
-            <span className="block font-display text-3xl leading-none">New job</span>
-            <span className="mt-1 block text-sm font-semibold leading-snug">Book in a job or a quote visit, with a date</span>
+            <span className="block font-display text-xl leading-none">New job</span>
+            <span className="mt-1 block text-xs font-semibold leading-snug">Book in a job or a quote visit, with a date</span>
           </span>
           <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-white/20">
             <Chevron />
@@ -174,17 +177,17 @@ function DeskShortcuts({ data }: { data: GlancePage }) {
         </Link>
         <Link
           href="/choose"
-          className="flex min-h-[5.5rem] items-center gap-3 rounded-3xl bg-[#17171a] px-4 py-4 text-white shadow-sm"
+          className="flex items-center gap-2.5 rounded-2xl bg-[#17171a] px-3 py-2.5 text-white shadow-sm"
         >
-          <span className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-white/10">
-            <svg viewBox="0 0 24 24" className="h-7 w-7" fill="none" stroke="currentColor" strokeWidth="1.7" aria-hidden="true">
+          <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-white/10">
+            <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="1.7" aria-hidden="true">
               <path d="M4 8h3l2-2h6l2 2h3a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1z" strokeLinecap="round" strokeLinejoin="round" />
               <circle cx="12" cy="13" r="3.2" />
             </svg>
           </span>
           <span className="min-w-0 flex-1">
-            <span className="block font-display text-3xl leading-none">Choose a job</span>
-            <span className="mt-1 block text-sm font-semibold leading-snug text-white/75">Open the photo tiles for this week&apos;s work</span>
+            <span className="block font-display text-xl leading-none">Choose a job</span>
+            <span className="mt-1 block text-xs font-semibold leading-snug text-white/75">Open the photo tiles for this week&apos;s work</span>
           </span>
           <Chevron />
         </Link>
@@ -237,7 +240,7 @@ function Segment({
     <Link
       href={href}
       aria-current={active ? "page" : undefined}
-      className={`relative flex flex-col items-center gap-1 border-r border-line px-2 py-3 text-sm font-extrabold last:border-r-0 ${active ? "" : "text-ink"}`}
+      className={`relative flex flex-col items-center gap-0.5 border-r border-line px-2 py-2 text-sm font-extrabold last:border-r-0 ${active ? "" : "text-ink"}`}
       style={active && accent ? { color: accent } : undefined}
     >
       <SegmentIcon name={icon} />
@@ -249,25 +252,25 @@ function Segment({
 
 function GlanceCardView({ card, accent }: { card: GlanceCard; accent: string }) {
   return (
-    <article id={card.id === "chase" ? "to-chase" : undefined} className="soft-card flex flex-col p-3.5">
+    <article id={card.id === "chase" ? "to-chase" : undefined} className="soft-card flex flex-col px-2 py-1.5">
       <div className="flex items-start justify-between gap-2">
         <CardIcon id={card.id} accent={accent} />
-        <p className="text-right text-[0.62rem] font-extrabold tracking-wide text-stone">{card.meta}</p>
+        <p className="text-right text-[0.58rem] font-extrabold tracking-wide text-stone">{card.meta}</p>
       </div>
-      <h3 className="mt-2 text-sm font-extrabold">{card.title}</h3>
-      <p className="mt-1 font-display text-4xl leading-none tracking-tight tabular-nums">{card.value}</p>
-      <p className="mt-1 text-xs text-stone">{card.sub}</p>
-      <div className="mt-3 grid gap-2">
+      <h3 className="mt-1 text-[0.8rem] font-extrabold leading-tight">{card.title}</h3>
+      <p className="font-display text-[1.45rem] leading-none tracking-tight tabular-nums">{card.value}</p>
+      <p className="text-[0.7rem] text-stone">{card.sub}</p>
+      <div className="mt-1.5 grid gap-1">
         {card.rows.length === 0 ? (
-          <div className="grid justify-items-center gap-1 py-2 text-center">
-            <CardIcon id="empty" accent={accent} />
-            <p className="text-xs font-semibold text-stone">{card.empty}</p>
+          <div className="flex items-start justify-center gap-1 py-0.5 text-center">
+            <CardIcon id="empty" accent={accent} small />
+            <p className="line-clamp-2 text-left text-[0.65rem] font-semibold leading-tight text-stone">{card.empty}</p>
           </div>
         ) : (
-          card.rows.map((row) => <CardRow key={row.id} row={row} accent={accent} />)
+          card.rows.slice(0, 1).map((row) => <CardRow key={row.id} row={row} accent={accent} />)
         )}
       </div>
-      <Link href={card.href} className="mt-auto pt-3 text-right text-sm font-extrabold" style={{ color: accent }}>
+      <Link href={card.href} className="mt-auto pt-1 text-right text-xs font-extrabold" style={{ color: accent }}>
         {cardAction(card.id)}
       </Link>
     </article>
@@ -277,10 +280,10 @@ function GlanceCardView({ card, accent }: { card: GlanceCard; accent: string }) 
 function CardRow({ row, accent }: { row: GlanceListRow; accent: string }) {
   const colour = row.metaTone === "late" ? "#8d3428" : row.metaTone === "today" ? accent : "#655e55";
   return (
-    <Link href={row.href} className="grid grid-cols-[1fr_auto] gap-2 text-sm">
-      <span>
-        <span className="block font-extrabold">{row.primary}</span>
-        <span className="text-stone">{row.secondary}</span>
+    <Link href={row.href} className="grid grid-cols-[1fr_auto] items-start gap-1 text-[0.7rem] leading-tight">
+      <span className="min-w-0">
+        <span className="block truncate font-extrabold">{row.primary}</span>
+        <span className="block truncate text-stone">{row.secondary}</span>
       </span>
       <span className="font-extrabold" style={{ color: colour }}>
         {row.meta}
@@ -409,10 +412,10 @@ const CARD_GLYPH: Record<string, string> = {
   empty: "M7 3v2M17 3v2M4 8h16M6 5h12a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2z",
 };
 
-function CardIcon({ id, accent }: { id: string; accent: string }) {
+function CardIcon({ id, accent, small = false }: { id: string; accent: string; small?: boolean }) {
   return (
     <span
-      className="grid h-8 w-8 place-items-center rounded-lg"
+      className={`grid place-items-center rounded-md ${small ? "h-5 w-5" : "h-6 w-6"}`}
       style={{ background: `color-mix(in srgb, ${accent} 14%, white)`, color: accent }}
     >
       {id === "owed" ? (

@@ -36,7 +36,7 @@ export function DeskNav({ accentColour, initials }: { accentColour: string; init
               <Link
                 href={item.href}
                 aria-current={active ? "page" : undefined}
-                className={`flex min-h-[4.25rem] flex-col items-center justify-center gap-0.5 px-0.5 py-1.5 text-center text-[0.62rem] font-extrabold leading-none sm:text-xs ${active ? "" : "text-stone"}`}
+                className={`flex min-h-16 flex-col items-center justify-center gap-0.5 px-0.5 py-1 text-center text-[0.62rem] font-extrabold leading-none sm:text-xs ${active ? "" : "text-stone"}`}
                 style={active ? { color: accentColour } : undefined}
               >
                 <NavIcon name={item.icon} />
@@ -51,7 +51,7 @@ export function DeskNav({ accentColour, initials }: { accentColour: string; init
             href="/settings"
             aria-label="Your profile"
             aria-current={profileActive ? "page" : undefined}
-            className="flex min-h-[4.25rem] flex-col items-center justify-center gap-0.5 px-0.5 py-1.5"
+            className="flex min-h-16 flex-col items-center justify-center gap-0.5 px-0.5 py-1"
           >
             <span
               className="grid h-7 w-7 place-items-center rounded-full text-[0.65rem] font-extrabold text-white"
