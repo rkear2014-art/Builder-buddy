@@ -37,7 +37,7 @@ export function InvoiceDocument({
   badges: string[];
 }) {
   const branding = letterhead?.branding;
-  const accent = branding?.accentColour ?? "#395571";
+  const accent = branding?.accentColour ?? "#dd1f29";
   const businessName = branding?.name || "Invoice";
   const logoSrc = letterhead?.logoSrc ?? null;
 

@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import type { CSSProperties } from "react";
 import { isCoverageBasis, starterCoverage } from "@/lib/coverage";
 import { measureDefaults, type MeasureMode, type RoomInput } from "@/lib/measure";
+import { extraMeasureLines, measurePlanFor, normaliseChoices, parseMeasureSelection } from "@/lib/measure-plan";
 import { findStarterTemplate, isRetiredTemplateName, PLASTERING_STARTER_TEMPLATES } from "@/lib/trade-starters";
 import { MeasureForm } from "@/components/measure-form";
 import { getBusinessWastage, getJob, getLibrary, listLabourRates, listRoomMeasures, requireUser } from "@/server/dal";
@@ -37,8 +38,9 @@ export default async function MeasurePage({
   const typeKey = starter ? starter.id : `template:${template?.id}`;
   const typeName = starter?.name ?? template?.name ?? "";
   const matched = PLASTERING_STARTER_TEMPLATES.find((item) => item.name.toLowerCase() === typeName.toLowerCase());
+  const plan = measurePlanFor(starter?.id ?? matched?.id ?? "");
   const savedByName = new Map(library.savedItems.map((item) => [item.name.trim().toLowerCase(), item]));
-  const sourceItems = starter
+  const baseItems = starter
     ? starter.items.map((item) => ({
         name: item.name,
         unit: item.unit,
@@ -47,6 +49,16 @@ export default async function MeasurePage({
         coverageAmount: null as string | null,
       }))
     : (template?.items ?? []);
+  const sourceItems = [
+    ...baseItems,
+    ...extraMeasureLines(plan, baseItems.map((item) => item.name)).map((item) => ({
+      name: item.name,
+      unit: item.unit,
+      unitPricePence: item.unitPricePence,
+      coverageBasis: "",
+      coverageAmount: null as string | null,
+    })),
+  ];
   const materials = sourceItems.map((item) => {
     const savedItem = savedByName.get(item.name.trim().toLowerCase());
     const own =
@@ -67,6 +79,9 @@ export default async function MeasurePage({
   });
   const defaults = measureDefaults(starter?.id ?? matched?.id ?? "");
   const sameJob = saved?.measureTypeKey === typeKey;
+  const savedSelection = sameJob && saved ? parseMeasureSelection(saved.measureSelection) : null;
+  const initialChoices = normaliseChoices(plan, savedSelection?.choices);
+  const initialIncluded = savedSelection?.included ?? null;
   const initialRooms: RoomInput[] = sameJob
     ? saved.rooms.map((room) => ({
         ...room,
@@ -103,6 +118,9 @@ export default async function MeasurePage({
         initialDayRate={sameJob && saved?.dayRatePence != null ? (saved.dayRatePence / 100).toFixed(2) : ""}
         initialDayCount={sameJob && saved?.dayCount ? saved.dayCount : ""}
         defaults={defaults}
+        plan={plan}
+        initialChoices={initialChoices}
+        initialIncluded={initialIncluded}
       />
     </div>
   );

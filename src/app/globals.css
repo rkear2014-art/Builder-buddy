@@ -230,7 +230,7 @@ summary.btn::-webkit-details-marker {
 }
 
 .quote-label {
-  color: var(--quote-accent, #395571);
+  color: var(--quote-accent, #dd1f29);
   font-size: 0.72rem;
   font-weight: 800;
   letter-spacing: 0.08em;
@@ -238,7 +238,7 @@ summary.btn::-webkit-details-marker {
 }
 
 .quote-accent {
-  color: var(--quote-accent, #395571);
+  color: var(--quote-accent, #dd1f29);
 }
 
 .quote-caption {
@@ -257,9 +257,9 @@ summary.btn::-webkit-details-marker {
 }
 
 .quote-badge {
-  border: 2px solid var(--quote-accent, #395571);
+  border: 2px solid var(--quote-accent, #dd1f29);
   border-radius: 999px;
-  color: var(--quote-accent, #395571);
+  color: var(--quote-accent, #dd1f29);
   padding: 0.2rem 0.75rem;
   font-size: 0.85rem;
   font-weight: 800;
@@ -273,7 +273,7 @@ summary.btn::-webkit-details-marker {
 .quote-bar::before {
   content: "";
   width: 68%;
-  background: var(--quote-accent, #395571);
+  background: var(--quote-accent, #dd1f29);
 }
 
 .quote-bar::after {
@@ -334,16 +334,16 @@ summary.btn::-webkit-details-marker {
 
 .job-contact {
   border-radius: 0.9rem;
-  background: color-mix(in srgb, var(--job-accent, #395571) 12%, white);
-  color: var(--job-accent, #395571);
+  background: color-mix(in srgb, var(--job-accent, #dd1f29) 12%, white);
+  color: var(--job-accent, #dd1f29);
   padding: 0.75rem 1rem;
   font-weight: 800;
 }
 
 .job-status-pill {
   border-radius: 999px;
-  background: color-mix(in srgb, var(--job-accent, #395571) 12%, white);
-  color: var(--job-accent, #395571);
+  background: color-mix(in srgb, var(--job-accent, #dd1f29) 12%, white);
+  color: var(--job-accent, #dd1f29);
   padding: 0.35rem 0.8rem;
   font-size: 0.92rem;
   font-weight: 800;
@@ -359,7 +359,7 @@ summary.btn::-webkit-details-marker {
 .job-progress > span {
   display: block;
   height: 100%;
-  background: var(--job-accent, #395571);
+  background: var(--job-accent, #dd1f29);
 }
 
 .job-choice {
@@ -370,7 +370,7 @@ summary.btn::-webkit-details-marker {
   justify-content: center;
   gap: 0.35rem;
   border-radius: 1.1rem;
-  border: 2px solid var(--job-accent, #395571);
+  border: 2px solid var(--job-accent, #dd1f29);
   background: white;
   padding: 1rem;
   font-size: 1.15rem;
@@ -388,9 +388,9 @@ summary.btn::-webkit-details-marker {
   align-items: center;
   justify-content: center;
   border-radius: 999px;
-  background: color-mix(in srgb, var(--job-accent, #395571) 12%, white);
+  background: color-mix(in srgb, var(--job-accent, #dd1f29) 12%, white);
   padding: 0.7rem 1rem;
-  color: var(--job-accent, #395571);
+  color: var(--job-accent, #dd1f29);
   font-weight: 800;
   text-align: center;
 }
@@ -408,8 +408,8 @@ summary.btn::-webkit-details-marker {
 }
 
 .choice-card:has(input:checked) {
-  border-color: var(--job-accent, #395571);
-  box-shadow: inset 0 0 0 1px var(--job-accent, #395571);
+  border-color: var(--job-accent, #dd1f29);
+  box-shadow: inset 0 0 0 1px var(--job-accent, #dd1f29);
 }
 
 .catalogue-chip {

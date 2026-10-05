@@ -21,6 +21,10 @@ export type RoomInput = {
   doorAreaM2: number;
   windowCount: number;
   windowAreaM2: number;
+  /** Extra external corners, on top of two per door or window reveal. */
+  externalCorners: number;
+  /** Metres of stop bead. A plain room stays at 0. */
+  stopBeadM: number;
 };
 
 export type RoomAreas = {
@@ -90,6 +94,17 @@ function nonNegative(value: number): number {
   return value;
 }
 
+export function externalCornerCount(room: RoomInput): number {
+  const typed = Math.min(40, Math.round(nonNegative(room.externalCorners)));
+  if (room.mode === "floor" || room.mode === "direct") return typed;
+  const openings = Math.min(20, Math.round(nonNegative(room.doorCount))) + Math.min(40, Math.round(nonNegative(room.windowCount)));
+  return typed + openings * 2;
+}
+
+function isStopBead(name: string): boolean {
+  return name.trim().toLowerCase() === "stop bead";
+}
+
 export function roomAreas(room: RoomInput): RoomAreas {
   const doorM2 = nonNegative(room.doorCount) * nonNegative(room.doorAreaM2);
   const windowM2 = nonNegative(room.windowCount) * nonNegative(room.windowAreaM2);
@@ -100,7 +115,7 @@ export function roomAreas(room: RoomInput): RoomAreas {
 
   if (room.mode === "direct") {
     const net = round2(nonNegative(room.directAreaM2));
-    return { wallM2: 0, ceilingM2: 0, floorM2: 0, netM2: net, perimeterM: 0, corners: 0, deductionsM2: 0 };
+    return { wallM2: 0, ceilingM2: 0, floorM2: 0, netM2: net, perimeterM: 0, corners: externalCornerCount(room), deductionsM2: 0 };
   }
 
   if (room.mode === "elevation") {
@@ -112,7 +127,7 @@ export function roomAreas(room: RoomInput): RoomAreas {
       floorM2: 0,
       netM2: round2(gross - deducted),
       perimeterM: round2(length),
-      corners: length > 0 && height > 0 ? 2 : 0,
+      corners: externalCornerCount(room),
       deductionsM2: deducted,
     };
   }
@@ -126,7 +141,7 @@ export function roomAreas(room: RoomInput): RoomAreas {
       floorM2: round2(floor - deducted),
       netM2: round2(floor - deducted),
       perimeterM: round2(2 * (length + width)),
-      corners: length > 0 && width > 0 ? 4 : 0,
+      corners: externalCornerCount(room),
       deductionsM2: deducted,
     };
   }
@@ -142,7 +157,7 @@ export function roomAreas(room: RoomInput): RoomAreas {
     floorM2: ceiling,
     netM2: net,
     perimeterM: round2(2 * (length + width)),
-    corners: length > 0 && width > 0 ? 4 : 0,
+    corners: externalCornerCount(room),
     deductionsM2: deducted,
   };
 }
@@ -181,14 +196,18 @@ export function quoteFromMeasure(input: {
   labourPerM2Pence: number | null;
   dayRatePence: number | null;
   dayCount: number | null;
+  /** When set, only these line names are added into the total. */
+  included?: readonly string[] | null;
 }): MeasureQuote {
   const rooms = input.rooms.map(roomAreas);
   const totalM2 = round2(rooms.reduce((sum, room) => sum + room.netM2, 0));
   const perimeterM = round2(rooms.reduce((sum, room) => sum + room.perimeterM, 0));
   const corners = rooms.reduce((sum, room) => sum + room.corners, 0);
+  const stopBeadM = round2(input.rooms.reduce((sum, room) => sum + nonNegative(room.stopBeadM), 0));
   const wastage = Number.isFinite(input.wastagePercent) ? Math.min(100, Math.max(0, input.wastagePercent)) : 0;
   const factor = 1 + wastage / 100;
-  const totals = { netM2: totalM2, perimeterM, corners };
+  const totals = { netM2: totalM2, perimeterM, corners, stopBeadM };
+  const counted = input.included == null ? null : new Set(input.included);
   const lines: MeasureLine[] = [];
 
   for (const material of input.materials) {
@@ -203,12 +222,15 @@ export function quoteFromMeasure(input: {
       });
       continue;
     }
-    const amount = basisAmount(totals, material.coverage.basis);
+    const amount = isStopBead(material.name) ? totals.stopBeadM : basisAmount(totals, material.coverage.basis);
     if (amount <= 0) {
-      const needs =
-        material.coverage.basis === "area"
-          ? "This needs an area. Measure a room or type the m²."
-          : `This is worked out from ${coverageBasisLabel(material.coverage.basis)}. Type the m² on its own does not include that.`;
+      const needs = isStopBead(material.name)
+        ? "No stop bead metres yet. A plain room often needs none."
+        : material.coverage.basis === "corners"
+          ? "No external corners yet. A plain room has none. Each door or window reveal adds two."
+          : material.coverage.basis === "area"
+            ? "This needs an area. Measure a room or type the m²."
+            : `This is worked out from ${coverageBasisLabel(material.coverage.basis)}. Type the m² on its own does not include that.`;
       lines.push({
         name: material.name,
         unit: material.unit,
@@ -260,6 +282,7 @@ export function quoteFromMeasure(input: {
   let totalPence = 0;
   let unpricedCount = 0;
   for (const line of lines) {
+    if (counted && !counted.has(line.name)) continue;
     if (line.quantity == null) continue;
     if (line.lineTotalPence == null) {
       unpricedCount += 1;
@@ -305,6 +328,8 @@ export function parseRoomInputs(value: unknown): RoomInput[] | null {
       doorAreaM2: readNumber(row.doorAreaM2, DEFAULT_DOOR_M2),
       windowCount: Math.min(40, Math.round(readNumber(row.windowCount, 0))),
       windowAreaM2: readNumber(row.windowAreaM2, DEFAULT_WINDOW_M2),
+      externalCorners: Math.min(40, Math.round(readNumber(row.externalCorners, 0))),
+      stopBeadM: readNumber(row.stopBeadM, 0),
     });
   }
   return rooms;

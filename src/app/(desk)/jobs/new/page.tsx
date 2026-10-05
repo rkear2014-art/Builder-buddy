@@ -1,7 +1,7 @@
 import { isIsoDate, londonToday } from "@/lib/dates";
 import { createJob } from "@/server/actions/jobs";
 import { requireUser } from "@/server/dal";
-import { JobForm } from "@/components/job-form";
+import { BookingForm } from "@/components/booking-form";
 
 export const dynamic = "force-dynamic";
 
@@ -12,7 +12,7 @@ export default async function NewJobPage({
 }: {
   searchParams: Promise<{ date?: string }>;
 }) {
-  await requireUser();
+  const user = await requireUser();
   const params = await searchParams;
   const today = londonToday();
   const defaultDate = params.date && isIsoDate(params.date) ? params.date : today;
@@ -20,11 +20,9 @@ export default async function NewJobPage({
   return (
     <div className="mx-auto grid max-w-2xl gap-4">
       <h1 className="font-display text-4xl">Book in a job</h1>
-      <p className="text-stone">
-        Customer, the work, and when you are going. After you save, the photo tiles open so you can choose the job.
-      </p>
+      <p className="text-stone">Customer and site details for this survey / quote visit.</p>
       <div className="card">
-        <JobForm action={createJob} submitLabel="Save and choose a job" defaultDate={defaultDate} />
+        <BookingForm action={createJob} defaultDate={defaultDate} accent={user.branding.accentColour} accentInk={user.branding.accentInk} />
       </div>
     </div>
   );

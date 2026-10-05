@@ -6,18 +6,15 @@ import { isJobStatus } from "@/lib/constants";
 import { addDays, isoToUtcDate, londonToday } from "@/lib/dates";
 import type { ActionState } from "@/lib/form-state";
 import { tenantWhere } from "@/lib/tenancy";
-import { findStarterTemplate } from "@/lib/trade-starters";
-import { parseJobForm, parseTemplateForm } from "@/lib/validators";
+import { parseBookingForm, parseJobForm, parseTemplateForm } from "@/lib/validators";
 import { requireUser } from "@/server/dal";
 import { getPrisma, isUniqueConstraint } from "@/server/prisma";
 import { revalidateDesk } from "@/server/revalidate";
 
 export async function createJob(_state: ActionState, formData: FormData): Promise<ActionState> {
   const user = await requireUser();
-  const parsed = parseJobForm(formData);
+  const parsed = parseBookingForm(formData);
   if (!parsed.ok) return { error: parsed.error };
-  const starter = findStarterTemplate(String(formData.get("starterId") ?? ""));
-  const useStarter = starter && starter.trade === parsed.data.trade ? starter : null;
   const job = await getPrisma().$transaction(async (tx) => {
     const allocated = await tx.business.update({
       where: { id: user.businessId },
@@ -31,6 +28,11 @@ export async function createJob(_state: ActionState, formData: FormData): Promis
         userId: user.id,
         customerName: parsed.data.customerName,
         address: parsed.data.address,
+        postcode: parsed.data.postcode,
+        addressLine1: parsed.data.addressLine1,
+        addressLine2: parsed.data.addressLine2,
+        town: parsed.data.town,
+        county: parsed.data.county,
         phone: parsed.data.phone,
         email: parsed.data.email,
         trade: parsed.data.trade,
@@ -47,22 +49,6 @@ export async function createJob(_state: ActionState, formData: FormData): Promis
       },
       select: { id: true },
     });
-    if (useStarter) {
-      for (const [index, item] of useStarter.items.entries()) {
-        await tx.jobMaterial.create({
-          data: {
-            businessId: user.businessId,
-            jobId: created.id,
-            name: item.name,
-            quantity: item.quantity,
-            unit: item.unit,
-            unitPricePence: item.unitPricePence,
-            costPricePence: null,
-            sortOrder: index,
-          },
-        });
-      }
-    }
     return created;
   });
   revalidateDesk(job.id);

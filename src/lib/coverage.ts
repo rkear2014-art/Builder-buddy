@@ -36,7 +36,7 @@ const BY_NAME: Record<string, CoverageGuide> = {
   "Galvanised angle bead": {
     basis: "corners",
     perUnit: 1,
-    guidance: "One length per corner.",
+    guidance: "One length per external corner.",
   },
   "Stop bead": {
     basis: "perimeter",
@@ -96,17 +96,17 @@ const BY_NAME: Record<string, CoverageGuide> = {
   "Wide angle bead": {
     basis: "corners",
     perUnit: 1,
-    guidance: "One length per corner.",
+    guidance: "One length per external corner.",
   },
   "Corner bead": {
     basis: "corners",
     perUnit: 1,
-    guidance: "One length per corner.",
+    guidance: "One length per external corner.",
   },
   "Stainless angle bead": {
     basis: "corners",
     perUnit: 1,
-    guidance: "One length per corner.",
+    guidance: "One length per external corner.",
   },
   "Expanded metal lath": {
     basis: "area",

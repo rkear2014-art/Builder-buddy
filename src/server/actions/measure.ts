@@ -4,6 +4,13 @@ import { redirect } from "next/navigation";
 import { isCoverageBasis, starterCoverage, type CoverageBasis } from "@/lib/coverage";
 import type { ActionState } from "@/lib/form-state";
 import { parseRoomInputs, parseWastagePercent, quoteFromMeasure, type RoomInput } from "@/lib/measure";
+import {
+  extraMeasureLines,
+  materialsForChoices,
+  measurePlanFor,
+  normaliseChoices,
+  serialiseMeasureSelection,
+} from "@/lib/measure-plan";
 import { parsePoundsToPence } from "@/lib/money";
 import { tenantWhere } from "@/lib/tenancy";
 import { findStarterTemplate, isRetiredTemplateName, PLASTERING_STARTER_TEMPLATES } from "@/lib/trade-starters";
@@ -49,19 +56,32 @@ export async function saveMeasuredQuote(_state: ActionState, formData: FormData)
 
   const prepared = await materialsForMeasure(user.businessId, job.trade, typeKey);
   if (!prepared) return { error: "That job type could not be found." };
+  let choiceRaw: unknown = {};
+  let includedRaw: unknown = null;
+  try {
+    choiceRaw = JSON.parse(String(formData.get("choices") ?? "{}"));
+    includedRaw = JSON.parse(String(formData.get("included") ?? "null"));
+  } catch {
+    return { error: "Check the materials and try again." };
+  }
+  const choices = normaliseChoices(prepared.plan, choiceRaw && typeof choiceRaw === "object" ? (choiceRaw as Record<string, unknown>) : {});
+  const included = Array.isArray(includedRaw)
+    ? includedRaw.filter((item): item is string => typeof item === "string").slice(0, 40)
+    : null;
   const rate = await getPrisma().labourRate.findUnique({
     where: { businessId_jobTypeKey: { businessId: user.businessId, jobTypeKey: typeKey } },
     select: { labourPerM2Pence: true },
   });
   const quote = quoteFromMeasure({
     rooms,
-    materials: prepared.materials,
+    materials: materialsForChoices(prepared.materials, prepared.plan, choices),
     wastagePercent: wastage.percent,
     labourPerM2Pence: rate?.labourPerM2Pence ?? null,
     dayRatePence: dayRate.pence,
     dayCount,
+    included,
   });
-  const lines = quote.lines.filter((line) => line.quantity);
+  const lines = quote.lines.filter((line) => line.quantity && (included == null || included.includes(line.name)));
   if (lines.length === 0) return { error: "Enter a room size before adding this to the quote." };
 
   await getPrisma().$transaction(async (tx) => {
@@ -75,6 +95,7 @@ export async function saveMeasuredQuote(_state: ActionState, formData: FormData)
         measureTypeName: typeName || prepared.name,
         dayRatePence: dayRate.pence,
         dayCount: dayCount == null ? null : dayCount.toFixed(2),
+        measureSelection: serialiseMeasureSelection(choices, included ?? []),
         description: job.description.trim() ? undefined : prepared.description,
       },
     });
@@ -94,6 +115,8 @@ export async function saveMeasuredQuote(_state: ActionState, formData: FormData)
         doorAreaM2: decimal(room.doorAreaM2) ?? "1.90",
         windowCount: room.windowCount,
         windowAreaM2: decimal(room.windowAreaM2) ?? "1.50",
+        externalCorners: room.externalCorners,
+        stopBeadM: decimal(room.stopBeadM) ?? "0.00",
         sortOrder: index,
       })),
     });
@@ -132,11 +155,14 @@ async function materialsForMeasure(businessId: string, trade: string, typeKey: s
   const savedByName = new Map(saved.map((item) => [item.name.trim().toLowerCase(), item]));
   const starter = typeKey.startsWith("template:") ? null : findStarterTemplate(typeKey);
   if (starter && !starter.retired && starter.trade === trade) {
-    return {
-      name: starter.name,
-      description: starter.description,
-      materials: starter.items.map((item) => lineFrom(item.name, item.unit, item.unitPricePence, savedByName, starter.id)),
-    };
+    const plan = measurePlanFor(starter.id);
+    const materials = [
+      ...starter.items.map((item) => lineFrom(item.name, item.unit, item.unitPricePence, savedByName, starter.id)),
+      ...extraMeasureLines(plan, starter.items.map((item) => item.name)).map((item) =>
+        lineFrom(item.name, item.unit, item.unitPricePence, savedByName, starter.id),
+      ),
+    ];
+    return { name: starter.name, description: starter.description, materials, plan };
   }
   if (!typeKey.startsWith("template:")) return null;
   const template = await getPrisma().materialTemplate.findFirst({
@@ -145,10 +171,16 @@ async function materialsForMeasure(businessId: string, trade: string, typeKey: s
   });
   if (!template || isRetiredTemplateName(template.name)) return null;
   const matched = PLASTERING_STARTER_TEMPLATES.find((item) => item.name.toLowerCase() === template.name.toLowerCase());
+  const plan = measurePlanFor(matched?.id ?? "");
+  const source: Array<{ name: string; unit: string; unitPricePence: number | null; coverageBasis?: string; coverageAmount?: unknown }> = [
+    ...template.items.map((item) => ({ name: item.name, unit: item.unit, unitPricePence: item.unitPricePence, coverageBasis: item.coverageBasis, coverageAmount: item.coverageAmount })),
+    ...extraMeasureLines(plan, template.items.map((item) => item.name)),
+  ];
   return {
     name: template.name,
     description: "",
-    materials: template.items.map((item) => {
+    plan,
+    materials: source.map((item) => {
       const stored =
         item.coverageBasis && item.coverageAmount != null && isCoverageBasis(item.coverageBasis)
           ? { basis: item.coverageBasis, perUnit: Number(item.coverageAmount) }

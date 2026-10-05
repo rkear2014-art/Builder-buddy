@@ -1,18 +1,29 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { describe, it } from "node:test";
-import { accentFromImage, accentFromPixels, accentInk, normaliseAccent, resolveAccent } from "./accent";
+import { accentFromImage, accentFromPixels, accentInk, DEFAULT_ACCENT, isReplacedAccent, normaliseAccent, resolveAccent } from "./accent";
 
 describe("accent colour", () => {
-  it("keeps a chosen colour and falls back to the plastering blue", () => {
+  it("keeps a chosen colour and falls back to the AK website red", () => {
     assert.equal(normaliseAccent("#245A94"), "#245a94");
     assert.equal(normaliseAccent(""), "");
     assert.equal(normaliseAccent("pink"), null);
     assert.equal(normaliseAccent("javascript:alert(1)"), null);
-    assert.equal(resolveAccent(""), "#395571");
+    assert.equal(resolveAccent(""), DEFAULT_ACCENT);
+    assert.equal(DEFAULT_ACCENT, "#dd1f29");
+    assert.equal(isReplacedAccent("#395571"), true);
+    assert.equal(isReplacedAccent("#245A94"), true);
+    assert.equal(isReplacedAccent("#dd1f29"), false);
     assert.equal(resolveAccent("#aabbcc"), "#aabbcc");
     assert.equal(accentInk("#245a94"), "#ffffff");
+    assert.equal(accentInk(DEFAULT_ACCENT), "#ffffff");
     assert.equal(accentInk("#f0b429"), "#1c1915");
+    const red = Number.parseInt(DEFAULT_ACCENT.slice(1, 3), 16) / 255;
+    const green = Number.parseInt(DEFAULT_ACCENT.slice(3, 5), 16) / 255;
+    const blue = Number.parseInt(DEFAULT_ACCENT.slice(5, 7), 16) / 255;
+    const linear = (channel: number) => (channel <= 0.04045 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4);
+    const luminance = 0.2126 * linear(red) + 0.7152 * linear(green) + 0.0722 * linear(blue);
+    assert.ok((1.05) / (luminance + 0.05) >= 4.5);
   });
 
   it("prefers a clear brand colour over a dark shadow brown", () => {
@@ -37,15 +48,11 @@ describe("accent colour", () => {
     assert.equal(accentFromPixels(red), "#c0392b");
   });
 
-  it("reads a blue from the plastering logo rather than the pale background", async () => {
+  it("still sees the steel blue K in the logo file, which is not the brand accent", async () => {
     const bytes = new Uint8Array(readFileSync(new URL("../fixtures/ak-plastering-logo.webp", import.meta.url)));
     const accent = await accentFromImage(bytes);
     assert.equal(accent, "#395571");
-    assert.match(accent, /^#[0-9a-f]{6}$/);
-    const red = Number.parseInt(accent.slice(1, 3), 16);
-    const green = Number.parseInt(accent.slice(3, 5), 16);
-    const blue = Number.parseInt(accent.slice(5, 7), 16);
-    assert.ok(blue > red + 15, accent);
-    assert.ok(blue > green, accent);
+    assert.equal(isReplacedAccent(accent), true);
+    assert.notEqual(accent, DEFAULT_ACCENT);
   });
 });

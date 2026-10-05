@@ -835,6 +835,7 @@ export async function listRoomMeasures(businessId: string, jobId: string) {
       measureTypeName: true,
       dayRatePence: true,
       dayCount: true,
+      measureSelection: true,
       rooms: { orderBy: { sortOrder: "asc" } },
     },
   });
@@ -845,6 +846,7 @@ export async function listRoomMeasures(businessId: string, jobId: string) {
     measureTypeName: job.measureTypeName,
     dayRatePence: job.dayRatePence,
     dayCount: job.dayCount == null ? null : job.dayCount.toString(),
+    measureSelection: job.measureSelection,
     rooms: job.rooms.map((room) => ({
       name: room.name,
       mode: room.mode,
@@ -858,6 +860,8 @@ export async function listRoomMeasures(businessId: string, jobId: string) {
       doorAreaM2: Number(room.doorAreaM2),
       windowCount: room.windowCount,
       windowAreaM2: Number(room.windowAreaM2),
+      externalCorners: room.externalCorners,
+      stopBeadM: room.stopBeadM == null ? 0 : Number(room.stopBeadM),
     })),
   };
 }

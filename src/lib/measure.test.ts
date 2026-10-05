@@ -3,6 +3,15 @@ import { describe, it } from "node:test";
 import { PLASTERING_STARTER_TEMPLATES } from "./trade-starters";
 import { starterCoverage } from "./coverage";
 import {
+  defaultChoices,
+  defaultIncludedNames,
+  materialsForChoices,
+  measurePlanFor,
+  normaliseChoices,
+  starterMeasureMaterials,
+} from "./measure-plan";
+import {
+  externalCornerCount,
   formatM2,
   measureDefaults,
   parseWastagePercent,
@@ -27,6 +36,8 @@ function room(overrides: Partial<RoomInput> = {}): RoomInput {
     doorAreaM2: 1.9,
     windowCount: 0,
     windowAreaM2: 1.5,
+    externalCorners: 0,
+    stopBeadM: 0,
     ...overrides,
   };
 }
@@ -38,7 +49,7 @@ describe("room areas", () => {
     assert.equal(areas.ceilingM2, 24);
     assert.equal(areas.netM2, 72);
     assert.equal(areas.perimeterM, 20);
-    assert.equal(areas.corners, 4);
+    assert.equal(areas.corners, 0);
     assert.equal(formatM2(areas.netM2), "72 m²");
   });
 
@@ -92,7 +103,7 @@ describe("room areas", () => {
     assert.equal(quote.rooms[0]?.netM2, 72);
     assert.equal(quote.rooms[1]?.netM2, 28.8);
     assert.equal(quote.totalM2, 100.8);
-    assert.equal(quote.corners, 8);
+    assert.equal(quote.corners, 0);
   });
 });
 
@@ -179,4 +190,94 @@ describe("coverage, wastage and rounding", () => {
     assert.deepEqual(measureDefaults("plaster-general"), { mode: "room", includeWalls: true, includeCeiling: true });
     assert.equal(measureDefaults("plaster-skim").includeWalls, true);
   });
+
+  it("leaves angle bead and stop bead off a plain room, and counts reveals separately", () => {
+    assert.equal(externalCornerCount(room()), 0);
+    assert.equal(externalCornerCount(room({ doorCount: 1, windowCount: 1 })), 4);
+    assert.equal(externalCornerCount(room({ externalCorners: 1, doorCount: 1 })), 3);
+    const plain = quoteFromMeasure({
+      rooms: [room()],
+      materials: [
+        { name: "Galvanised angle bead", unit: "length", unitPricePence: 384, coverage: { basis: "corners", perUnit: 1 } },
+        { name: "Stop bead", unit: "length", unitPricePence: 456, coverage: { basis: "perimeter", perUnit: 2.4 } },
+      ],
+      wastagePercent: 10,
+      labourPerM2Pence: null,
+      dayRatePence: null,
+      dayCount: null,
+    });
+    assert.equal(plain.lines[0]?.quantity, null);
+    assert.equal(plain.lines[1]?.quantity, null);
+    const typed = quoteFromMeasure({
+      rooms: [room({ externalCorners: 2, stopBeadM: 2.4 })],
+      materials: plain.lines.map((line) => ({
+        name: line.name,
+        unit: line.unit,
+        unitPricePence: line.unitPricePence,
+        coverage: line.name === "Stop bead" ? { basis: "perimeter" as const, perUnit: 2.4 } : { basis: "corners" as const, perUnit: 1 },
+      })),
+      wastagePercent: 10,
+      labourPerM2Pence: null,
+      dayRatePence: null,
+      dayCount: null,
+    });
+    const byName = new Map(typed.lines.map((line) => [line.name, line]));
+    assert.equal(byName.get("Galvanised angle bead")?.quantity, "3");
+    assert.equal(byName.get("Stop bead")?.quantity, "2");
+  });
+
+  it("quotes a 6x4x2.4 skim as multi-finish, primer and scrim, with no backing coat", () => {
+    const skim = quoteJob("plaster-general", { backing: "none", primer: "pva" });
+    const byName = new Map(skim.lines.map((line) => [line.name, line]));
+    assert.equal(byName.get("Thistle MultiFinish plaster")?.quantity, "8");
+    assert.equal(byName.get("PVA bonding agent")?.quantity, "2");
+    assert.equal(byName.get("Scrim tape")?.quantity, "2");
+    assert.equal(byName.has("Thistle Hardwall plaster"), false);
+    assert.equal(byName.has("Thistle Bonding Coat"), false);
+    assert.equal(byName.has("Blue Grit"), false);
+    assert.equal(byName.get("Galvanised angle bead")?.quantity ?? null, null);
+    assert.equal(byName.get("Stop bead")?.quantity ?? null, null);
+    assert.equal(skim.totalPence, 15052);
+  });
+
+  it("quotes general plastering as Hardwall and PVA, not both backing coats or both primers", () => {
+    const general = quoteJob("plaster-general", {});
+    const names = general.lines.map((line) => line.name);
+    assert.equal(names.includes("Thistle Hardwall plaster"), true);
+    assert.equal(names.includes("Thistle Bonding Coat"), false);
+    assert.equal(names.includes("PVA bonding agent"), true);
+    assert.equal(names.includes("Blue Grit"), false);
+    assert.equal(general.lines.find((line) => line.name === "Thistle Hardwall plaster")?.quantity, "27");
+    assert.equal(general.totalPence, 64759);
+    const plan = measurePlanFor("plaster-artex");
+    const choices = normaliseChoices(plan, {});
+    assert.equal(choices.primer, "bond-it");
+    const artex = materialsForChoices(starterMeasureMaterials("plaster-artex"), plan, choices);
+    const included = defaultIncludedNames(artex, plan);
+    assert.equal(included.includes("Artex covering primer"), true);
+    assert.equal(included.includes("Thistle MultiFinish plaster"), true);
+    assert.equal(included.includes("PVA bonding agent"), false);
+    assert.equal(included.includes("Scrim tape"), false);
+    const lining = measurePlanFor("plaster-dry-lining");
+    const liningLines = starterMeasureMaterials("plaster-dry-lining");
+    assert.equal(defaultIncludedNames(liningLines, lining).includes("Thistle MultiFinish plaster"), false);
+    assert.equal(liningLines.some((line) => line.name === "Thistle MultiFinish plaster"), true);
+    assert.equal(measurePlanFor("plaster-lime").groups.length, 0);
+    assert.equal(defaultChoices(plan).primer, "bond-it");
+  });
 });
+
+function quoteJob(templateId: string, choices: Record<string, string>) {
+  const plan = measurePlanFor(templateId);
+  const picked = normaliseChoices(plan, choices);
+  const materials = materialsForChoices(starterMeasureMaterials(templateId), plan, picked);
+  return quoteFromMeasure({
+    rooms: [room()],
+    materials,
+    wastagePercent: 10,
+    labourPerM2Pence: null,
+    dayRatePence: null,
+    dayCount: null,
+    included: defaultIncludedNames(materials, plan),
+  });
+}

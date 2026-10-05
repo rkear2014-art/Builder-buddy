@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { accentFromImage, normaliseAccent } from "@/lib/accent";
+import { accentFromImage, DEFAULT_ACCENT, isReplacedAccent, normaliseAccent } from "@/lib/accent";
 import { parseQuoteSettings } from "@/lib/quote";
 import { businessLogoQuery, canEditBusiness, parseBusinessProfile } from "@/lib/branding";
 import type { ActionState } from "@/lib/form-state";
@@ -61,7 +61,8 @@ async function storeLogo(bytes: Uint8Array, businessId: string): Promise<string 
     where: { id: businessId },
     select: { accent: true },
   });
-  const accent = current?.accent ? undefined : await accentFromImage(prepared.bytes);
+  const sampled = !current?.accent || isReplacedAccent(current.accent) ? await accentFromImage(prepared.bytes) : null;
+  const accent = sampled == null ? undefined : isReplacedAccent(sampled) ? DEFAULT_ACCENT : sampled;
   await getPrisma().business.update({
     where: { id: businessId },
     data: {
@@ -111,8 +112,6 @@ export async function removeBusinessLogo(): Promise<void> {
   redirect("/settings?saved=removed");
 }
 
-const PREVIOUS_DEFAULT_ACCENT = "#245a94";
-
 export async function useSampleLogo(): Promise<void> {
   const owner = await ownerBusinessId();
   if ("error" in owner) redirect("/settings?notice=owner");
@@ -139,8 +138,7 @@ export async function useSampleLogo(): Promise<void> {
     select: { accent: true },
   });
   const storedAccent = current?.accent.toLowerCase() ?? "";
-  const accent =
-    !storedAccent || storedAccent === PREVIOUS_DEFAULT_ACCENT ? await accentFromImage(logo) : undefined;
+  const accent = !storedAccent || isReplacedAccent(storedAccent) ? DEFAULT_ACCENT : undefined;
   await getPrisma().business.update({
     where: { id: owner.id },
     data: {

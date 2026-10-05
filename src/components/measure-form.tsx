@@ -7,12 +7,18 @@ import {
   DEFAULT_DOOR_M2,
   DEFAULT_WINDOW_M2,
   DEFAULT_WASTAGE_PERCENT,
+  externalCornerCount,
   formatM2,
   quoteFromMeasure,
   type MeasureMaterial,
   type MeasureMode,
   type RoomInput,
 } from "@/lib/measure";
+import {
+  defaultIncludedNames,
+  materialsForChoices,
+  type MeasurePlan,
+} from "@/lib/measure-plan";
 import { saveMeasuredQuote } from "@/server/actions/measure";
 import { InlineForm } from "@/components/inline-form";
 import { SubmitButton } from "@/components/submit-button";
@@ -38,6 +44,8 @@ function blankRoom(name: string, mode: MeasureMode, includeWalls: boolean, inclu
     doorAreaM2: DEFAULT_DOOR_M2,
     windowCount: 0,
     windowAreaM2: DEFAULT_WINDOW_M2,
+    externalCorners: 0,
+    stopBeadM: 0,
   };
 }
 
@@ -59,6 +67,9 @@ export function MeasureForm({
   initialDayRate,
   initialDayCount,
   defaults,
+  plan,
+  initialChoices,
+  initialIncluded,
 }: {
   jobId: string;
   typeKey: string;
@@ -72,6 +83,9 @@ export function MeasureForm({
   initialDayRate: string;
   initialDayCount: string;
   defaults: { mode: MeasureMode; includeWalls: boolean; includeCeiling: boolean };
+  plan: MeasurePlan;
+  initialChoices: Record<string, string>;
+  initialIncluded: string[] | null;
 }) {
   const [rooms, setRooms] = useState<RoomInput[]>(
     initialRooms.length > 0 ? initialRooms : [blankRoom("Living room", defaults.mode, defaults.includeWalls, defaults.includeCeiling)],
@@ -79,22 +93,47 @@ export function MeasureForm({
   const [wastage, setWastage] = useState(String(wastagePercent || DEFAULT_WASTAGE_PERCENT));
   const [dayRate, setDayRate] = useState(initialDayRate);
   const [dayCount, setDayCount] = useState(initialDayCount);
+  const [choices, setChoices] = useState(initialChoices);
+  const [included, setIncluded] = useState<string[]>(
+    initialIncluded ?? defaultIncludedNames(materialsForChoices(materials, plan, initialChoices), plan),
+  );
   const wastageNumber = /^\d{1,3}$/.test(wastage) ? Math.min(100, Number(wastage)) : DEFAULT_WASTAGE_PERCENT;
   const dayRatePence = dayRate.trim() ? Math.round(Number(dayRate) * 100) : null;
   const dayCountNumber = dayCount.trim() ? Number(dayCount) : null;
 
+  const activeMaterials = useMemo(() => materialsForChoices(materials, plan, choices), [materials, plan, choices]);
   const quote = useMemo(
     () =>
       quoteFromMeasure({
         rooms,
-        materials,
+        materials: activeMaterials,
         wastagePercent: wastageNumber,
         labourPerM2Pence,
         dayRatePence: dayRatePence != null && Number.isFinite(dayRatePence) ? dayRatePence : null,
         dayCount: dayCountNumber != null && Number.isFinite(dayCountNumber) ? dayCountNumber : null,
+        included,
       }),
-    [rooms, materials, wastageNumber, labourPerM2Pence, dayRatePence, dayCountNumber],
+    [rooms, activeMaterials, wastageNumber, labourPerM2Pence, dayRatePence, dayCountNumber, included],
   );
+
+  function choose(groupId: string, optionId: string) {
+    const group = plan.groups.find((item) => item.id === groupId);
+    if (!group) return;
+    setChoices((current) => ({ ...current, [groupId]: optionId }));
+    setIncluded((current) => {
+      const next = new Set(current);
+      for (const option of group.options) {
+        if (option.materialName) next.delete(option.materialName);
+      }
+      const picked = group.options.find((option) => option.id === optionId);
+      if (picked?.materialName) next.add(picked.materialName);
+      return [...next];
+    });
+  }
+
+  function toggleLine(name: string) {
+    setIncluded((current) => (current.includes(name) ? current.filter((item) => item !== name) : [...current, name]));
+  }
 
   function update(index: number, patch: Partial<RoomInput>) {
     setRooms((current) => current.map((room, roomIndex) => (roomIndex === index ? { ...room, ...patch } : room)));
@@ -187,6 +226,16 @@ export function MeasureForm({
                   Window size (m²)
                   <input inputMode="decimal" value={room.windowAreaM2 || ""} onChange={(event) => update(index, { windowAreaM2: Number(event.target.value) || 0 })} />
                 </label>
+                <label className="field">
+                  External corners
+                  <span>Angle bead is for external corners only. A plain room has none. Each door or window reveal adds two on top of this number. Using {externalCornerCount(room)}.</span>
+                  <input inputMode="numeric" value={room.externalCorners || ""} placeholder="0" onChange={(event) => update(index, { externalCorners: Number(event.target.value) || 0 })} />
+                </label>
+                <label className="field">
+                  Stop bead (m)
+                  <span>Leave this at 0 for a plain room. It is not the length of the walls.</span>
+                  <input inputMode="decimal" value={room.stopBeadM || ""} placeholder="0" onChange={(event) => update(index, { stopBeadM: Number(event.target.value) || 0 })} />
+                </label>
               </div>
             )}
             <p className="font-display text-3xl">{areas ? formatM2(areas.netM2) : ""}</p>
@@ -205,6 +254,32 @@ export function MeasureForm({
 
       <section className="card grid gap-3">
         <h2 className="font-display text-3xl">Materials</h2>
+        {plan.groups.map((group) => (
+          <div key={group.id} className="grid gap-2">
+            <p className="font-extrabold">{group.label}</p>
+            <div className="grid grid-cols-3 gap-2">
+              {group.options.map((option) => {
+                const pressed = (choices[group.id] ?? group.defaultOptionId) === option.id;
+                return (
+                  <button
+                    key={option.id}
+                    type="button"
+                    className="btn"
+                    aria-pressed={pressed}
+                    style={pressed ? { background: accent, color: accentInk } : undefined}
+                    onClick={() => choose(group.id, option.id)}
+                  >
+                    {option.label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        ))}
+        <p className="text-sm text-stone">
+          Tick a line to include it. Untick it to leave it off the quote.
+          {plan.groups.length > 0 ? " One backing coat and one primer." : ""}
+        </p>
         <p className="font-display text-4xl">{formatM2(quote.totalM2)} in total</p>
         <ul className="grid gap-1 text-stone">
           {rooms.map((room, index) => (
@@ -235,21 +310,29 @@ export function MeasureForm({
           </label>
         </div>
         <ul className="grid gap-3">
-          {quote.lines.map((line) => (
-            <li key={`${line.name}-${line.unit}`} className="border-b border-line pb-3">
-              <p className="text-lg font-bold">{line.name}</p>
-              {line.quantity ? (
-                <p>
-                  {line.quantity} {line.unit}
-                  {line.unitPricePence == null ? "" : ` · ${formatPence(line.unitPricePence)}`}
-                  {line.lineTotalPence == null ? "" : ` · ${formatPence(line.lineTotalPence)}`}
-                </p>
-              ) : (
-                <p className="text-stone">{line.note}</p>
-              )}
-              {line.quantity && line.note ? <p className="font-bold text-clay">{line.note}</p> : null}
-            </li>
-          ))}
+          {quote.lines.map((line) => {
+            const on = included.includes(line.name);
+            return (
+              <li key={`${line.name}-${line.unit}`} className={`border-b border-line pb-3 ${on ? "" : "opacity-60"}`}>
+                <label className="flex items-start gap-3">
+                  <input type="checkbox" className="mt-1 h-7 w-7 shrink-0" checked={on} onChange={() => toggleLine(line.name)} style={{ accentColor: accent }} />
+                  <span>
+                    <span className="block text-lg font-bold">{line.name}</span>
+                    {line.quantity ? (
+                      <span className="block">
+                        {line.quantity} {line.unit}
+                        {line.unitPricePence == null ? "" : ` · ${formatPence(line.unitPricePence)}`}
+                        {line.lineTotalPence == null ? "" : ` · ${formatPence(line.lineTotalPence)}`}
+                      </span>
+                    ) : (
+                      <span className="block text-stone">{line.note}</span>
+                    )}
+                    {line.quantity && line.note ? <span className="block font-bold text-clay">{line.note}</span> : null}
+                  </span>
+                </label>
+              </li>
+            );
+          })}
         </ul>
         <p className="font-display text-4xl">{formatPence(quote.totalPence)}</p>
         {quote.unpricedCount > 0 ? (
@@ -265,6 +348,8 @@ export function MeasureForm({
           <input type="hidden" name="wastagePercent" value={wastage} />
           <input type="hidden" name="dayRate" value={dayRate} />
           <input type="hidden" name="dayCount" value={dayCount} />
+          <input type="hidden" name="choices" value={JSON.stringify(choices)} />
+          <input type="hidden" name="included" value={JSON.stringify(included)} />
           <SubmitButton>Add to quote</SubmitButton>
           <p className="text-sm text-stone">This replaces the lines this calculator added last time. Lines you typed yourself stay, and you can still change any quantity on the job.</p>
         </InlineForm>

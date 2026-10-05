@@ -168,6 +168,12 @@ model Job {
   measureTypeName String     @default("")
   dayRatePence   Int?
   dayCount       Decimal?    @db.Decimal(6, 2)
+  measureSelection String    @default("")
+  postcode       String      @default("")
+  addressLine1   String      @default("")
+  addressLine2   String      @default("")
+  town           String      @default("")
+  county         String      @default("")
   scheduledDate DateTime     @db.Date
   timeSlot      String
   status        JobStatus
@@ -367,6 +373,8 @@ model RoomMeasure {
   doorAreaM2     Decimal  @default(1.9) @db.Decimal(6, 2)
   windowCount    Int      @default(0)
   windowAreaM2   Decimal  @default(1.5) @db.Decimal(6, 2)
+  externalCorners Int     @default(0)
+  stopBeadM      Decimal  @default(0) @db.Decimal(8, 2)
   sortOrder      Int      @default(0)
 
   @@index([jobId])
