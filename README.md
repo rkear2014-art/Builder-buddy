@@ -46,8 +46,8 @@ Fill in `.env`:
 
 | Variable | Required | Purpose |
 | --- | --- | --- |
-| `DATABASE_URL` | Yes | Postgres URL, for example `postgresql://USER:PASSWORD@HOST:5432/builder_buddy`. Use a `postgres://` address. A `prisma+postgres://` address is only for the Prisma CLI |
-| `DIRECT_URL` | No | Direct Postgres URL for migrations when `DATABASE_URL` goes through a pool |
+| `DATABASE_URL` | Yes | Pooled `postgres://` URL from Prisma Postgres. A `prisma+postgres://` address is only for the Prisma CLI |
+| `DIRECT_URL` | On Vercel | Direct `postgres://` URL for migrations. Required when `DATABASE_URL` goes through the pool |
 | `AUTH_SECRET` | Yes | At least 32 characters. Create one with `openssl rand -base64 32` |
 | `APP_BASE_URL` | No | Public site URL used in every customer link and email, such as `https://app.plastererinredditch.co.uk`. No trailing slash |
 | `APP_ORIGIN` | No | Older name for the same URL. Used only when `APP_BASE_URL` is unset |
@@ -101,7 +101,8 @@ A new email becomes the owner of a new business and closes first-account setup. 
 
 The app is ready for Vercel with a hosted Postgres database (Neon, Supabase, RDS, or similar).
 
-1. Set `DATABASE_URL` to the `postgres://` connection string (pooled is fine for the app). Set `DIRECT_URL` to the direct string when you have one, so migrations do not go through the pool. Also set `AUTH_SECRET`. Set `APP_BASE_URL` to the public address once you have one (`APP_ORIGIN` still works if that is what you already set).
+1. In Vercel, set `DATABASE_URL` to the pooled `postgres://` string from Prisma Postgres (the host often contains `pool`). Set `DIRECT_URL` to the direct `postgres://` string from the same database, so migrations do not go through the pool. Do not put a `prisma+postgres://` string in `DATABASE_URL`. Also set `AUTH_SECRET`. Set `APP_BASE_URL` to the public address once you have one (`APP_ORIGIN` still works if that is what you already set).
+2. Redeploy after saving those two database strings. The build applies migrations, then checks that the same driver the sign-in page uses can read the database.
 
 ### Your own web address
 

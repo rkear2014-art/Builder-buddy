@@ -1,6 +1,6 @@
 import "dotenv/config";
 import { databaseFailureMessage } from "../src/lib/database";
-import { getPrisma } from "../src/server/prisma";
+import { disconnectPrisma, getPrisma } from "../src/server/prisma";
 
 /**
  * Runs after `prisma migrate deploy` in the production build.
@@ -13,7 +13,7 @@ async function main(): Promise<void> {
     await prisma.$queryRaw`SELECT "id", "claimed" FROM "SetupLock" WHERE "id" = 1`;
     await prisma.user.count();
   } finally {
-    await prisma.$disconnect();
+    await disconnectPrisma();
   }
 }
 
