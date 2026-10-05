@@ -37,7 +37,7 @@ export function CrewForm({
       <CrewEditor days={days} roles={roles} totalM2={totalM2} accent={accent} accentInk={accentInk} onDays={setDays} onRole={onRole} />
       <CrewHiddenFields days={days} roles={roles} />
       <SubmitButton variant={nested ? "secondary" : "primary"}>Save crew</SubmitButton>
-      <p className="text-sm text-stone">Saving with a plasterer on the job replaces the Labour line on the quote. Labourer and subcontractor amounts stay on this page.</p>
+      <p className="text-sm text-stone">Saving adds every priced person to the Labour line, including a labourer on their own. The customer sees that one line on the quote and the invoice.</p>
     </InlineForm>
   );
 }

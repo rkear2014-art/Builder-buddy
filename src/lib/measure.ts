@@ -198,7 +198,7 @@ export function quoteFromMeasure(input: {
   labourPerM2Pence: number | null;
   dayRatePence: number | null;
   dayCount: number | null;
-  /** When the plasterer count is above zero, this replaces the single labour and day-rate lines. */
+  /** Anyone on the crew replaces the library labour and day-rate lines. */
   crew?: CrewInput | null;
   /** When set, only these line names are added into the total. */
   included?: readonly string[] | null;
@@ -260,8 +260,7 @@ export function quoteFromMeasure(input: {
   }
 
   const crewPrice = input.crew ? priceCrew({ ...input.crew, totalM2 }) : null;
-  const plasterer = crewPrice?.roles.find((role) => role.role === "plasterer");
-  const crewOwnsLabour = plasterer != null && plasterer.count > 0;
+  const crewOwnsLabour = (crewPrice?.roles ?? []).some((role) => role.count > 0);
 
   if (!crewOwnsLabour && input.labourPerM2Pence != null && totalM2 > 0) {
     const quantity = quantityForQuote(totalM2, false);

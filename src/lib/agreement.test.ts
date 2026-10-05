@@ -88,12 +88,12 @@ describe("sign-off locking", () => {
     assert.deepEqual(agreementChanges(locked, current), ["Work description", "Date"]);
   });
 
-  it("leaves labourer and subcontractor pay off the customer quote", () => {
+  it("bills crew pay through the Labour line and drops a separate labourer row", () => {
     const agreed = toPublicAgreement({
       ...plasterJob(),
       materials: [
         ...plasterJob().materials,
-        { name: "Labour", quantity: "3", unit: "day", unitPricePence: 40000, costPricePence: null },
+        { name: "Labour", quantity: "3", unit: "day", unitPricePence: 52000, costPricePence: 12000 },
         { name: "Labourer", quantity: "3", unit: "day", unitPricePence: 12000, costPricePence: 12000 },
         { name: "Subcontractor", quantity: "72", unit: "m²", unitPricePence: 1000, costPricePence: 1000 },
       ],
@@ -102,8 +102,10 @@ describe("sign-off locking", () => {
       agreed.materials.map((line) => line.name),
       ["Multi-finish plaster", "Scrim tape", "Labour"],
     );
+    assert.equal(agreed.materials.find((line) => line.name === "Labour")?.unitPricePence, 52000);
+    assert.equal(agreed.materials.some((line) => line.name === "Labourer"), false);
     assert.equal(agreed.materials.some((line) => line.name === "Subcontractor"), false);
-    assert.equal(agreed.totalPence, 122820);
+    assert.equal(agreed.totalPence, 158820);
   });
 
   it("refuses a second signature and keeps the first snapshot", () => {

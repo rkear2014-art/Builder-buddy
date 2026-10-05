@@ -2,9 +2,9 @@ import { customerLineTotalPence } from "./materials";
 import { parsePoundsToPence } from "./money";
 
 export const CREW_ROLES = [
-  { id: "plasterer", label: "Plasterer", defaultBasis: "day", onQuote: true },
-  { id: "labourer", label: "Labourer", defaultBasis: "day", onQuote: false },
-  { id: "subcontractor", label: "Subcontractor", defaultBasis: "m2", onQuote: false },
+  { id: "plasterer", label: "Plasterer", defaultBasis: "day", passThrough: false },
+  { id: "labourer", label: "Labourer", defaultBasis: "day", passThrough: true },
+  { id: "subcontractor", label: "Subcontractor", defaultBasis: "m2", passThrough: true },
 ] as const;
 
 export type CrewRoleId = (typeof CREW_ROLES)[number]["id"];
@@ -54,9 +54,13 @@ export type CrewCustomerLine = {
 
 export type CrewPrice = {
   roles: CrewRolePrice[];
+  /** Plasterer, labourer and subcontractor, as one Labour line. */
   customerPence: number;
+  /** Labourer and subcontractor pay. The customer pays it inside Labour. */
   costPence: number;
   marginPence: number;
+  /** Unit cost for the Labour line. Quantity × this is costPence. */
+  costUnitPricePence: number | null;
   customerLine: CrewCustomerLine | null;
 };
 
@@ -70,7 +74,7 @@ export function isCrewBasis(value: string): value is CrewBasis {
   return value === "day" || value === "m2";
 }
 
-/** Labourer and subcontractor pay stays off the customer quote and invoice. */
+/** A row named Labourer or Subcontractor is not a customer line. That pay belongs inside Labour. */
 export function isInternalCrewName(name: string): boolean {
   const value = name.trim().toLowerCase();
   return value === "labourer" || value === "subcontractor" || value.startsWith("labourer ") || value.startsWith("subcontractor ");
@@ -101,7 +105,7 @@ function priceRole(role: CrewRoleInput, days: number | null, totalM2: number): C
     count,
     basis,
     ratePence: role.ratePence,
-    onQuote: meta.onQuote,
+    onQuote: false,
     amountPence: null as number | null,
     quantity: null as string | null,
     unit: basis === "day" ? "day" : "m²",
@@ -125,35 +129,67 @@ function priceRole(role: CrewRoleInput, days: number | null, totalM2: number): C
   return { ...base, quantity, unitPricePence: role.ratePence, amountPence };
 }
 
+function onTheBill(role: CrewRolePrice): boolean {
+  return role.amountPence != null && role.amountPence > 0 && role.quantity != null && role.unitPricePence != null;
+}
+
 /** Day roles are count × rate × days. A per m² rate is for the measured area, not multiplied by the headcount. */
 export function priceCrew(input: CrewInput & { totalM2: number }): CrewPrice {
   const byRole = new Map(input.roles.map((role) => [role.role, role]));
-  const roles = CREW_ROLES.map((meta) =>
+  const priced = CREW_ROLES.map((meta) =>
     priceRole(
       byRole.get(meta.id) ?? { role: meta.id, count: 0, basis: meta.defaultBasis, ratePence: null },
       input.days,
       input.totalM2,
     ),
   );
-  const customer = roles.find((role) => role.onQuote);
-  const customerPence = customer?.amountPence ?? 0;
-  const costPence = roles.filter((role) => !role.onQuote).reduce((sum, role) => sum + (role.amountPence ?? 0), 0);
-  const customerLine =
-    customer?.amountPence != null && customer.quantity && customer.unitPricePence != null
-      ? {
-          name: "Labour" as const,
-          unit: customer.unit,
-          quantity: customer.quantity,
-          unitPricePence: customer.unitPricePence,
-          lineTotalPence: customer.amountPence,
-          note: null,
-        }
-      : null;
+  const billed = priced.filter(onTheBill);
+  const roles = priced.map((role) => ({ ...role, onQuote: billed.some((item) => item.role === role.role) }));
+  const anchor = billed[0];
+  const sameCharge =
+    anchor != null && billed.every((role) => role.unit === anchor.unit && role.quantity === anchor.quantity);
+  const passThroughUnit = billed
+    .filter((role) => roleMeta(role.role).passThrough)
+    .reduce((sum, role) => sum + (role.unitPricePence ?? 0), 0);
+  const passThroughPence = billed
+    .filter((role) => roleMeta(role.role).passThrough)
+    .reduce((sum, role) => sum + (role.amountPence ?? 0), 0);
+  const customerLine: CrewCustomerLine | null =
+    anchor == null
+      ? null
+      : sameCharge
+        ? {
+            name: "Labour",
+            unit: anchor.unit,
+            quantity: anchor.quantity ?? "1",
+            unitPricePence: billed.reduce((sum, role) => sum + (role.unitPricePence ?? 0), 0),
+            lineTotalPence: customerLineTotalPence({
+              quantity: anchor.quantity ?? "1",
+              unitPricePence: billed.reduce((sum, role) => sum + (role.unitPricePence ?? 0), 0),
+            }) ?? 0,
+            note: null,
+          }
+        : {
+            name: "Labour",
+            unit: "job",
+            quantity: "1",
+            unitPricePence: billed.reduce((sum, role) => sum + (role.amountPence ?? 0), 0),
+            lineTotalPence: billed.reduce((sum, role) => sum + (role.amountPence ?? 0), 0),
+            note: null,
+          };
+  const costPence =
+    customerLine == null
+      ? 0
+      : sameCharge
+        ? (customerLineTotalPence({ quantity: customerLine.quantity, unitPricePence: passThroughUnit }) ?? 0)
+        : passThroughPence;
+  const customerPence = customerLine?.lineTotalPence ?? 0;
   return {
     roles,
     customerPence,
     costPence,
     marginPence: customerPence - costPence,
+    costUnitPricePence: costPence > 0 ? (sameCharge ? passThroughUnit : costPence) : null,
     customerLine,
   };
 }

@@ -1,10 +1,10 @@
 "use server";
 
 import { redirect } from "next/navigation";
-import { parseCrewFields } from "@/lib/crew";
+import { parseCrewFields, priceCrew } from "@/lib/crew";
 import type { ActionState } from "@/lib/form-state";
 import { tenantWhere } from "@/lib/tenancy";
-import { customerLabourLine, measuredAreaM2, writeCrewDefaults } from "@/server/crew-store";
+import { measuredAreaM2, writeCrewDefaults } from "@/server/crew-store";
 import { requireUser } from "@/server/dal";
 import { getPrisma } from "@/server/prisma";
 import { noteQuoteMade } from "@/server/quote-progress";
@@ -29,8 +29,8 @@ export async function saveJobCrew(_state: ActionState, formData: FormData): Prom
   });
   if (!job) redirect("/jobs");
   const totalM2 = await measuredAreaM2(user.businessId, job.id);
-  const labour = customerLabourLine(parsed.crew, totalM2);
-  const plasterer = parsed.crew.roles.find((role) => role.role === "plasterer");
+  const priced = priceCrew({ ...parsed.crew, totalM2 });
+  const labour = priced.customerLine;
   await getPrisma().$transaction(async (tx) => {
     for (const role of parsed.crew.roles) {
       await tx.jobCrew.upsert({
@@ -50,7 +50,7 @@ export async function saveJobCrew(_state: ActionState, formData: FormData): Prom
       where: { id: job.id },
       data: { dayCount: parsed.crew.days == null ? null : parsed.crew.days.toFixed(2) },
     });
-    if (plasterer && plasterer.count > 0 && labour) {
+    if (labour) {
       await tx.jobMaterial.deleteMany({
         where: {
           jobId: job.id,
@@ -72,7 +72,7 @@ export async function saveJobCrew(_state: ActionState, formData: FormData): Prom
           quantity: labour.quantity,
           unit: labour.unit,
           unitPricePence: labour.unitPricePence,
-          costPricePence: null,
+          costPricePence: priced.costUnitPricePence,
           fromMeasure: true,
           sortOrder: (existing?.sortOrder ?? -1) + 1,
         },
