@@ -48,6 +48,11 @@ body {
   line-height: 1.2;
   text-align: center;
   cursor: pointer;
+  transition: transform 0.12s ease, filter 0.12s ease, background-color 0.12s ease;
+}
+
+.btn:active:not(:disabled) {
+  transform: scale(0.97);
 }
 
 .btn:disabled {
@@ -56,12 +61,12 @@ body {
 }
 
 .btn-primary {
-  background: var(--color-amber);
-  color: var(--color-ink);
+  background: var(--brand, var(--color-amber));
+  color: var(--brand-ink, var(--color-ink));
 }
 
 .btn-primary:hover {
-  background: #e0a512;
+  background: color-mix(in srgb, var(--brand, var(--color-amber)) 88%, black);
 }
 
 .btn-secondary {
@@ -117,8 +122,108 @@ body {
 .card {
   background: var(--color-card);
   border: 1px solid var(--color-line);
-  border-radius: 1.25rem;
+  border-radius: 1.35rem;
   padding: 1rem;
+  box-shadow: 0 16px 36px -28px rgba(23, 23, 26, 0.55), 0 1px 2px rgba(23, 23, 26, 0.04);
+}
+
+.soft-card {
+  border-radius: 1.5rem;
+  background: white;
+  box-shadow: 0 18px 40px -26px rgba(23, 23, 26, 0.5), 0 1px 2px rgba(23, 23, 26, 0.05);
+}
+
+.empty-state {
+  display: grid;
+  justify-items: center;
+  gap: 0.65rem;
+  padding: 1.6rem 1rem;
+  text-align: center;
+  color: var(--brand, var(--color-stone));
+}
+
+.empty-state p {
+  max-width: 22rem;
+  color: var(--color-stone);
+}
+
+.empty-mark {
+  width: 3.25rem;
+  height: 3.25rem;
+}
+
+.empty-state-compact {
+  padding: 0.35rem 0;
+  border: none;
+  background: transparent;
+  box-shadow: none;
+}
+
+.empty-state-compact .empty-mark {
+  width: 2.4rem;
+  height: 2.4rem;
+}
+
+.skeleton {
+  background: linear-gradient(
+    100deg,
+    color-mix(in srgb, var(--brand, #c4b8a8) 10%, #efeae2) 0%,
+    #f8f5ef 45%,
+    color-mix(in srgb, var(--brand, #c4b8a8) 16%, #efeae2) 100%
+  );
+  background-size: 200% 100%;
+  animation: skeleton 1.15s ease-in-out infinite;
+}
+
+.photo-zoom {
+  overflow: hidden;
+}
+
+.photo-zoom img {
+  transition: transform 0.35s ease;
+}
+
+@media (hover: hover) {
+  .photo-zoom:hover img {
+    transform: scale(1.05);
+  }
+}
+
+.photo-zoom:active img {
+  transform: scale(1.04);
+}
+
+@keyframes rise-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes skeleton {
+  from {
+    background-position: 100% 0;
+  }
+  to {
+    background-position: -100% 0;
+  }
+}
+
+/* Resting state is fully visible. The fade only runs when motion is allowed, and fill-mode both holds opacity 1 when it ends. Cards are not faded, so a missed animation cannot leave them pale. */
+.rise-in,
+.soft-card {
+  opacity: 1;
+  transform: none;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .rise-in {
+    animation: rise-in 0.28s ease-out both;
+  }
 }
 
 .private-panel {
@@ -132,12 +237,25 @@ body {
 .status-complete {
   display: inline-flex;
   align-items: center;
+  gap: 0.35rem;
   min-height: 2rem;
   border-radius: 999px;
-  padding: 0.15rem 0.7rem;
+  padding: 0.15rem 0.75rem;
   font-size: 0.85rem;
   font-weight: 800;
   letter-spacing: 0.01em;
+}
+
+.status-enquiry::before,
+.status-booked::before,
+.status-progress::before,
+.status-complete::before {
+  content: "";
+  width: 0.45rem;
+  height: 0.45rem;
+  flex: none;
+  border-radius: 999px;
+  background: currentColor;
 }
 
 .status-enquiry {
@@ -158,6 +276,28 @@ body {
 .status-complete {
   background: var(--color-moss);
   color: var(--color-pine);
+}
+
+.status-overdue {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-height: 2rem;
+  border-radius: 999px;
+  padding: 0.15rem 0.75rem;
+  font-size: 0.85rem;
+  font-weight: 800;
+  background: var(--color-blush);
+  color: var(--color-clay);
+}
+
+.status-overdue::before {
+  content: "";
+  width: 0.45rem;
+  height: 0.45rem;
+  flex: none;
+  border-radius: 999px;
+  background: currentColor;
 }
 
 .tab-nav {
@@ -285,8 +425,22 @@ summary.btn::-webkit-details-marker {
 .quote-sheet {
   overflow: hidden;
   background: white;
-  border-radius: 1rem;
-  box-shadow: 0 1px 2px rgba(28, 25, 21, 0.06);
+  border-radius: 1.15rem;
+  box-shadow: 0 22px 48px -30px rgba(23, 23, 26, 0.55), 0 1px 2px rgba(23, 23, 26, 0.05);
+}
+
+.letterhead-sheet {
+  position: relative;
+}
+
+.letterhead-sheet::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  right: 0;
+  left: 0;
+  height: 0.45rem;
+  background: linear-gradient(90deg, var(--quote-accent, #dd1f29) 0 68%, #2f343a 68% 100%);
 }
 
 @media print {
@@ -329,6 +483,7 @@ summary.btn::-webkit-details-marker {
   .card {
     border: none;
     padding: 0;
+    box-shadow: none;
   }
 
 .brand-logo-letter {
@@ -639,9 +794,47 @@ summary.btn::-webkit-details-marker {
 
 .diary-panel {
   border: 1px solid #e1e6ec;
-  border-radius: 1rem;
+  border-radius: 1.15rem;
   background: white;
   padding: 0.9rem 1rem;
+  box-shadow: 0 16px 36px -28px rgba(23, 23, 26, 0.5);
+}
+
+.signin {
+  position: relative;
+  display: grid;
+  min-height: 100dvh;
+  place-items: center;
+  overflow: hidden;
+  padding: 1.25rem;
+  background: #12161c;
+  color: white;
+}
+
+.signin-photo {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+}
+
+.signin-shade {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(8, 10, 14, 0.72) 0%, rgba(8, 10, 14, 0.5) 46%, rgba(8, 10, 14, 0.68) 100%);
+}
+
+.signin-panel {
+  position: relative;
+  z-index: 1;
+  width: min(100%, 28rem);
+  border-radius: 1.6rem;
+  background: rgba(255, 253, 248, 0.97);
+  padding: 1.5rem 1.25rem 1.25rem;
+  color: var(--color-ink);
+  box-shadow: 0 24px 60px -28px rgba(0, 0, 0, 0.65);
 }
 
 .diary-count {
@@ -691,6 +884,28 @@ summary.btn::-webkit-details-marker {
 .diary-kind:has(input:checked) {
   border-color: var(--color-ink);
   background: var(--color-sand);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rise-in,
+  .soft-card,
+  .skeleton,
+  .animate-spin {
+    animation: none !important;
+    opacity: 1;
+    transform: none;
+  }
+
+  .btn,
+  .photo-zoom img {
+    transition: none !important;
+  }
+
+  .btn:active:not(:disabled),
+  .photo-zoom:hover img,
+  .photo-zoom:active img {
+    transform: none;
+  }
 }
 
 .catalogue-chip {

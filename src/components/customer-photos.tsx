@@ -11,9 +11,9 @@ export function CustomerPhotos({
       <h2 className="font-display text-3xl">Before and after</h2>
       <ul className="grid gap-4 sm:grid-cols-2">
         {photos.map((photo) => (
-          <li key={photo.id} className="grid gap-2">
+          <li key={photo.id} className="photo-zoom grid gap-2 rounded-2xl">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={photo.src} alt="" className="aspect-[4/3] w-full rounded-2xl object-cover" />
+            <img src={photo.src} alt="" className="aspect-[4/3] w-full object-cover" />
             <p className="font-extrabold">{PHOTO_STAGE_LABELS[photo.stage]}</p>
           </li>
         ))}

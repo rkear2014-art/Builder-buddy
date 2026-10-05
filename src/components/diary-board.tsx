@@ -12,6 +12,7 @@ import {
   type DiaryView,
 } from "@/lib/diary";
 import { DiaryCardView } from "@/components/diary-card";
+import { EmptyState } from "@/components/empty-state";
 
 export function DiaryLegend() {
   return (
@@ -49,7 +50,9 @@ export function DiaryToBook({
         <span className="diary-count">{jobs.length}</span>
       </div>
       {jobs.length === 0 ? (
-        <p className="mt-3 text-sm font-semibold text-stone">Nothing waiting. On Book in, tick “Won — date still to book”.</p>
+        <div className="mt-3">
+          <EmptyState compact>Nothing waiting. On Book in, tick “Won — date still to book”.</EmptyState>
+        </div>
       ) : (
         <div className="mt-3 grid gap-2">
           {jobs.map((job) => {

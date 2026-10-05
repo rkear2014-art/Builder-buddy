@@ -43,7 +43,7 @@ export default async function DiaryPage({
     >
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="font-display text-4xl leading-none">Diary</h1>
+          <h1 className="font-display text-5xl leading-none tracking-tight">Diary</h1>
           <p className="mt-1 text-sm font-semibold text-stone">Quote visits and jobs on site</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">

@@ -1,4 +1,5 @@
 import type { CSSProperties } from "react";
+import { accentInk } from "@/lib/accent";
 import type { CustomerLetterhead } from "@/lib/branding";
 import { formatIsoDate, formatLondonDateTime } from "@/lib/dates";
 import type { PublicAgreement } from "@/lib/agreement";
@@ -69,7 +70,7 @@ export function QuotationDocument({
             className="absolute inset-0"
             style={{
               background: hero
-                ? "linear-gradient(105deg, rgba(8,10,14,0.88) 0%, rgba(8,10,14,0.62) 48%, rgba(8,10,14,0.28) 100%)"
+                ? "linear-gradient(105deg, rgba(8,10,14,0.78) 0%, rgba(8,10,14,0.4) 50%, rgba(8,10,14,0.16) 100%)"
                 : `linear-gradient(115deg, #14181f 0%, #243044 55%, ${accent} 140%)`,
             }}
           />
@@ -120,7 +121,7 @@ export function QuotationDocument({
         <div className="quote-bar" />
       </section>
 
-      <section id="quote-letter" className="quote-sheet px-5 py-6">
+      <section id="quote-letter" className="quote-sheet letterhead-sheet px-5 py-6">
         <div className="flex items-start justify-between gap-4">
           <address className="not-italic">
             <p className="font-bold">{businessName}</p>
@@ -160,7 +161,7 @@ export function QuotationDocument({
         {businessPhone ? <p>Phone: {businessPhone}</p> : null}
       </section>
 
-      <section id="quote-price" className="quote-sheet px-5 py-6">
+      <section id="quote-price" className="quote-sheet letterhead-sheet px-5 py-6">
         <div className="flex items-start justify-between gap-4">
           <h2 className="font-display text-4xl leading-none">Price Summary</h2>
           {logoSrc ? (
@@ -192,7 +193,7 @@ export function QuotationDocument({
               <PriceRow label={`VAT at ${agreement.vatRatePercent}%`} amount={formatPence(money.vatPence)} />
             </>
           ) : null}
-          <div className="flex items-center justify-between px-4 py-3 text-white" style={{ background: accent }}>
+          <div className="flex items-center justify-between px-4 py-3" style={{ background: accent, color: accentInk(accent) }}>
             <p className="font-extrabold">{money.vatPence != null ? "Total (inc VAT)" : "Total"}</p>
             <p className="font-display text-3xl leading-none">{formatPence(money.totalPence)}</p>
           </div>
@@ -209,7 +210,7 @@ export function QuotationDocument({
         ) : null}
       </section>
 
-      <section id="quote-contract" className="quote-sheet px-5 py-6">
+      <section id="quote-contract" className="quote-sheet letterhead-sheet px-5 py-6">
         <div className="flex items-start justify-between gap-4">
           <h2 className="font-display text-4xl leading-none">Contract for Works</h2>
           {logoSrc ? (
@@ -315,9 +316,9 @@ function PhotoStrip({ photos }: { photos: QuoteChrome["photos"] }) {
         {photos.map((photo) => {
           const caption = photo.caption.trim();
           return (
-            <li key={photo.id}>
+            <li key={photo.id} className="photo-zoom rounded-lg">
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={photo.src} alt="" className="aspect-[4/3] w-full rounded-lg object-cover" />
+              <img src={photo.src} alt="" className="aspect-[4/3] w-full object-cover" />
               {caption && caption !== heading ? (
                 <p className="mt-1 line-clamp-2 text-xs font-bold text-stone">{caption}</p>
               ) : null}

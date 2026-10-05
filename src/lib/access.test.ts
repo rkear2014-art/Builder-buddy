@@ -95,6 +95,7 @@ describe("fail closed access", () => {
       "/icons/icon-192.png",
       "/icons/icon-maskable-512.png",
       "/robots.txt",
+      "/work/site-photo.webp",
     ]) {
       assert.deepEqual(decideAccess({ pathname, configured: false, hasValidSession: false }), { type: "next" }, pathname);
       assert.deepEqual(decideAccess({ pathname, configured: true, hasValidSession: false }), { type: "next" }, pathname);

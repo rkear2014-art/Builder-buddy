@@ -5,15 +5,16 @@ import { usePathname } from "next/navigation";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { LogoutButton } from "@/components/logout-button";
+import { NavIcon, type NavIconName } from "@/components/nav-icons";
 
-const links = [
-  { href: "/jobs", label: "Jobs" },
-  { href: "/quotes", label: "Quotes" },
-  { href: "/invoices", label: "Invoices" },
-  { href: "/#to-chase", label: "To chase", chase: true },
-  { href: "/diary", label: "Diary" },
-  { href: "/library", label: "Library" },
-  { href: "/settings", label: "Business" },
+const links: Array<{ href: string; label: string; icon: NavIconName; chase?: boolean }> = [
+  { href: "/jobs", label: "Jobs", icon: "jobs" },
+  { href: "/quotes", label: "Quotes", icon: "quotes" },
+  { href: "/invoices", label: "Invoices", icon: "invoices" },
+  { href: "/#to-chase", label: "To chase", icon: "chase", chase: true },
+  { href: "/diary", label: "Diary", icon: "diary" },
+  { href: "/library", label: "Library", icon: "library" },
+  { href: "/settings", label: "Business", icon: "business" },
 ];
 
 function isActive(pathname: string, href: string): boolean {
@@ -69,7 +70,10 @@ export function DeskTopNav({
             {businessName.toUpperCase()}
           </span>
         </Link>
-        <div className="ml-auto flex shrink-0 items-center gap-2">
+        <div className="ml-auto flex shrink-0 items-center gap-1 sm:gap-2">
+          <Link href="/library" aria-label="Library" className="grid h-10 w-10 place-items-center rounded-full text-white/80 hover:bg-white/10 lg:hidden">
+            <NavIcon name="library" />
+          </Link>
           <button
             type="button"
             className="grid h-10 w-10 place-items-center rounded-full text-white/80 hover:bg-white/10"
@@ -88,9 +92,12 @@ export function DeskTopNav({
           >
             New job
           </Link>
+          <span className="hidden sm:inline lg:hidden">
+            <LogoutButton compact />
+          </span>
         </div>
       </div>
-      <nav className="mx-auto hidden max-w-6xl flex-wrap items-center gap-1 px-3 pb-2 sm:flex" aria-label="Main">
+      <nav className="mx-auto hidden max-w-6xl flex-wrap items-center gap-1 px-3 pb-2 lg:flex" aria-label="Main">
         {links.map((link) => (
           <NavLink
             key={link.href}
@@ -127,6 +134,7 @@ function NavLink({
       className={`inline-flex min-h-10 items-center gap-1.5 rounded-full px-3 text-sm font-bold ${link.href === "/settings" ? "" : active ? "bg-white/10 text-white" : "text-white/70"}`}
       style={link.href === "/settings" ? { background: accentColour, color: accentInk } : undefined}
     >
+      <NavIcon name={link.icon} />
       {link.label}
       {link.chase && chaseCount > 0 ? (
         <span

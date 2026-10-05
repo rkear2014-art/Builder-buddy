@@ -27,6 +27,7 @@ import { brandedEmailReady } from "@/server/email";
 import { isInternalCrewName, startingCrew } from "@/lib/crew";
 import { formatM2, roomAreas, type MeasureMode } from "@/lib/measure";
 import { CrewForm } from "@/components/crew-form";
+import { EmptyState } from "@/components/empty-state";
 import { getJob, getLibrary, listCrewRates, listJobCrew, listJobInvoices, listJobPhotos, listRoomMeasures, requireUser } from "@/server/dal";
 import { requestOrigin } from "@/server/origin";
 import { InlineForm } from "@/components/inline-form";
@@ -106,7 +107,7 @@ export default async function JobPage({ params }: { params: Promise<{ id: string
         </Link>
       </p>
       <header className="grid gap-2">
-        <h1 className="font-display text-4xl leading-tight">{job.customerName}</h1>
+        <h1 className="font-display text-5xl leading-tight tracking-tight">{job.customerName}</h1>
         <p>{job.address}</p>
         <p className="font-bold text-stone">
           {[tradeBit, formatIsoDate(job.scheduledDate, "long"), slotLabel(job.timeSlot)].filter(Boolean).join(" · ")}
@@ -463,15 +464,17 @@ export default async function JobPage({ params }: { params: Promise<{ id: string
         <h2 className="font-display text-2xl">Before and after</h2>
         <p className="text-stone">Add several photos from the camera or gallery. They are stored with this job.</p>
         <ShowPhotosForm jobId={job.id} showPhotos={job.showPhotos} />
-        {photos.length === 0 ? <p className="text-stone">No photos yet.</p> : null}
+        {photos.length === 0 ? <EmptyState compact>No photos yet.</EmptyState> : null}
         <ul className="grid gap-4 sm:grid-cols-2">
           {photos.map((photo) => {
             const src = `/jobs/${job.id}/photos/${photo.id}`;
             const filename = `${photo.stage.toLowerCase()}.webp`;
             return (
               <li key={photo.id} className="grid gap-2">
+                <div className="photo-zoom rounded-2xl">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={src} alt="" className="aspect-[4/3] w-full rounded-2xl object-cover" />
+                <img src={src} alt="" className="aspect-[4/3] w-full object-cover" />
+                </div>
                 <p className="font-extrabold">{PHOTO_STAGE_LABELS[photo.stage]}</p>
                 <div className="grid grid-cols-2 gap-2">
                   <a className="btn btn-secondary" href={`${src}?download=1`}>
