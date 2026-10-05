@@ -21,6 +21,13 @@ import {
   materialsForChoices,
   type MeasurePlan,
 } from "@/lib/measure-plan";
+import {
+  ROOM_NAME_OTHER,
+  ROOM_NAME_OTHER_LABEL,
+  applyRoomNamePick,
+  roomPickerOptions,
+  roomPickerValue,
+} from "@/lib/room-names";
 import { saveMeasuredQuote } from "@/server/actions/measure";
 import { CrewEditor, CrewHiddenFields } from "@/components/crew-editor";
 import { InlineForm } from "@/components/inline-form";
@@ -80,6 +87,59 @@ function nextName(count: number): string {
   return `Bedroom ${count}`;
 }
 
+type DraftRoom = RoomInput & { draftId: string };
+
+function withDraft(room: RoomInput): DraftRoom {
+  return { ...room, draftId: crypto.randomUUID() };
+}
+
+function withoutDraftId(room: DraftRoom): RoomInput {
+  const { draftId, ...saved } = room;
+  void draftId;
+  return saved;
+}
+
+function RoomNamePicker({ name, onChange }: { name: string; onChange: (name: string) => void }) {
+  const [typing, setTyping] = useState(false);
+  const options = roomPickerOptions(typing ? "" : name);
+  const selected = typing ? ROOM_NAME_OTHER : roomPickerValue(name);
+
+  return (
+    <div className="grid min-w-0 flex-1 gap-3">
+      <label className="field">
+        Room
+        <select
+          value={options.includes(selected) ? selected : ROOM_NAME_OTHER}
+          onChange={(event) => {
+            const next = applyRoomNamePick(name, event.target.value);
+            setTyping(next.typing);
+            onChange(next.name);
+          }}
+        >
+          {options.map((option) => (
+            <option key={option} value={option}>
+              {option === ROOM_NAME_OTHER ? ROOM_NAME_OTHER_LABEL : option}
+            </option>
+          ))}
+        </select>
+      </label>
+      {typing || selected === ROOM_NAME_OTHER ? (
+        <label className="field">
+          Room name
+          <input
+            value={name}
+            maxLength={40}
+            autoComplete="off"
+            autoCapitalize="words"
+            placeholder="Type the room name"
+            onChange={(event) => onChange(event.target.value)}
+          />
+        </label>
+      ) : null}
+    </div>
+  );
+}
+
 export function MeasureForm({
   jobId,
   typeKey,
@@ -117,9 +177,13 @@ export function MeasureForm({
   vatRegistered: boolean;
   vatRatePercent: number;
 }) {
-  const [rooms, setRooms] = useState<RoomInput[]>(
-    initialRooms.length > 0 ? initialRooms : [blankRoom("Living room", defaults.mode, defaults.includeWalls, defaults.includeCeiling)],
-  );
+  const [rooms, setRooms] = useState<DraftRoom[]>(() => {
+    const source =
+      initialRooms.length > 0
+        ? initialRooms
+        : [blankRoom("Living room", defaults.mode, defaults.includeWalls, defaults.includeCeiling)];
+    return source.map(withDraft);
+  });
   const [wastage, setWastage] = useState(String(wastagePercent || DEFAULT_WASTAGE_PERCENT));
   const [days, setDays] = useState(initialDays);
   const [roles, setRoles] = useState(initialRoles);
@@ -135,10 +199,11 @@ export function MeasureForm({
   }
 
   const activeMaterials = useMemo(() => materialsForChoices(materials, plan, choices), [materials, plan, choices]);
+  const saved = useMemo(() => rooms.map(withoutDraftId), [rooms]);
   const quote = useMemo(
     () =>
       quoteFromMeasure({
-        rooms,
+        rooms: saved,
         materials: activeMaterials,
         wastagePercent: wastageNumber,
         labourPerM2Pence,
@@ -158,7 +223,7 @@ export function MeasureForm({
         },
         included,
       }),
-    [rooms, activeMaterials, wastageNumber, labourPerM2Pence, daysNumber, roles, included],
+    [saved, activeMaterials, wastageNumber, labourPerM2Pence, daysNumber, roles, included],
   );
 
   function choose(groupId: string, optionId: string) {
@@ -189,12 +254,9 @@ export function MeasureForm({
       {rooms.map((room, index) => {
         const areas = quote.rooms[index];
         return (
-          <section key={`${room.name}-${index}`} className="card grid gap-3">
+          <section key={room.draftId} className="card grid gap-3">
             <div className="flex flex-wrap items-end justify-between gap-3">
-              <label className="field min-w-48 flex-1">
-                Room
-                <input value={room.name} onChange={(event) => update(index, { name: event.target.value })} />
-              </label>
+              <RoomNamePicker name={room.name} onChange={(name) => update(index, { name })} />
               {rooms.length > 1 ? (
                 <button type="button" className="btn btn-secondary" onClick={() => setRooms((current) => current.filter((_, roomIndex) => roomIndex !== index))}>
                   Remove room
@@ -292,7 +354,12 @@ export function MeasureForm({
       <button
         type="button"
         className="btn btn-secondary"
-        onClick={() => setRooms((current) => [...current, blankRoom(nextName(current.length), defaults.mode, defaults.includeWalls, defaults.includeCeiling)])}
+        onClick={() =>
+          setRooms((current) => [
+            ...current,
+            withDraft(blankRoom(nextName(current.length), defaults.mode, defaults.includeWalls, defaults.includeCeiling)),
+          ])
+        }
       >
         Add a room
       </button>
@@ -387,7 +454,7 @@ export function MeasureForm({
           <input type="hidden" name="jobId" value={jobId} />
           <input type="hidden" name="typeKey" value={typeKey} />
           <input type="hidden" name="typeName" value={typeName} />
-          <input type="hidden" name="rooms" value={JSON.stringify(rooms)} />
+          <input type="hidden" name="rooms" value={JSON.stringify(saved)} />
           <input type="hidden" name="wastagePercent" value={wastage} />
           <CrewHiddenFields days={days} roles={roles} />
           <input type="hidden" name="choices" value={JSON.stringify(choices)} />
