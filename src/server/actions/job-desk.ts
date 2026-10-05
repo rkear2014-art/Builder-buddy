@@ -4,11 +4,36 @@ import { redirect } from "next/navigation";
 import type { ActionState } from "@/lib/form-state";
 import { isInternalCrewName } from "@/lib/crew";
 import { materialsTotals } from "@/lib/materials";
+import { parsePoundsToPence } from "@/lib/money";
 import { chargeVat, depositFromPercent, quoteMoney } from "@/lib/quote";
+import { stageAfterQuoteMade } from "@/lib/quote-stage";
 import { tenantWhere } from "@/lib/tenancy";
 import { requireUser } from "@/server/dal";
 import { getPrisma } from "@/server/prisma";
 import { revalidateDesk } from "@/server/revalidate";
+
+export async function saveCustomerPrice(_state: ActionState, formData: FormData): Promise<ActionState> {
+  const user = await requireUser();
+  const jobId = String(formData.get("jobId") ?? "");
+  const totalOnly = formData.getAll("totalOnly").map(String).includes("yes");
+  const price = parsePoundsToPence(String(formData.get("fixedPrice") ?? ""));
+  if (!price.ok) return { error: price.error };
+  const existing = await getPrisma().job.findFirst({
+    where: { id: jobId, ...tenantWhere(user.businessId) },
+    select: { id: true, shareToken: true, quoteStage: true },
+  });
+  if (!existing) return { error: "That job could not be found." };
+  await getPrisma().job.update({
+    where: { id: existing.id },
+    data: {
+      totalOnly,
+      fixedPricePence: price.pence != null && price.pence > 0 ? price.pence : null,
+      quoteStage: stageAfterQuoteMade(existing.quoteStage),
+    },
+  });
+  revalidateDesk(existing.id, existing.shareToken);
+  redirect(`/jobs/${existing.id}#materials`);
+}
 
 export async function setShowLinePrices(formData: FormData): Promise<void> {
   const user = await requireUser();

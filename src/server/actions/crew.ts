@@ -7,6 +7,7 @@ import { tenantWhere } from "@/lib/tenancy";
 import { customerLabourLine, measuredAreaM2, writeCrewDefaults } from "@/server/crew-store";
 import { requireUser } from "@/server/dal";
 import { getPrisma } from "@/server/prisma";
+import { noteQuoteMade } from "@/server/quote-progress";
 import { revalidateDesk } from "@/server/revalidate";
 
 export async function saveCrewRates(formData: FormData): Promise<void> {
@@ -78,6 +79,7 @@ export async function saveJobCrew(_state: ActionState, formData: FormData): Prom
       });
     }
   });
+  await noteQuoteMade(job.id);
   revalidateDesk(job.id, job.shareToken);
   redirect(`/jobs/${job.id}#crew`);
 }

@@ -117,6 +117,7 @@ export type QuoteSettingsInput = {
   vatNumber: string;
   quoteLetter: string;
   quoteChips: string;
+  totalOnlyDefault: boolean;
 };
 
 export function parseQuoteSettings(formData: FormData): { ok: true; data: QuoteSettingsInput } | { ok: false; error: string } {
@@ -139,6 +140,7 @@ export function parseQuoteSettings(formData: FormData): { ok: true; data: QuoteS
       return { ok: false, error: "Keep each badge to 40 characters." };
     }
   }
+  const totalFlags = formData.getAll("totalOnlyDefault").map(String);
   return {
     ok: true,
     data: {
@@ -147,6 +149,7 @@ export function parseQuoteSettings(formData: FormData): { ok: true; data: QuoteS
       vatNumber: vatNumber.vatNumber,
       quoteLetter,
       quoteChips: parseQuoteChips(rawChips).join("\n"),
+      totalOnlyDefault: totalFlags.includes("yes"),
     },
   };
 }

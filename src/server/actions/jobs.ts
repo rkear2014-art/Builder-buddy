@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { createShareToken } from "@/lib/access";
 import { isJobStatus } from "@/lib/constants";
 import { addDays, isoToUtcDate, londonToday } from "@/lib/dates";
+import { isQuoteStage, onDiaryAfterWon, stageAfterQuoteMade, stageAfterSent } from "@/lib/quote-stage";
 import type { ActionState } from "@/lib/form-state";
 import { tenantWhere } from "@/lib/tenancy";
 import { parseBookingForm, parseJobForm, parseTemplateForm } from "@/lib/validators";
@@ -19,7 +20,7 @@ export async function createJob(_state: ActionState, formData: FormData): Promis
     const allocated = await tx.business.update({
       where: { id: user.businessId },
       data: { nextQuoteNumber: { increment: 1 } },
-      select: { nextQuoteNumber: true, quoteValidDays: true },
+      select: { nextQuoteNumber: true, quoteValidDays: true, totalOnlyDefault: true },
     });
     const quoteDays = allocated.quoteValidDays >= 1 && allocated.quoteValidDays <= 365 ? allocated.quoteValidDays : 30;
     const created = await tx.job.create({
@@ -45,6 +46,8 @@ export async function createJob(_state: ActionState, formData: FormData): Promis
         onDiary: parsed.data.onDiary,
         assignedName: parsed.data.assignedName,
         status: parsed.data.status,
+        quoteStage: "QUOTED",
+        totalOnly: allocated.totalOnlyDefault,
         showLinePrices: parsed.data.showLinePrices,
         depositPence: parsed.data.depositPence,
         shareToken: createShareToken(),
@@ -66,7 +69,7 @@ export async function updateJob(_state: ActionState, formData: FormData): Promis
   if (!parsed.ok) return { error: parsed.error };
   const existing = await getPrisma().job.findFirst({
     where: { id: jobId, ...tenantWhere(user.businessId) },
-    select: { id: true, shareToken: true },
+    select: { id: true, shareToken: true, quoteStage: true },
   });
   if (!existing) return { error: "That job could not be found." };
   await getPrisma().job.update({
@@ -86,12 +89,52 @@ export async function updateJob(_state: ActionState, formData: FormData): Promis
       onDiary: parsed.data.onDiary,
       assignedName: parsed.data.assignedName,
       status: parsed.data.status,
+      quoteStage: stageAfterQuoteMade(existing.quoteStage),
       showLinePrices: parsed.data.showLinePrices,
       depositPence: parsed.data.depositPence,
     },
   });
   revalidateDesk(existing.id, existing.shareToken);
   redirect(`/jobs/${existing.id}`);
+}
+
+export async function setQuoteStage(formData: FormData): Promise<void> {
+  const user = await requireUser();
+  const jobId = String(formData.get("jobId") ?? "");
+  const quoteStage = String(formData.get("quoteStage") ?? "");
+  if (!isQuoteStage(quoteStage)) return;
+  const existing = await getPrisma().job.findFirst({
+    where: { id: jobId, ...tenantWhere(user.businessId) },
+    select: { id: true, shareToken: true, status: true, onDiary: true },
+  });
+  if (!existing) return;
+  await getPrisma().job.update({
+    where: { id: existing.id },
+    data: {
+      quoteStage,
+      onDiary:
+        quoteStage === "LOST"
+          ? false
+          : quoteStage === "WON"
+            ? onDiaryAfterWon(existing.status, existing.onDiary)
+            : existing.onDiary,
+    },
+  });
+  revalidateDesk(existing.id, existing.shareToken);
+}
+
+/** Records that the quote was opened in email, WhatsApp or text. Won and lost stay put. */
+export async function markQuoteSent(jobId: string): Promise<void> {
+  const user = await requireUser();
+  const existing = await getPrisma().job.findFirst({
+    where: { id: jobId, ...tenantWhere(user.businessId) },
+    select: { id: true, shareToken: true, quoteStage: true },
+  });
+  if (!existing) return;
+  const next = stageAfterSent(existing.quoteStage);
+  if (next === existing.quoteStage) return;
+  await getPrisma().job.update({ where: { id: existing.id }, data: { quoteStage: next } });
+  revalidateDesk(existing.id, existing.shareToken);
 }
 
 export async function setJobStatus(formData: FormData): Promise<void> {

@@ -13,6 +13,7 @@ import {
 } from "@/lib/trade-starters";
 import { requireUser } from "@/server/dal";
 import { getPrisma, isUniqueConstraint } from "@/server/prisma";
+import { noteQuoteMade } from "@/server/quote-progress";
 import { revalidateDesk } from "@/server/revalidate";
 
 export async function applyStarterToJob(formData: FormData): Promise<void> {
@@ -52,6 +53,7 @@ export async function applyStarterToJob(formData: FormData): Promise<void> {
       sortOrder += 1;
     }
   });
+  await noteQuoteMade(job.id);
   revalidateDesk(job.id, job.shareToken);
   redirect(`/jobs/${job.id}#materials`);
 }

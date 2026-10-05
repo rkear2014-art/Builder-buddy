@@ -17,6 +17,7 @@ export type GlanceJob = {
   assigneeName: string;
   signed: boolean;
   totalPence: number;
+  quoteStage?: string;
 };
 
 export type GlanceListRow = {
@@ -80,6 +81,13 @@ export type GlanceModel = {
   recent: GlanceRecentRow[];
 };
 
+export type ReadyToBookJob = {
+  id: string;
+  customerName: string;
+  address: string;
+  signed: boolean;
+};
+
 export type GlancePage = GlanceModel & {
   businessName: string;
   chips: string[];
@@ -89,6 +97,7 @@ export type GlancePage = GlanceModel & {
   heroCaption: string | null;
   accentColour: string;
   accentInk: string;
+  readyToBook: ReadyToBookJob[];
 };
 
 const SHORT_SLOT: Record<string, string> = {
@@ -119,7 +128,11 @@ function dueMeta(scheduled: string, today: string): { text: string; tone: "late"
   return { text: `in ${Math.abs(late)} days`, tone: "neutral" };
 }
 
-export function isChaseJob(job: Pick<GlanceJob, "status" | "scheduledDate" | "signed">, today: string): boolean {
+export function isChaseJob(
+  job: Pick<GlanceJob, "status" | "scheduledDate" | "signed"> & { quoteStage?: string },
+  today: string,
+): boolean {
+  if (job.quoteStage === "LOST") return false;
   if (job.signed) return false;
   if ((job.status === "BOOKED" || job.status === "IN_PROGRESS") && job.scheduledDate <= today) return true;
   return job.status === "ENQUIRY" && job.scheduledDate < today;

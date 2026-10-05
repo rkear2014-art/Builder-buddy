@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { customerSubtotalPence } from "./customer-price";
 import { isInternalCrewName } from "./crew";
 import { customerLineTotalPence, materialsTotals, normaliseQuantity } from "./materials";
 
@@ -17,6 +18,8 @@ export type AgreementSource = {
   depositPence?: number | null;
   vatRegistered?: boolean;
   vatRatePercent?: number;
+  totalOnly?: boolean;
+  fixedPricePence?: number | null;
   materials: Array<{
     name: string;
     quantity: string;
@@ -52,6 +55,8 @@ export type PublicAgreement = {
   depositPence: number | null;
   vatRegistered: boolean;
   vatRatePercent: number;
+  totalOnly: boolean;
+  fixedPricePence: number | null;
 };
 
 export type LockedAgreement = PublicAgreement & {
@@ -86,6 +91,8 @@ export const lockedAgreementSchema = z.object({
   depositPence: z.number().int().nullable().optional(),
   vatRegistered: z.boolean().optional(),
   vatRatePercent: z.number().int().optional(),
+  totalOnly: z.boolean().optional(),
+  fixedPricePence: z.number().int().nullable().optional(),
   signerName: z.string(),
   signedAt: z.string(),
 });
@@ -103,6 +110,7 @@ export function toPublicAgreement(job: AgreementSource): PublicAgreement {
     }),
   }));
   const totals = materialsTotals(visible);
+  const fixedPricePence = job.fixedPricePence != null && job.fixedPricePence > 0 ? job.fixedPricePence : null;
   return {
     businessName: job.businessName.trim(),
     customerName: job.customerName.trim(),
@@ -114,12 +122,17 @@ export function toPublicAgreement(job: AgreementSource): PublicAgreement {
     scheduledDate: job.scheduledDate,
     timeSlot: job.timeSlot,
     materials,
-    totalPence: totals.totalPence,
-    unpricedCount: totals.unpricedCount,
+    totalPence: customerSubtotalPence({
+      materialsTotalPence: totals.totalPence,
+      fixedPricePence,
+    }),
+    unpricedCount: fixedPricePence != null || job.totalOnly === true ? 0 : totals.unpricedCount,
     showLinePrices: job.showLinePrices !== false,
     depositPence: job.depositPence != null && job.depositPence > 0 ? job.depositPence : null,
     vatRegistered: job.vatRegistered === true,
     vatRatePercent: normalVatRate(job.vatRatePercent),
+    totalOnly: job.totalOnly === true,
+    fixedPricePence,
   };
 }
 
@@ -152,6 +165,8 @@ export function parseLockedAgreement(value: unknown): LockedAgreement | null {
     depositPence: data.depositPence != null && data.depositPence > 0 ? data.depositPence : null,
     vatRegistered: data.vatRegistered === true,
     vatRatePercent: normalVatRate(data.vatRatePercent),
+    totalOnly: data.totalOnly === true,
+    fixedPricePence: data.fixedPricePence != null && data.fixedPricePence > 0 ? data.fixedPricePence : null,
   };
 }
 
@@ -195,5 +210,7 @@ export function agreementChanges(locked: LockedAgreement, current: PublicAgreeme
   }
   if (locked.depositPence !== current.depositPence) changes.push("Deposit");
   if (locked.showLinePrices !== current.showLinePrices) changes.push("Item prices");
+  if (locked.totalOnly !== current.totalOnly) changes.push("Customer total");
+  if (locked.fixedPricePence !== current.fixedPricePence) changes.push("Job price");
   return changes;
 }

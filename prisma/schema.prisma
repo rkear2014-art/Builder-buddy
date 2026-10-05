@@ -38,6 +38,15 @@ enum PhotoStage {
   AFTER
 }
 
+/// Sales stage on a quote. Job.status stays the progress after it is won.
+enum QuoteStage {
+  DRAFT
+  QUOTED
+  SENT
+  WON
+  LOST
+}
+
 model Business {
   id            String             @id @default(cuid())
   name          String
@@ -54,6 +63,8 @@ model Business {
   quoteChips    String             @default("")
   invoiceDueDays Int               @default(14)
   quoteValidDays Int               @default(30)
+  /// New jobs copy this. Later changes do not rewrite jobs already saved.
+  totalOnlyDefault Boolean         @default(false)
   nextInvoiceNumber Int            @default(1)
   nextQuoteNumber Int              @default(1)
   bankAccountName String           @default("")
@@ -185,6 +196,12 @@ model Job {
   assignedName  String       @default("")
   /// Turns VAT off for this quote even when the business is VAT registered.
   omitVat       Boolean      @default(false)
+  /// Draft, quoted, sent, won or lost. Separate from the diary progress in status.
+  quoteStage    QuoteStage   @default(QUOTED)
+  /// Customer quote, invoice and link show one total. The desk still lists materials.
+  totalOnly     Boolean      @default(false)
+  /// Whole-job price in pence, before VAT. Null uses the materials total.
+  fixedPricePence Int?
   status        JobStatus
   shareToken    String       @unique
   createdAt     DateTime     @default(now())
@@ -233,6 +250,8 @@ model Invoice {
   depositPence  Int?
   vatRegistered Boolean       @default(true)
   vatRatePercent Int          @default(20)
+  /// One line for the work, with no material quantities or unit prices.
+  totalOnly     Boolean       @default(false)
   shareToken    String        @unique
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt

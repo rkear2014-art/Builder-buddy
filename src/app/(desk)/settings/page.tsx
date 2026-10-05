@@ -349,6 +349,24 @@ function QuoteSection({ user, owner }: { user: SessionUser; owner: boolean }) {
             <span>Shown on quotes and invoices. Leave blank to leave it off. For example GB123456789.</span>
             <input name="vatNumber" defaultValue={branding.vatNumber} autoComplete="off" placeholder="GB123456789" className="text-2xl" />
           </label>
+          <input type="hidden" name="totalOnlyDefault" value="no" />
+          <label className="flex items-start gap-3 text-lg font-bold">
+            <input
+              type="checkbox"
+              name="totalOnlyDefault"
+              value="yes"
+              defaultChecked={branding.totalOnlyDefault}
+              className="mt-1 h-7 w-7"
+            />
+            <span>
+              Show customers the total only
+              <span className="mt-1 block text-sm font-semibold text-stone">
+                New quotes hide material lines, quantities and unit prices. The customer sees one line for the work, then
+                subtotal, VAT and total. Change it on a job if that quote should list materials. Jobs already saved stay
+                as they are.
+              </span>
+            </span>
+          </label>
           <label className="field">
             Badges
             <span>One per line. Up to six, 40 characters each.</span>

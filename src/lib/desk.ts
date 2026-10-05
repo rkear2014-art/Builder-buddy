@@ -1,6 +1,7 @@
 import type { BusinessBranding } from "./branding";
 import type { JobStatus } from "./constants";
 import type { BookingKind } from "./diary";
+import type { QuoteStage } from "./quote-stage";
 
 export type DeskMaterial = {
   id: string;
@@ -50,6 +51,9 @@ export type DeskJob = {
   vatRatePercent: number;
   omitVat: boolean;
   vatNumber: string;
+  quoteStage: QuoteStage;
+  totalOnly: boolean;
+  fixedPricePence: number | null;
   materials: DeskMaterial[];
   signOff: DeskSignOff | null;
 };

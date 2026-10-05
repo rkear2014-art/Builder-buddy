@@ -1,9 +1,10 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useState, type MouseEvent } from "react";
 import { invoiceMessage, mailtoHref, quoteMessage, reviewMessage, smsHref, whatsAppHref } from "@/lib/customer-message";
 import { initialFormState } from "@/lib/form-state";
 import { sendBrandedMessage } from "@/server/actions/customer-finish";
+import { markQuoteSent } from "@/server/actions/jobs";
 
 export function SendQuote({
   customerName,
@@ -42,10 +43,21 @@ export function SendQuote({
     kind === "invoice" ? "Send invoice by WhatsApp or text" : kind === "review" ? "Ask for a review" : "Send quote by WhatsApp or text";
   const mail = email.trim() ? mailtoHref(email.trim(), subject, message) : null;
 
+  async function openChannel(event: MouseEvent<HTMLAnchorElement>, href: string) {
+    if (kind !== "quote" || !jobId) return;
+    event.preventDefault();
+    try {
+      await markQuoteSent(jobId);
+    } catch {
+      // The message app still opens if the status could not be saved.
+    }
+    window.location.href = href;
+  }
+
   return (
     <div className="grid gap-3">
       {mail ? (
-        <a className="job-mail" href={mail}>
+        <a className="job-mail" href={mail} onClick={(event) => void openChannel(event, mail)}>
           {emailLabel} · {email.trim()}
         </a>
       ) : (
@@ -54,10 +66,10 @@ export function SendQuote({
       <section className="rounded-2xl border border-line bg-white p-4">
         <h3 className="font-bold">{heading}</h3>
         <div className="mt-3 grid gap-2 sm:grid-cols-2">
-          <a className="btn btn-whatsapp" href={whatsAppHref(phone, message)}>
+          <a className="btn btn-whatsapp" href={whatsAppHref(phone, message)} onClick={(event) => void openChannel(event, whatsAppHref(phone, message))}>
             Send by WhatsApp
           </a>
-          <a className="btn btn-secondary" href={smsHref(phone, message)}>
+          <a className="btn btn-secondary" href={smsHref(phone, message)} onClick={(event) => void openChannel(event, smsHref(phone, message))}>
             Send by text
           </a>
         </div>

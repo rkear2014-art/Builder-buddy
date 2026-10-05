@@ -18,6 +18,7 @@ import { findStarterTemplate, isRetiredTemplateName, PLASTERING_STARTER_TEMPLATE
 import { writeCrewDefaults } from "@/server/crew-store";
 import { requireUser } from "@/server/dal";
 import { getPrisma } from "@/server/prisma";
+import { noteQuoteMade } from "@/server/quote-progress";
 import { revalidateDesk } from "@/server/revalidate";
 
 function decimal(value: number | null): string | null {
@@ -164,6 +165,7 @@ export async function saveMeasuredQuote(_state: ActionState, formData: FormData)
       sortOrder += 1;
     }
   });
+  await noteQuoteMade(job.id);
   revalidateDesk(job.id, job.shareToken);
   redirect(`/jobs/${job.id}#materials`);
 }

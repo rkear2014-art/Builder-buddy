@@ -161,6 +161,30 @@ function DeskShortcuts({ data }: { data: GlancePage }) {
           <span className="mt-2 text-sm font-bold">Open the photo tiles for this week’s work</span>
         </Link>
       </div>
+      {data.readyToBook.length > 0 ? (
+        <section className="rounded-3xl border border-[#178a45] bg-[#e8f6ee] p-4" aria-label="Signed, ready to book">
+          <h2 className="font-display text-3xl text-[#178a45]">Signed, ready to book</h2>
+          <ul className="mt-3 grid gap-2">
+            {data.readyToBook.map((job) => (
+              <li key={job.id} className="grid gap-2 rounded-2xl bg-white p-3 sm:grid-cols-[1fr_auto] sm:items-center">
+                <div>
+                  <p className="text-lg font-extrabold">{job.customerName}</p>
+                  <p className="text-sm font-bold text-stone">
+                    {job.signed ? "Customer signed. Book the job in." : "Won. Book the job in."}
+                  </p>
+                </div>
+                <Link
+                  href={`/jobs/${job.id}/book`}
+                  className="btn min-h-14 text-lg"
+                  style={{ background: accent, color: data.accentInk }}
+                >
+                  Book the job in
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
       {weekJobs.length > 0 ? (
         <ul className="grid gap-2 sm:grid-cols-2">
           {weekJobs.map((job) => (

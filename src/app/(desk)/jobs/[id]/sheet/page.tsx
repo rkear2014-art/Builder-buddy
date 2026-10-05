@@ -2,9 +2,8 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { slotLabel } from "@/lib/constants";
 import { formatIsoDate } from "@/lib/dates";
-import { PHOTO_STAGE_LABELS } from "@/lib/photos";
 import { formatM2, roomAreas, type MeasureMode } from "@/lib/measure";
-import { getJob, listJobPhotos, listRoomMeasures, requireUser } from "@/server/dal";
+import { getJob, listRoomMeasures, requireUser } from "@/server/dal";
 import { PrintButton } from "@/components/print-button";
 
 export const dynamic = "force-dynamic";
@@ -21,7 +20,6 @@ export default async function JobSheetPage({ params }: { params: Promise<{ id: s
   const user = await requireUser();
   const job = await getJob(user.businessId, id);
   if (!job) notFound();
-  const photos = await listJobPhotos(user.businessId, job.id);
   const measured = await listRoomMeasures(user.businessId, job.id);
 
   return (
@@ -79,24 +77,6 @@ export default async function JobSheetPage({ params }: { params: Promise<{ id: s
             ))}
           </ol>
         </section>
-        {photos.length > 0 ? (
-          <section>
-            <h2 className="font-display text-2xl">Before and after</h2>
-            <ul className="mt-3 grid gap-4 sm:grid-cols-2">
-              {photos.map((photo) => (
-                <li key={photo.id} className="photo-zoom rounded-2xl">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={`/jobs/${job.id}/photos/${photo.id}`}
-                    alt=""
-                    className="aspect-[4/3] w-full object-cover"
-                  />
-                  <p className="mt-1 font-extrabold">{PHOTO_STAGE_LABELS[photo.stage]}</p>
-                </li>
-              ))}
-            </ul>
-          </section>
-        ) : null}
         {job.internalNotes.trim() ? (
           <section>
             <h2 className="font-display text-2xl">Notes for the team</h2>

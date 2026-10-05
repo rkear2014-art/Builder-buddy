@@ -1,6 +1,7 @@
 import type { CSSProperties } from "react";
 import { accentInk } from "@/lib/accent";
 import type { CustomerLetterhead } from "@/lib/branding";
+import { hidesMaterialLines, scopeLine } from "@/lib/customer-price";
 import { formatIsoDate, formatLondonDateTime } from "@/lib/dates";
 import type { PublicAgreement } from "@/lib/agreement";
 import { formatPence } from "@/lib/money";
@@ -202,7 +203,7 @@ export function QuotationDocument({
         <p className="mt-3 text-sm text-stone">{paymentNote(money.depositPence)}</p>
         {money.vatPence != null ? <p className="mt-2 text-sm font-bold">{pricesIncludeVatLine(agreement.vatRatePercent)}</p> : null}
         {vatNumber ? <p className="mt-1 text-sm text-stone">VAT number {vatNumber}</p> : null}
-        {agreement.unpricedCount > 0 ? (
+        {agreement.unpricedCount > 0 && !hidesMaterialLines(agreement) ? (
           <p className="mt-2 text-sm text-stone">
             This total covers priced items only. {agreement.unpricedCount}{" "}
             {agreement.unpricedCount === 1 ? "item has" : "items have"} no price yet.
@@ -262,32 +263,38 @@ export function QuotationDocument({
         </div>
         <h3 className="mt-6 font-display text-2xl">Description of works</h3>
         <p className="mt-2 whitespace-pre-wrap">{agreement.description}</p>
-        {!agreement.showLinePrices ? (
-          <p className="mt-2 text-sm text-stone">The prices are shown as one total above.</p>
-        ) : null}
-        <ol className="mt-3 grid gap-3">
-          {agreement.materials.length === 0 ? (
-            <li className="text-stone">No separate items are listed.</li>
-          ) : (
-            agreement.materials.map((line, index) => (
-              <li key={`${line.name}-${index}`} className="grid grid-cols-[1fr_auto] gap-3 border-b border-line pb-3">
-                <div>
-                  <p className="font-bold">
-                    {index + 1}. {line.name}
-                  </p>
-                  <p className="text-sm text-stone">
-                    {line.quantity} {line.unit}
-                  </p>
-                </div>
-                {agreement.showLinePrices ? (
-                  <p className="font-bold">
-                    {line.lineTotalPence == null ? "To confirm" : formatPence(line.lineTotalPence)}
-                  </p>
-                ) : null}
-              </li>
-            ))
-          )}
-        </ol>
+        {hidesMaterialLines(agreement) ? (
+          <p className="mt-4 font-bold">{scopeLine(agreement.trade)}</p>
+        ) : (
+          <>
+            {!agreement.showLinePrices ? (
+              <p className="mt-2 text-sm text-stone">The prices are shown as one total above.</p>
+            ) : null}
+            <ol className="mt-3 grid gap-3">
+              {agreement.materials.length === 0 ? (
+                <li className="text-stone">No separate items are listed.</li>
+              ) : (
+                agreement.materials.map((line, index) => (
+                  <li key={`${line.name}-${index}`} className="grid grid-cols-[1fr_auto] gap-3 border-b border-line pb-3">
+                    <div>
+                      <p className="font-bold">
+                        {index + 1}. {line.name}
+                      </p>
+                      <p className="text-sm text-stone">
+                        {line.quantity} {line.unit}
+                      </p>
+                    </div>
+                    {agreement.showLinePrices ? (
+                      <p className="font-bold">
+                        {line.lineTotalPence == null ? "To confirm" : formatPence(line.lineTotalPence)}
+                      </p>
+                    ) : null}
+                  </li>
+                ))
+              )}
+            </ol>
+          </>
+        )}
         {signed ? (
           <div className="mt-6 border-t border-line pt-4">
             <p className="font-bold">
