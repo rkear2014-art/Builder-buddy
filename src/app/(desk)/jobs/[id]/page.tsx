@@ -4,13 +4,15 @@ import type { CSSProperties } from "react";
 import { agreementChanges, parseLockedAgreement, toPublicAgreement } from "@/lib/agreement";
 import { JOB_STATUSES, STATUS_LABELS, slotLabel, visibleTradeLabel } from "@/lib/constants";
 import { quoteMessage } from "@/lib/customer-message";
-import { formatIsoDate, formatLondonDateTime } from "@/lib/dates";
+import { formatDocumentNumber, quoteIsExpired } from "@/lib/documents";
+import { formatIsoDate, formatLondonDateTime, londonToday } from "@/lib/dates";
 import type { DeskJob } from "@/lib/desk";
 import { quoteStatusLabel } from "@/lib/job-desk";
 import { costTotals, materialsTotals } from "@/lib/materials";
 import { formatPence } from "@/lib/money";
 import { depositFromPercent, paymentNote, percentFromDeposit } from "@/lib/quote";
 import { surveyForTrade, surveyIntro, surveyKeys, surveyProgress } from "@/lib/survey";
+import { raiseInvoice, saveQuoteValidity } from "@/server/actions/customer-finish";
 import { savePaymentTerms, setShowLinePrices, setSurveyTick } from "@/server/actions/job-desk";
 import {
   deleteJob,
@@ -21,10 +23,13 @@ import {
   updateJob,
 } from "@/server/actions/jobs";
 import { deleteJobMaterial, toggleMaterialBought } from "@/server/actions/materials";
-import { getJob, getLibrary, requireUser } from "@/server/dal";
+import { brandedEmailReady } from "@/server/email";
+import { getJob, getLibrary, listJobInvoices, listJobPhotos, requireUser } from "@/server/dal";
 import { requestOrigin } from "@/server/origin";
 import { InlineForm } from "@/components/inline-form";
+import { DeletePhotoForm, JobPhotoForm, PhotoShareButton, ShowPhotosForm } from "@/components/job-photo-form";
 import { JobForm } from "@/components/job-form";
+import { PHOTO_STAGE_LABELS } from "@/lib/photos";
 import { SendQuote } from "@/components/send-quote";
 import { SharePortal } from "@/components/share-portal";
 import { SubmitButton } from "@/components/submit-button";
@@ -48,6 +53,8 @@ export default async function JobPage({ params }: { params: Promise<{ id: string
   const job = await getJob(user.businessId, id);
   if (!job) notFound();
   const library = await getLibrary(user.businessId);
+  const photos = await listJobPhotos(user.businessId, job.id);
+  const invoices = await listJobInvoices(user.businessId, job.id);
   const origin = await requestOrigin();
   const shareUrl = origin ? `${origin}/sign/${job.shareToken}` : `/sign/${job.shareToken}`;
   const locked = job.signOff ? parseLockedAgreement(job.signOff.snapshot) : null;
@@ -68,6 +75,10 @@ export default async function JobPage({ params }: { params: Promise<{ id: string
     businessName: user.businessName,
     url: shareUrl,
   });
+  const quoteRef = formatDocumentNumber("Q", job.quoteNumber);
+  const expired = quoteIsExpired(job.validUntil, londonToday(), Boolean(job.signOff));
+  const canAskReview = job.status === "COMPLETE" || invoices.some((invoice) => invoice.standing === "Paid");
+  const brandedReady = brandedEmailReady();
 
   return (
     <div className="mx-auto grid max-w-3xl gap-4" style={{ "--job-accent": accent } as CSSProperties}>
@@ -124,6 +135,31 @@ export default async function JobPage({ params }: { params: Promise<{ id: string
           </form>
         ))}
       </div>
+
+      <section className="card grid gap-3">
+        <div className="flex flex-wrap items-baseline justify-between gap-2">
+          <h2 className="font-display text-2xl">{quoteRef}</h2>
+          {job.lastViewedAt ? (
+            <p className="font-extrabold">✓ Viewed {formatLondonDateTime(job.lastViewedAt)}</p>
+          ) : (
+            <p className="text-stone">Not opened yet</p>
+          )}
+        </div>
+        <p>
+          Valid until {formatIsoDate(job.validUntil, "long")}
+          {expired ? " · Expired" : ""}
+        </p>
+        {job.signOff ? null : (
+          <InlineForm action={saveQuoteValidity} className="grid gap-3 sm:grid-cols-[1fr_auto] sm:items-end">
+            <input type="hidden" name="jobId" value={job.id} />
+            <label className="field">
+              Valid until
+              <input name="validUntil" type="date" defaultValue={job.validUntil} required />
+            </label>
+            <SubmitButton variant="secondary">Save date</SubmitButton>
+          </InlineForm>
+        )}
+      </section>
 
       <section className="card grid gap-3">
         <p className="text-xs font-extrabold tracking-wide" style={{ color: accent }}>
@@ -187,6 +223,8 @@ export default async function JobPage({ params }: { params: Promise<{ id: string
             email={job.email}
             phone={job.phone}
             url={shareUrl}
+            brandedReady={brandedReady}
+            jobId={job.id}
           />
         ) : (
           <p className="text-stone">The customer link is switched off, so the quote cannot be sent until you make a new link.</p>
@@ -325,6 +363,85 @@ export default async function JobPage({ params }: { params: Promise<{ id: string
         <p className="mt-1 text-sm font-bold text-stone">The customer never sees this.</p>
         <p className="mt-2 whitespace-pre-wrap">{job.internalNotes || "None yet."}</p>
       </section>
+
+      <section className="card grid gap-3">
+        <h2 className="font-display text-2xl">Invoice</h2>
+        {invoices.length === 0 ? <p className="text-stone">No invoice yet. The lines are copied from this quote.</p> : null}
+        <ul className="grid gap-2">
+          {invoices.map((invoice) => (
+            <li key={invoice.id}>
+              <Link href={`/invoices/${invoice.id}`} className="font-extrabold underline" style={{ color: accent }}>
+                {invoice.reference}
+              </Link>
+              <span className="text-stone"> · {invoice.standing}</span>
+            </li>
+          ))}
+        </ul>
+        <InlineForm action={raiseInvoice} className="grid gap-3">
+          <input type="hidden" name="jobId" value={job.id} />
+          {job.depositPence ? (
+            <label className="flex items-center gap-3 font-bold">
+              <input type="checkbox" name="depositTaken" value="yes" defaultChecked={Boolean(job.signOff)} />
+              Deposit already taken ({formatPence(job.depositPence)})
+            </label>
+          ) : null}
+          <SubmitButton>Raise invoice</SubmitButton>
+        </InlineForm>
+      </section>
+
+      <section id="photos" className="card grid gap-4">
+        <h2 className="font-display text-2xl">Before and after</h2>
+        <p className="text-stone">Add several photos from the camera or gallery. They are stored with this job.</p>
+        <ShowPhotosForm jobId={job.id} showPhotos={job.showPhotos} />
+        {photos.length === 0 ? <p className="text-stone">No photos yet.</p> : null}
+        <ul className="grid gap-4 sm:grid-cols-2">
+          {photos.map((photo) => {
+            const src = `/jobs/${job.id}/photos/${photo.id}`;
+            const filename = `${photo.stage.toLowerCase()}.webp`;
+            return (
+              <li key={photo.id} className="grid gap-2">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={src} alt="" className="aspect-[4/3] w-full rounded-2xl object-cover" />
+                <p className="font-extrabold">{PHOTO_STAGE_LABELS[photo.stage]}</p>
+                <div className="grid grid-cols-2 gap-2">
+                  <a className="btn btn-secondary" href={`${src}?download=1`}>
+                    Download
+                  </a>
+                  <PhotoShareButton src={src} filename={filename} />
+                </div>
+                <DeletePhotoForm photoId={photo.id} />
+              </li>
+            );
+          })}
+        </ul>
+        <JobPhotoForm jobId={job.id} />
+      </section>
+
+      {canAskReview ? (
+        <section id="review" className="card grid gap-3">
+          <h2 className="font-display text-2xl">Ask for a review</h2>
+          {user.branding.reviewUrl ? (
+            <SendQuote
+              customerName={job.customerName}
+              businessName={user.businessName}
+              email={job.email}
+              phone={job.phone}
+              url={user.branding.reviewUrl}
+              kind="review"
+              brandedReady={brandedReady}
+              jobId={job.id}
+            />
+          ) : (
+            <p>
+              Add a review link on the{" "}
+              <Link href="/settings" className="font-bold underline" style={{ color: accent }}>
+                Business
+              </Link>{" "}
+              page, then you can send it from here.
+            </p>
+          )}
+        </section>
+      ) : null}
 
       <details className="card">
         <summary className="btn btn-secondary w-full">Edit customer and visit</summary>

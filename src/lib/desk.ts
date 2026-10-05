@@ -36,6 +36,11 @@ export type DeskJob = {
   depositPence: number | null;
   shareActive: boolean;
   surveyDone: string;
+  quoteNumber: number;
+  validUntil: string;
+  firstViewedAt: string | null;
+  lastViewedAt: string | null;
+  showPhotos: boolean;
   vatRegistered: boolean;
   vatRatePercent: number;
   materials: DeskMaterial[];

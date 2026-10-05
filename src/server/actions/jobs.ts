@@ -3,7 +3,7 @@
 import { redirect } from "next/navigation";
 import { createShareToken } from "@/lib/access";
 import { isJobStatus } from "@/lib/constants";
-import { isoToUtcDate } from "@/lib/dates";
+import { addDays, isoToUtcDate, londonToday } from "@/lib/dates";
 import type { ActionState } from "@/lib/form-state";
 import { tenantWhere } from "@/lib/tenancy";
 import { findStarterTemplate } from "@/lib/trade-starters";
@@ -19,6 +19,12 @@ export async function createJob(_state: ActionState, formData: FormData): Promis
   const starter = findStarterTemplate(String(formData.get("starterId") ?? ""));
   const useStarter = starter && starter.trade === parsed.data.trade ? starter : null;
   const job = await getPrisma().$transaction(async (tx) => {
+    const allocated = await tx.business.update({
+      where: { id: user.businessId },
+      data: { nextQuoteNumber: { increment: 1 } },
+      select: { nextQuoteNumber: true, quoteValidDays: true },
+    });
+    const quoteDays = allocated.quoteValidDays >= 1 && allocated.quoteValidDays <= 365 ? allocated.quoteValidDays : 30;
     const created = await tx.job.create({
       data: {
         ...tenantWhere(user.businessId),
@@ -36,6 +42,8 @@ export async function createJob(_state: ActionState, formData: FormData): Promis
         showLinePrices: parsed.data.showLinePrices,
         depositPence: parsed.data.depositPence,
         shareToken: createShareToken(),
+        quoteNumber: allocated.nextQuoteNumber - 1,
+        validUntil: isoToUtcDate(addDays(londonToday(), quoteDays)),
       },
       select: { id: true },
     });

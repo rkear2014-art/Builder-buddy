@@ -8,6 +8,8 @@ import { LogoutButton } from "@/components/logout-button";
 
 const links = [
   { href: "/jobs", label: "Jobs" },
+  { href: "/quotes", label: "Quotes" },
+  { href: "/invoices", label: "Invoices" },
   { href: "/#to-chase", label: "To chase", chase: true },
   { href: "/diary", label: "Diary" },
   { href: "/library", label: "Library" },
@@ -17,6 +19,8 @@ const links = [
 function isActive(pathname: string, href: string): boolean {
   if (href === "/#to-chase") return false;
   if (href === "/jobs") return pathname === "/jobs" || /^\/jobs\/(?!new$).+/.test(pathname);
+  if (href === "/invoices") return pathname === "/invoices" || pathname.startsWith("/invoices/");
+  if (href === "/quotes") return pathname === "/quotes";
   return pathname === href;
 }
 

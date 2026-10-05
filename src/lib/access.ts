@@ -67,9 +67,14 @@ export function decideAccess(input: {
     return { type: "next" };
   }
 
-  // Any /sign address stays on the customer side, including a broken link.
-  // The page itself only loads a job when the token is well formed and matches one row.
-  if (pathname === "/sign" || pathname.startsWith("/sign/")) {
+  // Customer quotation and invoice links stay open without a login, including a broken one.
+  // Each page only loads a row when the token is well formed and matches.
+  if (
+    pathname === "/sign" ||
+    pathname.startsWith("/sign/") ||
+    pathname === "/invoice" ||
+    pathname.startsWith("/invoice/")
+  ) {
     return { type: "next" };
   }
 

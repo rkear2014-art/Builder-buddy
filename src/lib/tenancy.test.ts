@@ -75,6 +75,8 @@ describe("business isolation", () => {
             timeSlot: "morning",
             status: "BOOKED",
             shareToken: token,
+            quoteNumber: 1,
+            validUntil: new Date("2026-11-03T00:00:00.000Z"),
             materials: {
               create: [
                 {

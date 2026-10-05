@@ -24,6 +24,16 @@ export type BusinessBranding = BusinessProfile & {
   accent: string;
   accentColour: string;
   accentInk: string;
+  invoiceDueDays: number;
+  quoteValidDays: number;
+  bankAccountName: string;
+  bankSortCode: string;
+  bankAccountNumber: string;
+  reviewUrl: string;
+  insurer: string;
+  coverAmount: string;
+  guarantee: string;
+  accreditations: string;
 };
 
 export type BrandingRow = BusinessProfile & {
@@ -36,6 +46,16 @@ export type BrandingRow = BusinessProfile & {
   vatRatePercent: number;
   quoteLetter: string;
   quoteChips: string;
+  invoiceDueDays?: number;
+  quoteValidDays?: number;
+  bankAccountName?: string;
+  bankSortCode?: string;
+  bankAccountNumber?: string;
+  reviewUrl?: string;
+  insurer?: string;
+  coverAmount?: string;
+  guarantee?: string;
+  accreditations?: string;
 };
 
 type FormParse<T> = { ok: true; data: T } | { ok: false; error: string };
@@ -112,6 +132,11 @@ export function parseBusinessProfile(formData: FormData): FormParse<BusinessProf
   };
 }
 
+function clampDays(value: number | undefined, fallback: number, max: number): number {
+  if (value == null || !Number.isInteger(value) || value < 1 || value > max) return fallback;
+  return value;
+}
+
 export function toBranding(row: BrandingRow): BusinessBranding {
   const logoUpdatedAt =
     row.logoUpdatedAt instanceof Date ? row.logoUpdatedAt.toISOString() : row.logoUpdatedAt;
@@ -129,6 +154,16 @@ export function toBranding(row: BrandingRow): BusinessBranding {
     vatRatePercent: row.vatRatePercent,
     quoteLetter: row.quoteLetter,
     quoteChips: row.quoteChips,
+    invoiceDueDays: clampDays(row.invoiceDueDays, 14, 90),
+    quoteValidDays: clampDays(row.quoteValidDays, 30, 365),
+    bankAccountName: row.bankAccountName ?? "",
+    bankSortCode: row.bankSortCode ?? "",
+    bankAccountNumber: row.bankAccountNumber ?? "",
+    reviewUrl: row.reviewUrl ?? "",
+    insurer: row.insurer ?? "",
+    coverAmount: row.coverAmount ?? "",
+    guarantee: row.guarantee ?? "",
+    accreditations: row.accreditations ?? "",
     hasLogo: Boolean(row.logoMime),
     logoUpdatedAt: row.logoMime ? logoUpdatedAt : null,
     hasMark: Boolean(row.markMime),

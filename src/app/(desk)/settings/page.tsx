@@ -11,10 +11,13 @@ import {
   useSampleHeroes,
   useSampleLogo,
 } from "@/server/actions/branding";
+import { saveBusinessExtras, sendTestEmail } from "@/server/actions/customer-finish";
+import { brandedEmailReady } from "@/server/email";
 import { BusinessProfileForm } from "@/components/business-profile-form";
 import { InlineForm } from "@/components/inline-form";
 import { SubmitButton } from "@/components/submit-button";
 import { listHeroPhotos, requireUser } from "@/server/dal";
+import Link from "next/link";
 
 export const dynamic = "force-dynamic";
 
@@ -48,6 +51,10 @@ function savedMessage(saved: string | undefined, added: string | undefined): str
       return "Accent colour saved.";
     case "quote":
       return "Quotation details saved.";
+    case "extras":
+      return "Payment terms, bank details, and trust badges saved.";
+    case "test-email":
+      return "Test email sent to the business email.";
     default:
       return null;
   }
@@ -103,6 +110,7 @@ export default async function SettingsPage({
       <AccentSection user={user} owner={owner} />
       <ProfileSection user={user} owner={owner} />
       <QuoteSection user={user} owner={owner} />
+      <ExtrasSection user={user} owner={owner} />
     </div>
   );
 }
@@ -335,6 +343,87 @@ function QuoteSection({ user, owner }: { user: SessionUser; owner: boolean }) {
         </InlineForm>
       ) : (
         <p className="font-bold">Only the owner can change the quotation.</p>
+      )}
+    </section>
+  );
+}
+
+function ExtrasSection({ user, owner }: { user: SessionUser; owner: boolean }) {
+  const branding = user.branding;
+  const emailReady = brandedEmailReady();
+  return (
+    <section className="card grid gap-4">
+      <h2 className="font-display text-2xl">Invoices, quotes, and trust</h2>
+      <p className="text-stone">
+        Due dates, how long a quote stays valid, bank details, and the badges on quotes, invoices, and customer links.
+        Insurance is only shown when you fill it in.
+      </p>
+      {owner ? (
+        <InlineForm action={saveBusinessExtras} className="grid gap-3">
+          <label className="field">
+            Invoice due in
+            <span>Days after the issue date. New invoices use this. 14 is the usual.</span>
+            <input name="invoiceDueDays" inputMode="numeric" defaultValue={String(branding.invoiceDueDays)} />
+          </label>
+          <label className="field">
+            Quote valid for
+            <span>Days. New quotes use this. You can still change the date on a quote.</span>
+            <input name="quoteValidDays" inputMode="numeric" defaultValue={String(branding.quoteValidDays)} />
+          </label>
+          <label className="field">
+            Account name
+            <input name="bankAccountName" defaultValue={branding.bankAccountName} />
+          </label>
+          <label className="field">
+            Sort code
+            <input name="bankSortCode" defaultValue={branding.bankSortCode} placeholder="12-34-56" />
+          </label>
+          <label className="field">
+            Account number
+            <input name="bankAccountNumber" defaultValue={branding.bankAccountNumber} />
+          </label>
+          <label className="field">
+            Review link
+            <span>For example a Google review page. Used by Ask for a review.</span>
+            <input name="reviewUrl" defaultValue={branding.reviewUrl} placeholder="https://" />
+          </label>
+          <label className="field">
+            Public liability insurer
+            <input name="insurer" defaultValue={branding.insurer} />
+          </label>
+          <label className="field">
+            Cover amount
+            <input name="coverAmount" defaultValue={branding.coverAmount} placeholder="£2 million" />
+          </label>
+          <label className="field">
+            Workmanship guarantee
+            <input name="guarantee" defaultValue={branding.guarantee} placeholder="12 months" />
+          </label>
+          <label className="field">
+            Memberships and accreditations
+            <span>One badge per line, up to 60 characters.</span>
+            <textarea name="accreditations" defaultValue={branding.accreditations} />
+          </label>
+          <SubmitButton>Save details</SubmitButton>
+        </InlineForm>
+      ) : (
+        <p className="font-bold">Only the owner can change these.</p>
+      )}
+      <p>
+        <Link href="/settings/email-preview" className="font-bold underline" style={{ color: branding.accentColour }}>
+          Preview branded email
+        </Link>
+      </p>
+      {emailReady && owner ? (
+        <InlineForm action={sendTestEmail} className="grid gap-3">
+          <p className="text-stone">Sends a test to {branding.email || "the business email"}.</p>
+          <SubmitButton variant="secondary">Send test email</SubmitButton>
+        </InlineForm>
+      ) : (
+        <p className="text-stone">
+          Branded email stays off until RESEND_API_KEY and RESEND_FROM_EMAIL are set. Quotes, invoices, and review
+          requests still open in your own email, WhatsApp, or text app.
+        </p>
       )}
     </section>
   );

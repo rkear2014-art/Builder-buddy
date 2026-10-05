@@ -88,7 +88,7 @@ describe("dashboard glance", () => {
     assert.equal(glance.chaseCount, 3);
     assert.deepEqual(
       glance.cards.map((card) => card.id),
-      ["today", "tomorrow", "sign-off", "chase", "new"],
+      ["today", "tomorrow", "sign-off", "chase", "new", "owed", "overdue", "paid-month"],
     );
     assert.equal(glance.cards.find((card) => card.id === "today")?.value, "1");
     assert.equal(glance.cards.find((card) => card.id === "today")?.sub, "booking");

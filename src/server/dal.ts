@@ -17,7 +17,10 @@ import type { JobStatus } from "@/lib/constants";
 import { addDays, isoToUtcDate, londonHour, londonToday, utcDateToIso, weekDates } from "@/lib/dates";
 import type { DeskJob, JobSummary, MaterialTemplateView, SavedItem, SessionUser } from "@/lib/desk";
 import { buildGlance, glanceChips, type GlanceJob, type GlancePage } from "@/lib/glance";
-import { parseQuoteChips, quoteReference, type QuoteChrome } from "@/lib/quote";
+import { formatDocumentNumber, quoteIsExpired } from "@/lib/documents";
+import { balancePence, invoiceGlance, invoiceStanding, invoiceTotals, type InvoiceStanding, type PaymentMethod } from "@/lib/invoice";
+import { parseQuoteChips, type QuoteChrome } from "@/lib/quote";
+import { trustBadges } from "@/lib/trust";
 import { materialsTotals, quantityFromStored } from "@/lib/materials";
 import { presentShare, type SharePresentation } from "@/lib/share";
 import { tenantWhere } from "@/lib/tenancy";
@@ -40,6 +43,16 @@ const businessBrandingSelect = {
   vatRatePercent: true,
   quoteLetter: true,
   quoteChips: true,
+  invoiceDueDays: true,
+  quoteValidDays: true,
+  bankAccountName: true,
+  bankSortCode: true,
+  bankAccountNumber: true,
+  insurer: true,
+  coverAmount: true,
+  guarantee: true,
+  accreditations: true,
+  reviewUrl: true,
 } as const;
 
 const jobInclude = {
@@ -77,6 +90,11 @@ function mapJob(job: JobWithRelations): DeskJob {
     depositPence: job.depositPence,
     shareActive: job.shareActive,
     surveyDone: job.surveyDone,
+    quoteNumber: job.quoteNumber,
+    validUntil: utcDateToIso(job.validUntil),
+    firstViewedAt: job.firstViewedAt?.toISOString() ?? null,
+    lastViewedAt: job.lastViewedAt?.toISOString() ?? null,
+    showPhotos: job.showPhotos,
     vatRegistered: job.business.vatRegistered,
     vatRatePercent: job.business.vatRatePercent,
     materials: job.materials.map((material) => ({
@@ -358,6 +376,39 @@ export async function getGlance(
     cookies().then((jar) => jar.get(HERO_VISIT_COOKIE)?.value ?? null),
   ]);
   const hero = pickRotatingHero(photos, previousHeroId);
+  const invoiceRows = await prisma.invoice.findMany({
+    where: tenantWhere(businessId),
+    include: {
+      lines: { select: { quantity: true, unitPricePence: true } },
+      payments: { select: { amountPence: true, paidOn: true } },
+      job: { select: { customerName: true } },
+    },
+  });
+  const glanceInvoices = invoiceGlance({
+    today,
+    invoices: invoiceRows.map((invoice) => {
+      const totals = invoiceTotals({
+        lines: invoice.lines.map((line) => ({ quantity: line.quantity.toString(), unitPricePence: line.unitPricePence })),
+        vatRegistered: invoice.vatRegistered,
+        vatRatePercent: invoice.vatRatePercent,
+        depositPence: invoice.depositPence,
+      });
+      const paidPence = invoice.payments.reduce((sum, payment) => sum + payment.amountPence, 0);
+      return {
+        id: invoice.id,
+        number: invoice.number,
+        status: invoice.status,
+        dueDate: utcDateToIso(invoice.dueDate),
+        customerName: invoice.job.customerName,
+        duePence: totals.duePence,
+        paidPence,
+        payments: invoice.payments.map((payment) => ({
+          amountPence: payment.amountPence,
+          paidOn: utcDateToIso(payment.paidOn),
+        })),
+      };
+    }),
+  });
   const model = buildGlance({
     today,
     hour: londonHour(now),
@@ -365,6 +416,7 @@ export async function getGlance(
     businessName: branding.name,
     enquiryCount,
     jobs: [...byId.values()].map(mapGlanceJob),
+    invoices: glanceInvoices,
   });
   return {
     ...model,
@@ -466,24 +518,45 @@ export async function getLibrary(businessId: string): Promise<{
   };
 }
 
+export type ShareJobPhoto = {
+  id: string;
+  stage: "BEFORE" | "DURING" | "AFTER";
+  src: string;
+};
+
 export type ShareView = {
   presentation: SharePresentation;
   letterhead: CustomerLetterhead | null;
   quote: QuoteChrome | null;
+  photos: ShareJobPhoto[];
 };
 
 export const getShareView = cache(async (token: string): Promise<ShareView> => {
   if (!isConfigured() || !isWellFormedShareToken(token)) {
-    return { presentation: { kind: "not_found" }, letterhead: null, quote: null };
+    return { presentation: { kind: "not_found" }, letterhead: null, quote: null, photos: [] };
   }
   const job = await getPrisma().job.findUnique({
     where: { shareToken: token },
     include: jobInclude,
   });
   if (!job || !job.shareActive) {
-    return { presentation: presentShare({ token, record: null, signOff: null }), letterhead: null, quote: null };
+    return { presentation: presentShare({ token, record: null, signOff: null }), letterhead: null, quote: null, photos: [] };
   }
   const mapped = mapJob(job);
+  const cookieStore = await cookies();
+  const session = await decryptSession(cookieStore.get(SESSION_COOKIE)?.value, process.env.AUTH_SECRET);
+  const viewer = session?.userId
+    ? await getPrisma().user.findUnique({ where: { id: session.userId }, select: { businessId: true } })
+    : null;
+  if (!viewer || viewer.businessId !== job.businessId) {
+    const now = new Date();
+    await getPrisma().job.update({
+      where: { id: job.id },
+      data: { firstViewedAt: job.firstViewedAt ?? now, lastViewedAt: now },
+    });
+    mapped.firstViewedAt = (job.firstViewedAt ?? now).toISOString();
+    mapped.lastViewedAt = now.toISOString();
+  }
   const photos = await getPrisma().heroPhoto.findMany({
     where: tenantWhere(job.businessId),
     select: { id: true, caption: true, updatedAt: true },
@@ -517,18 +590,270 @@ export const getShareView = cache(async (token: string): Promise<ShareView> => {
     }),
     letterhead: letterheadFromRow(token, job.business),
     quote: {
-      reference: quoteReference(job.id),
+      reference: formatDocumentNumber("Q", job.quoteNumber),
       preparedBy: job.user.name.trim() || job.business.name,
       letter: job.business.quoteLetter,
-      chips: parseQuoteChips(job.business.quoteChips),
+      validUntil: mapped.validUntil,
+      expired: quoteIsExpired(mapped.validUntil, londonToday(), Boolean(job.signOff)),
+      chips: [
+        ...trustBadges(job.business),
+        ...parseQuoteChips(job.business.quoteChips),
+      ].slice(0, 8),
       photos: photos.flatMap((photo) => {
         const src = customerHeroSrc(token, photo.id, photo.updatedAt.toISOString());
         return src ? [{ id: photo.id, caption: photo.caption, src }] : [];
       }),
     },
+    photos: mapped.showPhotos
+      ? (
+          await getPrisma().jobPhoto.findMany({
+            where: { jobId: job.id, businessId: job.businessId },
+            select: { id: true, stage: true },
+            orderBy: { createdAt: "asc" },
+            take: 12,
+          })
+        ).map((photo) => ({
+          id: photo.id,
+          stage: photo.stage,
+          src: `/sign/${token}/photo/${photo.id}`,
+        }))
+      : [],
   };
 });
 
 export async function getSharePresentation(token: string): Promise<SharePresentation> {
   return (await getShareView(token)).presentation;
+}
+
+export type DeskPhoto = {
+  id: string;
+  stage: "BEFORE" | "DURING" | "AFTER";
+  createdAt: string;
+};
+
+export type InvoiceLineView = {
+  id: string;
+  name: string;
+  quantity: string;
+  unit: string;
+  unitPricePence: number | null;
+};
+
+export type InvoicePaymentView = {
+  id: string;
+  amountPence: number;
+  paidOn: string;
+  method: PaymentMethod;
+};
+
+export type InvoiceDetail = {
+  id: string;
+  jobId: string;
+  number: number;
+  reference: string;
+  shareToken: string;
+  standing: InvoiceStanding;
+  issueDate: string;
+  dueDate: string;
+  customerName: string;
+  address: string;
+  phone: string;
+  email: string;
+  lines: InvoiceLineView[];
+  payments: InvoicePaymentView[];
+  subtotalPence: number;
+  vatPence: number | null;
+  vatRatePercent: number;
+  totalPence: number;
+  depositPence: number | null;
+  duePence: number;
+  paidPence: number;
+  balancePence: number;
+  bankAccountName: string;
+  bankSortCode: string;
+  bankAccountNumber: string;
+  businessName: string;
+};
+
+const invoiceInclude = {
+  lines: { orderBy: { sortOrder: "asc" as const } },
+  payments: { orderBy: { paidOn: "asc" as const } },
+  job: { select: { customerName: true, address: true, phone: true, email: true, quoteNumber: true } },
+  business: { select: businessBrandingSelect },
+};
+
+function mapInvoice(invoice: {
+  id: string;
+  jobId: string;
+  number: number;
+  shareToken: string;
+  status: "DRAFT" | "SENT" | "PART_PAID" | "PAID";
+  issueDate: Date;
+  dueDate: Date;
+  depositPence: number | null;
+  vatRegistered: boolean;
+  vatRatePercent: number;
+  lines: Array<{ id: string; name: string; quantity: { toString(): string }; unit: string; unitPricePence: number | null }>;
+  payments: Array<{ id: string; amountPence: number; paidOn: Date; method: PaymentMethod }>;
+  job: { customerName: string; address: string; phone: string; email: string };
+  business: { name: string; bankAccountName?: string; bankSortCode?: string; bankAccountNumber?: string };
+}): InvoiceDetail {
+  const lines = invoice.lines.map((line) => ({
+    id: line.id,
+    name: line.name,
+    quantity: quantityFromStored(line.quantity.toString()),
+    unit: line.unit,
+    unitPricePence: line.unitPricePence,
+  }));
+  const totals = invoiceTotals({
+    lines,
+    vatRegistered: invoice.vatRegistered,
+    vatRatePercent: invoice.vatRatePercent,
+    depositPence: invoice.depositPence,
+  });
+  const paidPence = invoice.payments.reduce((sum, payment) => sum + payment.amountPence, 0);
+  const dueDate = utcDateToIso(invoice.dueDate);
+  return {
+    id: invoice.id,
+    jobId: invoice.jobId,
+    number: invoice.number,
+    reference: formatDocumentNumber("INV", invoice.number),
+    shareToken: invoice.shareToken,
+    standing: invoiceStanding({
+      status: invoice.status,
+      dueDate,
+      today: londonToday(),
+      paidPence,
+      totalDuePence: totals.duePence,
+    }),
+    issueDate: utcDateToIso(invoice.issueDate),
+    dueDate,
+    customerName: invoice.job.customerName,
+    address: invoice.job.address,
+    phone: invoice.job.phone,
+    email: invoice.job.email,
+    lines,
+    payments: invoice.payments.map((payment) => ({
+      id: payment.id,
+      amountPence: payment.amountPence,
+      paidOn: utcDateToIso(payment.paidOn),
+      method: payment.method,
+    })),
+    subtotalPence: totals.subtotalPence,
+    vatPence: totals.vatPence,
+    vatRatePercent: invoice.vatRatePercent,
+    totalPence: totals.totalPence,
+    depositPence: totals.depositPence,
+    duePence: totals.duePence,
+    paidPence,
+    balancePence: balancePence(totals.duePence, paidPence),
+    bankAccountName: invoice.business.bankAccountName ?? "",
+    bankSortCode: invoice.business.bankSortCode ?? "",
+    bankAccountNumber: invoice.business.bankAccountNumber ?? "",
+    businessName: invoice.business.name,
+  };
+}
+
+export async function listQuotes(businessId: string): Promise<
+  Array<{
+    id: string;
+    customerName: string;
+    quoteNumber: number;
+    reference: string;
+    validUntil: string;
+    expired: boolean;
+    signed: boolean;
+    firstViewedAt: string | null;
+    lastViewedAt: string | null;
+    status: JobStatus;
+  }>
+> {
+  const jobs = await getPrisma().job.findMany({
+    where: tenantWhere(businessId),
+    select: {
+      id: true,
+      customerName: true,
+      quoteNumber: true,
+      validUntil: true,
+      firstViewedAt: true,
+      lastViewedAt: true,
+      status: true,
+      signOff: { select: { id: true } },
+    },
+    orderBy: { quoteNumber: "desc" },
+  });
+  const today = londonToday();
+  return jobs.map((job) => ({
+    id: job.id,
+    customerName: job.customerName,
+    quoteNumber: job.quoteNumber,
+    reference: formatDocumentNumber("Q", job.quoteNumber),
+    validUntil: utcDateToIso(job.validUntil),
+    expired: quoteIsExpired(utcDateToIso(job.validUntil), today, Boolean(job.signOff)),
+    signed: Boolean(job.signOff),
+    firstViewedAt: job.firstViewedAt?.toISOString() ?? null,
+    lastViewedAt: job.lastViewedAt?.toISOString() ?? null,
+    status: job.status,
+  }));
+}
+
+export async function listInvoices(businessId: string): Promise<InvoiceDetail[]> {
+  const invoices = await getPrisma().invoice.findMany({
+    where: tenantWhere(businessId),
+    include: invoiceInclude,
+    orderBy: { number: "desc" },
+  });
+  return invoices.map(mapInvoice);
+}
+
+export async function listJobInvoices(businessId: string, jobId: string): Promise<InvoiceDetail[]> {
+  const invoices = await getPrisma().invoice.findMany({
+    where: { jobId, ...tenantWhere(businessId) },
+    include: invoiceInclude,
+    orderBy: { number: "desc" },
+  });
+  return invoices.map(mapInvoice);
+}
+
+export async function getInvoice(businessId: string, invoiceId: string): Promise<InvoiceDetail | null> {
+  const invoice = await getPrisma().invoice.findFirst({
+    where: { id: invoiceId, ...tenantWhere(businessId) },
+    include: invoiceInclude,
+  });
+  return invoice ? mapInvoice(invoice) : null;
+}
+
+export async function getPublicInvoice(token: string): Promise<{
+  invoice: InvoiceDetail;
+  letterhead: CustomerLetterhead;
+  badges: string[];
+} | null> {
+  if (!isConfigured() || !isWellFormedShareToken(token)) return null;
+  const invoice = await getPrisma().invoice.findUnique({
+    where: { shareToken: token },
+    include: invoiceInclude,
+  });
+  if (!invoice) return null;
+  const branding = toBranding(invoice.business);
+  return {
+    invoice: mapInvoice(invoice),
+    letterhead: {
+      branding,
+      logoSrc: branding.hasLogo ? `/invoice/${token}/logo` : null,
+    },
+    badges: [...trustBadges(invoice.business), ...parseQuoteChips(invoice.business.quoteChips)].slice(0, 8),
+  };
+}
+
+export async function listJobPhotos(businessId: string, jobId: string): Promise<DeskPhoto[]> {
+  const photos = await getPrisma().jobPhoto.findMany({
+    where: { jobId, ...tenantWhere(businessId) },
+    select: { id: true, stage: true, createdAt: true },
+    orderBy: { createdAt: "asc" },
+  });
+  return photos.map((photo) => ({
+    id: photo.id,
+    stage: photo.stage,
+    createdAt: photo.createdAt.toISOString(),
+  }));
 }

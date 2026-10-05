@@ -19,6 +19,25 @@ enum BusinessRole {
   MEMBER
 }
 
+enum InvoiceStatus {
+  DRAFT
+  SENT
+  PART_PAID
+  PAID
+}
+
+enum PaymentMethod {
+  CASH
+  TRANSFER
+  CARD
+}
+
+enum PhotoStage {
+  BEFORE
+  DURING
+  AFTER
+}
+
 model Business {
   id            String             @id @default(cuid())
   name          String
@@ -32,6 +51,18 @@ model Business {
   vatRatePercent Int               @default(20)
   quoteLetter   String             @default("")
   quoteChips    String             @default("")
+  invoiceDueDays Int               @default(14)
+  quoteValidDays Int               @default(30)
+  nextInvoiceNumber Int            @default(1)
+  nextQuoteNumber Int              @default(1)
+  bankAccountName String           @default("")
+  bankSortCode    String           @default("")
+  bankAccountNumber String         @default("")
+  reviewUrl     String             @default("")
+  insurer       String             @default("")
+  coverAmount   String             @default("")
+  guarantee     String             @default("")
+  accreditations String            @default("")
   logoBytes     Bytes?
   logoMime      String?
   logoUpdatedAt DateTime?
@@ -47,6 +78,9 @@ model Business {
   savedItems SavedMaterial[]
   heroes     HeroPhoto[]
   catalogue  CataloguePhoto[]
+  invoices   Invoice[]
+  payments   Payment[]
+  jobPhotos  JobPhoto[]
 }
 
 /// A picture for one chooser tile. catalogueKey is a built-in list id or a saved template id.
@@ -121,6 +155,11 @@ model Job {
   depositPence   Int?
   shareActive    Boolean     @default(true)
   surveyDone     String      @default("")
+  quoteNumber    Int
+  validUntil     DateTime    @db.Date
+  firstViewedAt  DateTime?
+  lastViewedAt   DateTime?
+  showPhotos     Boolean     @default(false)
   scheduledDate DateTime     @db.Date
   timeSlot      String
   status        JobStatus
@@ -129,7 +168,10 @@ model Job {
   updatedAt     DateTime     @updatedAt
   materials     JobMaterial[]
   signOff       SignOff?
+  invoices      Invoice[]
+  photos        JobPhoto[]
 
+  @@unique([businessId, quoteNumber])
   @@index([userId, scheduledDate])
   @@index([businessId, scheduledDate])
 }
@@ -149,6 +191,73 @@ model JobMaterial {
   sortOrder      Int     @default(0)
 
   @@index([jobId])
+  @@index([businessId])
+}
+
+model Invoice {
+  id            String        @id @default(cuid())
+  businessId    String
+  business      Business      @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  jobId         String
+  job           Job           @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  number        Int
+  status        InvoiceStatus @default(DRAFT)
+  issueDate     DateTime      @db.Date
+  dueDate       DateTime      @db.Date
+  depositPence  Int?
+  vatRegistered Boolean       @default(false)
+  vatRatePercent Int          @default(20)
+  shareToken    String        @unique
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  lines         InvoiceLine[]
+  payments      Payment[]
+
+  @@unique([businessId, number])
+  @@index([businessId, issueDate])
+  @@index([jobId])
+}
+
+model InvoiceLine {
+  id             String  @id @default(cuid())
+  invoiceId      String
+  invoice        Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  name           String
+  quantity       Decimal @db.Decimal(10, 2)
+  unit           String
+  unitPricePence Int?
+  sortOrder      Int     @default(0)
+
+  @@index([invoiceId])
+}
+
+model Payment {
+  id          String        @id @default(cuid())
+  businessId  String
+  business    Business      @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  invoiceId   String
+  invoice     Invoice       @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  amountPence Int
+  paidOn      DateTime      @db.Date
+  method      PaymentMethod
+  createdAt   DateTime      @default(now())
+
+  @@index([invoiceId])
+  @@index([businessId, paidOn])
+}
+
+model JobPhoto {
+  id         String     @id @default(cuid())
+  businessId String
+  business   Business   @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  jobId      String
+  job        Job        @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  bytes      Bytes
+  mime       String
+  stage      PhotoStage
+  createdAt  DateTime   @default(now())
+
+  @@index([jobId, createdAt])
   @@index([businessId])
 }
 

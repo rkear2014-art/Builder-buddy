@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getShareView } from "@/server/dal";
+import { CustomerPhotos } from "@/components/customer-photos";
 import { QuotationDocument } from "@/components/quotation-document";
 import { PrintButton } from "@/components/print-button";
 
@@ -33,6 +34,7 @@ export default async function PrintAgreementPage({ params }: { params: Promise<{
             : null
         }
       />
+      <CustomerPhotos photos={view.photos} />
     </main>
   );
 }

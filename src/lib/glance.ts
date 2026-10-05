@@ -1,4 +1,6 @@
 import { slotLabel, visibleTradeLabel, type JobStatus } from "./constants";
+import type { InvoiceGlanceRow } from "./invoice";
+import { formatPence } from "./money";
 import { addDays, formatIsoDate, greetingForHour, weekDates } from "./dates";
 import { initials, postcodeFromAddress, townFromAddress } from "./place";
 
@@ -35,6 +37,7 @@ export type GlanceCard = {
   href: string;
   empty: string;
   rows: GlanceListRow[];
+  moneyPence?: number;
 };
 
 export type GlanceWeekRow = {
@@ -201,6 +204,13 @@ function chaseSub(chase: GlanceJob[], today: string): string {
   return chase.length === 1 ? "1 follow-up" : `${chase.length} follow-ups`;
 }
 
+function glanceMoneyRow(row: InvoiceGlanceRow): GlanceListRow {
+  return {
+    ...row,
+    metaTone: row.meta === "Overdue" ? "late" : "neutral",
+  };
+}
+
 function firstName(name: string): string {
   return name.trim().split(/\s+/)[0] ?? "";
 }
@@ -212,6 +222,14 @@ export function buildGlance(input: {
   businessName: string;
   jobs: GlanceJob[];
   enquiryCount: number;
+  invoices?: {
+    owedPence: number;
+    overdueCount: number;
+    overduePence: number;
+    paidThisMonthPence: number;
+    owedRows?: InvoiceGlanceRow[];
+    overdueRows?: InvoiceGlanceRow[];
+  };
 }): GlanceModel {
   const { today, jobs } = input;
   const tomorrow = addDays(today, 1);
@@ -302,6 +320,39 @@ export function buildGlance(input: {
       href: "/jobs",
       empty: "No new jobs in the last 24 hours.",
       rows: fresh.slice(0, 2).map((job) => rowFor(job, today)),
+    },
+    {
+      id: "owed",
+      title: "Money owed",
+      meta: "INVOICES",
+      value: formatPence(input.invoices?.owedPence ?? 0),
+      sub: "still to collect",
+      href: "/invoices",
+      empty: "No issued invoices have a balance.",
+      rows: (input.invoices?.owedRows ?? []).map(glanceMoneyRow),
+      moneyPence: input.invoices?.owedPence ?? 0,
+    },
+    {
+      id: "overdue",
+      title: "Overdue",
+      meta: "INVOICES",
+      value: formatPence(input.invoices?.overduePence ?? 0),
+      sub: `${input.invoices?.overdueCount ?? 0} past the due date`,
+      href: "/invoices",
+      empty: "Nothing is overdue.",
+      rows: (input.invoices?.overdueRows ?? []).map(glanceMoneyRow),
+      moneyPence: input.invoices?.overduePence ?? 0,
+    },
+    {
+      id: "paid-month",
+      title: "Paid this month",
+      meta: "INVOICES",
+      value: formatPence(input.invoices?.paidThisMonthPence ?? 0),
+      sub: "payments received",
+      href: "/invoices",
+      empty: "No payments recorded this month.",
+      rows: [],
+      moneyPence: input.invoices?.paidThisMonthPence ?? 0,
     },
   ];
 

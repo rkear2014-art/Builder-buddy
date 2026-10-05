@@ -74,6 +74,11 @@ export function QuotationDocument({
           <div className="relative z-10 max-w-xl px-5 pb-28 pt-8">
             <h1 className="font-display text-5xl leading-none text-white sm:text-6xl">Your Quotation</h1>
             <p className="mt-3 text-lg text-white/95">Prepared for {agreement.customerName}</p>
+            <p className="mt-2 font-extrabold text-white">{quote.reference}</p>
+            {quote.validUntil ? (
+              <p className="mt-1 text-white/90">Valid until {formatIsoDate(quote.validUntil, "long")}</p>
+            ) : null}
+            {quote.expired ? <p className="mt-2 inline-block rounded-full bg-white px-3 py-1 font-extrabold text-clay">Expired</p> : null}
           </div>
           {heroCaption ? <p className="quote-caption absolute bottom-20 left-4 z-10">{heroCaption}</p> : null}
           <div className="quote-cut absolute inset-x-0 bottom-0 z-10 h-16 bg-white" />
@@ -137,6 +142,15 @@ export function QuotationDocument({
         <p className="mt-6">Dear {agreement.customerName},</p>
         <p className="quote-accent mt-4 font-bold">Re: Our Quotation</p>
         <p className="mt-3 whitespace-pre-wrap">{quoteLetterText(quote.letter)}</p>
+        {quote.chips.length > 0 ? (
+          <ul className="mt-4 flex flex-wrap gap-2">
+            {quote.chips.map((chip) => (
+              <li key={chip} className="rounded-full bg-[#f4f6f8] px-3 py-1 text-sm font-bold">
+                {chip}
+              </li>
+            ))}
+          </ul>
+        ) : null}
         <p className="mt-6">Yours sincerely,</p>
         <p className="quote-accent mt-4 font-display text-3xl italic">{preparedBy}</p>
         <p className="mt-2 font-bold">{preparedBy}</p>

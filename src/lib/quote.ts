@@ -26,6 +26,8 @@ export type QuoteChrome = {
   letter: string;
   chips: string[];
   photos: QuotePhoto[];
+  validUntil?: string;
+  expired?: boolean;
 };
 
 export function quoteReference(jobId: string): string {
