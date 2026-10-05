@@ -501,6 +501,8 @@ export async function getLibrary(businessId: string): Promise<{
       unit: item.unit,
       unitPricePence: item.unitPricePence,
       costPricePence: item.costPricePence,
+      coverageBasis: item.coverageBasis,
+      coverageAmount: item.coverageAmount == null ? null : item.coverageAmount.toString(),
     })),
     templates: templates.map((template) => ({
       id: template.id,
@@ -513,6 +515,8 @@ export async function getLibrary(businessId: string): Promise<{
         unit: item.unit,
         unitPricePence: item.unitPricePence,
         costPricePence: item.costPricePence,
+        coverageBasis: item.coverageBasis,
+        coverageAmount: item.coverageAmount == null ? null : item.coverageAmount.toString(),
       })),
     })),
   };
@@ -804,6 +808,58 @@ export async function listInvoices(businessId: string): Promise<InvoiceDetail[]>
     orderBy: { number: "desc" },
   });
   return invoices.map(mapInvoice);
+}
+
+export async function listLabourRates(businessId: string): Promise<Array<{ jobTypeKey: string; labourPerM2Pence: number | null }>> {
+  const rates = await getPrisma().labourRate.findMany({
+    where: tenantWhere(businessId),
+    select: { jobTypeKey: true, labourPerM2Pence: true },
+  });
+  return rates;
+}
+
+export async function getBusinessWastage(businessId: string): Promise<number> {
+  const business = await getPrisma().business.findFirst({
+    where: { id: businessId },
+    select: { wastagePercent: true },
+  });
+  return business?.wastagePercent ?? 10;
+}
+
+export async function listRoomMeasures(businessId: string, jobId: string) {
+  const job = await getPrisma().job.findFirst({
+    where: { id: jobId, ...tenantWhere(businessId) },
+    select: {
+      wastagePercent: true,
+      measureTypeKey: true,
+      measureTypeName: true,
+      dayRatePence: true,
+      dayCount: true,
+      rooms: { orderBy: { sortOrder: "asc" } },
+    },
+  });
+  if (!job) return null;
+  return {
+    wastagePercent: job.wastagePercent,
+    measureTypeKey: job.measureTypeKey,
+    measureTypeName: job.measureTypeName,
+    dayRatePence: job.dayRatePence,
+    dayCount: job.dayCount == null ? null : job.dayCount.toString(),
+    rooms: job.rooms.map((room) => ({
+      name: room.name,
+      mode: room.mode,
+      lengthM: room.lengthM == null ? 0 : Number(room.lengthM),
+      widthM: room.widthM == null ? 0 : Number(room.widthM),
+      heightM: room.heightM == null ? 2.4 : Number(room.heightM),
+      includeWalls: room.includeWalls,
+      includeCeiling: room.includeCeiling,
+      directAreaM2: room.directAreaM2 == null ? 0 : Number(room.directAreaM2),
+      doorCount: room.doorCount,
+      doorAreaM2: Number(room.doorAreaM2),
+      windowCount: room.windowCount,
+      windowAreaM2: Number(room.windowAreaM2),
+    })),
+  };
 }
 
 export async function listJobInvoices(businessId: string, jobId: string): Promise<InvoiceDetail[]> {

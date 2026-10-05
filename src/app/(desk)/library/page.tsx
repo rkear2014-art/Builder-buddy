@@ -1,11 +1,13 @@
 import { canEditBusiness, deskCatalogueSrc } from "@/lib/branding";
 import { enabledTrades, isEnabledTrade, singleEnabledTrade, tradeLabel } from "@/lib/constants";
 import { formatPence } from "@/lib/money";
+import { coverageBasisLabel, starterCoverage } from "@/lib/coverage";
 import { PLASTERING_STARTER_MATERIALS, PLASTERING_STARTER_TEMPLATES } from "@/lib/trade-starters";
+import { saveLabourRate, saveMaterialCoverage } from "@/server/actions/measure";
 import { removeCataloguePhoto, saveCataloguePhoto } from "@/server/actions/catalogue";
 import { addTemplateItem, createSavedItem, createTemplate, deleteSavedItem, deleteTemplate } from "@/server/actions/library";
-import { loadPlasteringStarters, saveStarterItem, saveStarterTemplate } from "@/server/actions/starters";
-import { getLibrary, listCataloguePhotos, requireUser } from "@/server/dal";
+import { loadPlasteringStarters, saveStarterTemplate } from "@/server/actions/starters";
+import { getBusinessWastage, getLibrary, listCataloguePhotos, listLabourRates, requireUser } from "@/server/dal";
 import { InlineForm } from "@/components/inline-form";
 import { SubmitButton } from "@/components/submit-button";
 import { UnitSelect } from "@/components/unit-select";
@@ -34,6 +36,10 @@ function libraryNotice(
   if (notice === "photo") return "That picture could not be used. Choose a PNG, JPG, or WebP under 2 MB.";
   if (notice === "owner") return "Only the owner can change tile photos.";
   if (notice === "saved") return "Saved into your library. Set a price when you add it to a job, or leave it blank.";
+  if (notice === "coverage-saved") return "Coverage saved. The room calculator uses this instead of the starting guidance.";
+  if (notice === "coverage") return "Enter how much one unit covers, as a number such as 10 or 2.88.";
+  if (notice === "labour-saved") return "Labour price saved for that job type. Leave it blank if you do not want labour added.";
+  if (notice === "labour") return "Enter the labour price in pounds per m², or leave it blank.";
   if (notice === "already") return "That is already in your library.";
   if (notice === "missing") return "That starter list could not be found.";
   if (notice !== "starters") return null;
@@ -62,6 +68,9 @@ export default async function LibraryPage({
 }) {
   const user = await requireUser();
   const library = await getLibrary(user.businessId);
+  const labourRates = await listLabourRates(user.businessId);
+  const wastage = await getBusinessWastage(user.businessId);
+  const labourByKey = new Map(labourRates.map((rate) => [rate.jobTypeKey, rate.labourPerM2Pence]));
   const tiles = await listCataloguePhotos(user.businessId);
   const tileUpdated = new Map(tiles.map((tile) => [tile.catalogueKey, tile.updatedAt]));
   const owner = canEditBusiness(user.role);
@@ -94,7 +103,7 @@ export default async function LibraryPage({
           2026, including VAT, and you can change any of them. Load plastering starter lists adds a missing list, brings an older saved name
           up to date, and fills a blank price. A price you have already set is left as it was.
         </p>
-        {PLASTERING_STARTER_TEMPLATES.map((starter) => (
+        {PLASTERING_STARTER_TEMPLATES.filter((starter) => !starter.retired).map((starter) => (
           <article key={starter.id} className="card grid gap-3">
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
@@ -115,35 +124,73 @@ export default async function LibraryPage({
               owner={owner}
             />
             <ul className="grid gap-1">
-              {starter.items.map((item) => (
-                <li key={item.name}>
-                  {item.quantity} {item.unit} {item.name} ·{" "}
-                  {item.unitPricePence == null ? "No price" : formatPence(item.unitPricePence)}
-                </li>
-              ))}
+              {starter.items.map((item) => {
+                const coverage = starterCoverage(starter.id, item.name);
+                return (
+                  <li key={item.name}>
+                    {item.quantity} {item.unit} {item.name} ·{" "}
+                    {item.unitPricePence == null ? "No price" : formatPence(item.unitPricePence)}
+                    {coverage ? ` · starting guidance: one ${item.unit} covers ${coverage.perUnit} ${coverageBasisLabel(coverage.basis)}` : ""}
+                  </li>
+                );
+              })}
             </ul>
+            <form action={saveLabourRate} className="grid gap-2 border-t border-line pt-3 sm:grid-cols-[1fr_auto] sm:items-end">
+              <label className="field">
+                Labour per m²
+                <span>Optional. Leave blank and nothing is added for labour. Wastage on materials is {wastage}% unless a job uses another figure.</span>
+                <input
+                  name="labourPerM2"
+                  inputMode="decimal"
+                  placeholder="Blank"
+                  defaultValue={labourByKey.get(starter.id) == null ? "" : ((labourByKey.get(starter.id) ?? 0) / 100).toFixed(2)}
+                />
+              </label>
+              <input type="hidden" name="jobTypeKey" value={starter.id} />
+              <button className="btn btn-secondary" type="submit">
+                Save labour
+              </button>
+            </form>
           </article>
         ))}
         <details className="card">
           <summary className="btn btn-secondary w-full">Starter materials</summary>
           <ul className="mt-3 grid gap-2">
-            {PLASTERING_STARTER_MATERIALS.map((item) => (
-              <li key={item.id} className="flex flex-wrap items-center justify-between gap-3 border-b border-line pb-2">
-                <p>
-                  <span className="font-bold">{item.name}</span>
-                  <span className="text-stone">
-                    {" "}
-                    · per {item.unit} · {item.unitPricePence == null ? "No price" : formatPence(item.unitPricePence)}
-                  </span>
-                </p>
-                <form action={saveStarterItem}>
-                  <input type="hidden" name="starterId" value={item.id} />
-                  <button className="btn btn-secondary" type="submit">
-                    Save item
-                  </button>
-                </form>
-              </li>
-            ))}
+            {PLASTERING_STARTER_MATERIALS.map((item) => {
+              const coverage = starterCoverage(PLASTERING_STARTER_TEMPLATES.find((template) => template.items.some((line) => line.name === item.name))?.id ?? "", item.name);
+              const saved = savedItems.find((row) => row.name.toLowerCase() === item.name.toLowerCase());
+              return (
+                <li key={item.id} className="grid gap-2 border-b border-line pb-3">
+                  <p>
+                    <span className="font-bold">{item.name}</span>
+                    <span className="text-stone">
+                      {" "}
+                      · per {item.unit} · {item.unitPricePence == null ? "No price" : formatPence(item.unitPricePence)}
+                    </span>
+                  </p>
+                  <p className="text-sm text-stone">Starting guidance, check it: {coverage ? coverage.guidance : "No figure yet."}</p>
+                  <form action={saveMaterialCoverage} className="grid gap-2 sm:grid-cols-[8rem_8rem_auto] sm:items-end">
+                    <input type="hidden" name="starterId" value={item.id} />
+                    {saved ? <input type="hidden" name="savedId" value={saved.id} /> : null}
+                    <label className="field">
+                      One {item.unit} covers
+                      <input name="coverageAmount" inputMode="decimal" placeholder={coverage ? String(coverage.perUnit) : ""} defaultValue={saved?.coverageAmount ?? ""} />
+                    </label>
+                    <label className="field">
+                      Of
+                      <select name="coverageBasis" defaultValue={saved?.coverageBasis || coverage?.basis || "area"}>
+                        <option value="area">m²</option>
+                        <option value="perimeter">metres</option>
+                        <option value="corners">corners</option>
+                      </select>
+                    </label>
+                    <button className="btn btn-secondary" type="submit">
+                      Save coverage
+                    </button>
+                  </form>
+                </li>
+              );
+            })}
           </ul>
         </details>
       </section>
@@ -336,7 +383,7 @@ function TilePhoto({
         // eslint-disable-next-line @next/next/no-img-element
         <img src={src} alt="" className="h-28 w-full rounded-xl object-cover" />
       ) : (
-        <p className="text-sm text-stone">No tile photo yet. The chooser uses a work photo where one fits, or a plain tile.</p>
+        <p className="text-sm text-stone">No tile photo of your own yet. Choose a job shows a work photo until you set one here.</p>
       )}
       {owner ? (
         <div className="flex flex-wrap items-center gap-2">

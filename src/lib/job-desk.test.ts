@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { catalogueCoversEveryStarter, catalogueGroupsFor, fittingHeroId } from "./catalogue";
+import { catalogueCoversEveryStarter, catalogueGroupsFor, defaultTileSource, fittingHeroId } from "./catalogue";
 import {
   enabledTrades,
   isEnabledTrade,
@@ -84,6 +84,11 @@ describe("job desk helpers", () => {
     assert.equal(fittingHeroId("plaster-skim", photos), "room");
     assert.equal(fittingHeroId("plaster-screed", photos), null);
     assert.equal(fittingHeroId("plaster-render", []), null);
+    const shown = catalogueGroupsFor("Plasterer").flatMap((group) => group.starterIds);
+    assert.equal(shown.includes("plaster-skim"), false);
+    assert.equal(shown.includes("plaster-two-coat"), false);
+    assert.equal(shown.includes("plaster-general"), true);
+    for (const id of shown) assert.ok(defaultTileSource(id), id);
   });
 
   it("turns a deposit percentage into the amount the quotation stores", () => {

@@ -85,7 +85,8 @@ export const UNITS = [
   "m",
   "m²",
   "hour",
-] as const;
+  "day",
+] as const
 
 export function isTrade(value: string): value is Trade {
   return TRADES.some((trade) => trade === value);

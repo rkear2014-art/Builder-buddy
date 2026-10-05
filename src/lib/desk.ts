@@ -68,6 +68,8 @@ export type SavedItem = {
   unit: string;
   unitPricePence: number | null;
   costPricePence: number | null;
+  coverageBasis: string;
+  coverageAmount: string | null;
 };
 
 export type TemplateItem = {
@@ -77,6 +79,8 @@ export type TemplateItem = {
   unit: string;
   unitPricePence: number | null;
   costPricePence: number | null;
+  coverageBasis: string;
+  coverageAmount: string | null;
 };
 
 export type MaterialTemplateView = {

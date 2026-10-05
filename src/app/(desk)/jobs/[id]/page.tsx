@@ -24,7 +24,8 @@ import {
 } from "@/server/actions/jobs";
 import { deleteJobMaterial, toggleMaterialBought } from "@/server/actions/materials";
 import { brandedEmailReady } from "@/server/email";
-import { getJob, getLibrary, listJobInvoices, listJobPhotos, requireUser } from "@/server/dal";
+import { formatM2, roomAreas, type MeasureMode } from "@/lib/measure";
+import { getJob, getLibrary, listJobInvoices, listJobPhotos, listRoomMeasures, requireUser } from "@/server/dal";
 import { requestOrigin } from "@/server/origin";
 import { InlineForm } from "@/components/inline-form";
 import { DeletePhotoForm, JobPhotoForm, PhotoShareButton, ShowPhotosForm } from "@/components/job-photo-form";
@@ -55,6 +56,7 @@ export default async function JobPage({ params }: { params: Promise<{ id: string
   const library = await getLibrary(user.businessId);
   const photos = await listJobPhotos(user.businessId, job.id);
   const invoices = await listJobInvoices(user.businessId, job.id);
+  const measured = await listRoomMeasures(user.businessId, job.id);
   const origin = await requestOrigin();
   const shareUrl = origin ? `${origin}/sign/${job.shareToken}` : `/sign/${job.shareToken}`;
   const locked = job.signOff ? parseLockedAgreement(job.signOff.snapshot) : null;
@@ -290,6 +292,33 @@ export default async function JobPage({ params }: { params: Promise<{ id: string
         accentInk={accentInk}
         message={message}
       />
+
+      {measured && measured.rooms.length > 0 ? (
+        <section className="card grid gap-2">
+          <div className="flex flex-wrap items-end justify-between gap-2">
+            <h2 className="font-display text-2xl">Rooms</h2>
+            <Link
+              href={
+                measured.measureTypeKey.startsWith("template:")
+                  ? `/jobs/${job.id}/measure?template=${measured.measureTypeKey.slice("template:".length)}`
+                  : `/jobs/${job.id}/measure?starter=${measured.measureTypeKey}`
+              }
+              className="font-bold underline"
+              style={{ color: accent }}
+            >
+              Change the sizes
+            </Link>
+          </div>
+          <p className="text-stone">{measured.measureTypeName}</p>
+          <ul className="grid gap-1">
+            {measured.rooms.map((room, index) => (
+              <li key={`${room.name}-${index}`}>
+                {room.name} · {formatM2(roomAreas({ ...room, mode: room.mode as MeasureMode }).netM2)}
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
 
       <section id="materials" className="card grid gap-4">
         <div className="flex flex-wrap items-end justify-between gap-2">

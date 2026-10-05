@@ -16,7 +16,10 @@ import { brandedEmailReady } from "@/server/email";
 import { BusinessProfileForm } from "@/components/business-profile-form";
 import { InlineForm } from "@/components/inline-form";
 import { SubmitButton } from "@/components/submit-button";
-import { listHeroPhotos, requireUser } from "@/server/dal";
+import { starterTemplatesFor } from "@/lib/trade-starters";
+import { saveBusinessMeasure } from "@/server/actions/measure";
+import { getBusinessWastage, listHeroPhotos, listLabourRates, requireUser } from "@/server/dal";
+import { formatPence } from "@/lib/money";
 import Link from "next/link";
 
 export const dynamic = "force-dynamic";
@@ -33,6 +36,8 @@ function savedMessage(saved: string | undefined, added: string | undefined): str
   switch (saved) {
     case "profile":
       return "Business details saved.";
+    case "measure":
+      return "Wastage and labour prices saved.";
     case "logo":
       return "Logo saved.";
     case "removed":
@@ -72,6 +77,8 @@ function noticeMessage(notice: string | undefined): string | null {
       return "Those photos could not be added. Try again, or upload your own.";
     case "heroes-full":
       return "This business already has 12 dashboard photos. Remove one before adding more.";
+    case "wastage":
+      return "Enter wastage from 0 to 100, and labour prices in pounds, or leave a labour price blank.";
     default:
       return null;
   }
@@ -83,7 +90,11 @@ export default async function SettingsPage({
   searchParams: Promise<{ saved?: string; notice?: string; added?: string }>;
 }) {
   const user = await requireUser();
-  const photos = await listHeroPhotos(user.businessId);
+  const [photos, wastage, labourRates] = await Promise.all([
+    listHeroPhotos(user.businessId),
+    getBusinessWastage(user.businessId),
+    listLabourRates(user.businessId),
+  ]);
   const query = await searchParams;
   const saved = savedMessage(query.saved, query.added);
   const notice = noticeMessage(query.notice);
@@ -111,6 +122,7 @@ export default async function SettingsPage({
       <ProfileSection user={user} owner={owner} />
       <QuoteSection user={user} owner={owner} />
       <ExtrasSection user={user} owner={owner} />
+      <MeasureSection owner={owner} wastage={wastage} labourRates={labourRates} />
     </div>
   );
 }
@@ -424,6 +436,51 @@ function ExtrasSection({ user, owner }: { user: SessionUser; owner: boolean }) {
           Branded email stays off until RESEND_API_KEY and RESEND_FROM_EMAIL are set. Quotes, invoices, and review
           requests still open in your own email, WhatsApp, or text app.
         </p>
+      )}
+    </section>
+  );
+}
+
+function MeasureSection({
+  owner,
+  wastage,
+  labourRates,
+}: {
+  owner: boolean;
+  wastage: number;
+  labourRates: Array<{ jobTypeKey: string; labourPerM2Pence: number | null }>;
+}) {
+  const rates = new Map(labourRates.map((rate) => [rate.jobTypeKey, rate.labourPerM2Pence]));
+  const types = starterTemplatesFor("Plasterer");
+  return (
+    <section className="card grid gap-4">
+      <h2 className="font-display text-2xl">Rooms and labour</h2>
+      <p className="text-stone">
+        Wastage is added before bags, sheets and rolls are rounded up. Labour per m² is optional and starts blank. The same
+        prices can be set in Library.
+      </p>
+      {owner ? (
+        <form action={saveBusinessMeasure} className="grid gap-3">
+          <label className="field">
+            Wastage %
+            <input name="wastagePercent" inputMode="decimal" defaultValue={String(wastage)} />
+          </label>
+          {types.map((type) => (
+            <label key={type.id} className="field">
+              {type.name} labour per m²
+              <span>{rates.get(type.id) == null ? "Blank" : formatPence(rates.get(type.id) ?? 0)}</span>
+              <input
+                name={`labour:${type.id}`}
+                inputMode="decimal"
+                placeholder="Blank"
+                defaultValue={rates.get(type.id) == null ? "" : ((rates.get(type.id) ?? 0) / 100).toFixed(2)}
+              />
+            </label>
+          ))}
+          <SubmitButton>Save rooms and labour</SubmitButton>
+        </form>
+      ) : (
+        <p className="font-bold">Only the owner can change these.</p>
       )}
     </section>
   );

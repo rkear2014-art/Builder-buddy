@@ -11,7 +11,7 @@ export const PLASTER_CATALOGUE: CatalogueGroup[] = [
   {
     id: "plastering",
     title: "Plastering",
-    starterIds: ["plaster-general", "plaster-skim", "plaster-two-coat", "plaster-lime", "plaster-repairs"],
+    starterIds: ["plaster-general", "plaster-lime", "plaster-repairs"],
   },
   {
     id: "lining",
@@ -43,16 +43,29 @@ const FITTING_HERO_KEYS: Record<string, readonly string[]> = {
   "plaster-lime": ["ak-house-side"],
   "plaster-repairs": ["ak-living-room"],
   "plaster-dry-lining": ["ak-extension"],
+  "plaster-stud-wall": ["ak-extension"],
+  "plaster-wire-mesh": ["ak-extension"],
+  "plaster-tape-joint": ["ak-living-room"],
   "plaster-artex": ["ak-living-room"],
   "plaster-coving": ["ak-living-room"],
+  "plaster-cornice": ["ak-living-room"],
   "plaster-render": ["ak-flats", "ak-house-front"],
+  "plaster-screed": ["ak-extension"],
 };
+
+/** Bundled work photo for a chooser tile, used until the business sets its own. */
+export function defaultTileSource(starterId: string): string | null {
+  return FITTING_HERO_KEYS[starterId]?.[0] ?? null;
+}
 
 export function catalogueGroupsFor(trade: string): CatalogueGroup[] {
   if (trade !== "Plasterer") return [];
   return PLASTER_CATALOGUE.map((group) => ({
     ...group,
-    starterIds: group.starterIds.filter((id) => findStarterTemplate(id)?.trade === trade),
+    starterIds: group.starterIds.filter((id) => {
+      const starter = findStarterTemplate(id);
+      return starter?.trade === trade && starter.retired !== true;
+    }),
   })).filter((group) => group.starterIds.length > 0);
 }
 
@@ -73,5 +86,5 @@ export function fittingHeroId(
 
 export function catalogueCoversEveryStarter(): boolean {
   const listed = new Set(PLASTER_CATALOGUE.flatMap((group) => group.starterIds));
-  return PLASTERING_STARTER_TEMPLATES.every((starter) => listed.has(starter.id));
+  return PLASTERING_STARTER_TEMPLATES.filter((starter) => starter.retired !== true).every((starter) => listed.has(starter.id));
 }

@@ -20,6 +20,8 @@ export type StarterTemplate = {
   /** Earlier names for this same list, so saving again does not create a second copy. */
   previousNames: string[];
   items: StarterLine[];
+  /** Hidden from Choose a job and from the starter loader. Saved jobs keep their own lines. */
+  retired?: boolean;
 };
 
 export type StarterMaterial = {
@@ -82,6 +84,7 @@ export const PLASTERING_STARTER_TEMPLATES: StarterTemplate[] = [
     name: "Skimming for a smooth finish",
     description: "Skim the walls and ceilings to a smooth finish, ready for decoration.",
     previousNames: ["Skim a room"],
+    retired: true,
     items: [
       line("Thistle MultiFinish plaster", "bag", 1310),
       line("PVA bonding agent", "5L tub", 1796, { previousUnits: ["litre"] }),
@@ -96,6 +99,7 @@ export const PLASTERING_STARTER_TEMPLATES: StarterTemplate[] = [
     name: "Hardwall/Skim finishes",
     description: "Apply a Hardwall backing coat and a finishing skim, ready for decoration.",
     previousNames: ["Two-coat plaster"],
+    retired: true,
     items: [
       line("Thistle Hardwall plaster", "bag", 1841),
       line("Thistle MultiFinish plaster", "bag", 1310),
@@ -295,7 +299,17 @@ export const PLASTERING_STARTER_MATERIALS: StarterMaterial[] = (() => {
 
 export function starterTemplatesFor(trade: string): StarterTemplate[] {
   if (!isTrade(trade)) return [];
-  return PLASTERING_STARTER_TEMPLATES.filter((template) => template.trade === trade);
+  return PLASTERING_STARTER_TEMPLATES.filter((template) => template.trade === trade && !template.retired);
+}
+
+export function isRetiredTemplateName(name: string): boolean {
+  const key = name.trim().toLowerCase();
+  if (!key) return false;
+  return PLASTERING_STARTER_TEMPLATES.some(
+    (template) =>
+      template.retired === true &&
+      (template.name.toLowerCase() === key || template.previousNames.some((previous) => previous.toLowerCase() === key)),
+  );
 }
 
 export function starterMaterialsFor(trade: string): StarterMaterial[] {
