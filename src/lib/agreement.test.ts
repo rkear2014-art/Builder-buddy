@@ -130,6 +130,8 @@ describe("sign-off locking", () => {
     delete stored.depositPence;
     delete stored.vatRegistered;
     delete stored.vatRatePercent;
+    delete stored.totalOnly;
+    delete stored.fixedPricePence;
 
     const parsed = parseLockedAgreement(stored);
     assert.ok(parsed);
@@ -137,6 +139,8 @@ describe("sign-off locking", () => {
     assert.equal(parsed.depositPence, null);
     assert.equal(parsed.vatRegistered, false);
     assert.equal(parsed.vatRatePercent, 20);
+    assert.equal(parsed.totalOnly, false);
+    assert.equal(parsed.fixedPricePence, null);
     assert.equal(parsed.description, "Skim the lounge and hall.");
     assert.equal(parsed.totalPence, locked.totalPence);
   });
@@ -152,5 +156,13 @@ describe("sign-off locking", () => {
       showLinePrices: false,
     });
     assert.deepEqual(agreementChanges(locked, current), ["VAT", "Deposit", "Item prices"]);
+  });
+
+  it("uses a whole-job price and hides the materials total", () => {
+    const agreed = toPublicAgreement({ ...plasterJob(), totalOnly: true, fixedPricePence: 80000 });
+    assert.equal(agreed.totalPence, 80000);
+    assert.equal(agreed.totalOnly, true);
+    assert.equal(agreed.unpricedCount, 0);
+    assert.equal(agreed.materials.length, 2);
   });
 });

@@ -38,6 +38,10 @@ describe("dashboard glance", () => {
     assert.equal(isChaseJob(job({ id: "c", scheduledDate: "2026-10-05", status: "BOOKED" }), today), false);
     assert.equal(isChaseJob(job({ id: "d", scheduledDate: "2026-10-02", status: "ENQUIRY" }), today), true);
     assert.equal(
+      isChaseJob(job({ id: "lost", scheduledDate: today, status: "BOOKED", quoteStage: "LOST" }), today),
+      false,
+    );
+    assert.equal(
       isChaseJob(job({ id: "e", scheduledDate: today, status: "BOOKED", signed: true }), today),
       false,
     );

@@ -23,6 +23,8 @@ export type InvoiceDocumentModel = {
   duePence: number;
   paidPence: number;
   balancePence: number;
+  totalOnly?: boolean;
+  description?: string;
   bankAccountName: string;
   bankSortCode: string;
   bankAccountNumber: string;
@@ -88,6 +90,12 @@ export function InvoiceDocument({
           </dl>
         </div>
 
+        {invoice.totalOnly ? (
+          <div className="mt-6 border-b border-line pb-3">
+            <p className="font-bold">{invoice.lines[0]?.name ?? "Works as described"}</p>
+            {invoice.description?.trim() ? <p className="mt-2 whitespace-pre-wrap">{invoice.description}</p> : null}
+          </div>
+        ) : (
         <table className="mt-6 w-full text-left">
           <thead>
             <tr className="border-b border-line text-sm text-stone">
@@ -118,6 +126,7 @@ export function InvoiceDocument({
             ))}
           </tbody>
         </table>
+        )}
 
         <div className="mt-4 grid gap-1 sm:ml-auto sm:max-w-xs">
           {invoice.vatPence != null ? (

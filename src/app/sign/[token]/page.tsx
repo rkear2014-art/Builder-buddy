@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getShareView } from "@/server/dal";
-import { CustomerPhotos } from "@/components/customer-photos";
 import { QuotationDocument } from "@/components/quotation-document";
 import { SignForm } from "@/components/sign-form";
 
@@ -58,7 +57,6 @@ export default async function SignPage({ params }: { params: Promise<{ token: st
               Print or save as PDF
             </Link>
           </div>
-          <CustomerPhotos photos={view.photos} />
           {share.kind === "pending" && quote.expired ? (
             <div className="card mt-4">
               <h2 className="font-display text-3xl">Expired</h2>

@@ -6,6 +6,7 @@ import { keepExistingSignOff, lockAgreement, parseLockedAgreement } from "@/lib/
 import { isConfigured } from "@/lib/config";
 import { quoteIsExpired } from "@/lib/documents";
 import { chargeVat } from "@/lib/quote";
+import { onDiaryAfterWon } from "@/lib/quote-stage";
 import { londonToday, utcDateToIso } from "@/lib/dates";
 import type { ActionState } from "@/lib/form-state";
 import { acceptedSignature } from "@/lib/signature";
@@ -53,6 +54,8 @@ export async function signAgreement(_state: ActionState, formData: FormData): Pr
       timeSlot: job.timeSlot,
       showLinePrices: job.showLinePrices,
       depositPence: job.depositPence,
+      totalOnly: job.totalOnly,
+      fixedPricePence: job.fixedPricePence,
       vatRegistered: chargeVat({ vatRegistered: job.business.vatRegistered, omitVat: job.omitVat }),
       vatRatePercent: job.business.vatRatePercent,
       materials: job.materials.map((material) => ({
@@ -73,15 +76,24 @@ export async function signAgreement(_state: ActionState, formData: FormData): Pr
   }
 
   try {
-    await getPrisma().signOff.create({
-      data: {
-        businessId: job.businessId,
-        jobId: job.id,
-        signerName: incoming.signerName,
-        signatureData: signature,
-        signedAt: new Date(incoming.signedAt),
-        snapshot: incoming,
-      },
+    await getPrisma().$transaction(async (tx) => {
+      await tx.signOff.create({
+        data: {
+          businessId: job.businessId,
+          jobId: job.id,
+          signerName: incoming.signerName,
+          signatureData: signature,
+          signedAt: new Date(incoming.signedAt),
+          snapshot: incoming,
+        },
+      });
+      await tx.job.update({
+        where: { id: job.id },
+        data: {
+          quoteStage: "WON",
+          onDiary: onDiaryAfterWon(job.status, job.onDiary),
+        },
+      });
     });
   } catch (error) {
     if (isUniqueConstraint(error)) {

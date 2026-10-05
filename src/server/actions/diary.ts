@@ -17,12 +17,17 @@ export async function placeDiaryJob(formData: FormData): Promise<void> {
   if (!isIsoDate(date)) redirect("/diary");
   const existing = await getPrisma().job.findFirst({
     where: { id: jobId, ...tenantWhere(user.businessId) },
-    select: { id: true, shareToken: true },
+    select: { id: true, shareToken: true, status: true, quoteStage: true },
   });
   if (!existing) redirect(`/diary?view=${view}&date=${date}`);
   await getPrisma().job.update({
     where: { id: existing.id },
-    data: { scheduledDate: isoToUtcDate(date), onDiary: true },
+    data: {
+      scheduledDate: isoToUtcDate(date),
+      onDiary: true,
+      ...(existing.status === "ENQUIRY" ? { status: "BOOKED" as const } : {}),
+      ...(existing.quoteStage === "LOST" ? { quoteStage: "WON" as const } : {}),
+    },
   });
   revalidateDesk(existing.id, existing.shareToken);
   redirect(`/diary?view=${view}&date=${date}`);
@@ -36,7 +41,7 @@ export async function saveDiaryBooking(_state: ActionState, formData: FormData):
   if (!parsed.ok) return { error: parsed.error };
   const existing = await getPrisma().job.findFirst({
     where: { id: jobId, ...tenantWhere(user.businessId) },
-    select: { id: true, shareToken: true },
+    select: { id: true, shareToken: true, status: true, quoteStage: true },
   });
   if (!existing) return { error: "That job could not be found." };
   await getPrisma().job.update({
@@ -46,6 +51,8 @@ export async function saveDiaryBooking(_state: ActionState, formData: FormData):
       spanDays: parsed.data.spanDays,
       bookingKind: parsed.data.bookingKind,
       onDiary: true,
+      ...(existing.status === "ENQUIRY" ? { status: "BOOKED" as const } : {}),
+      ...(existing.quoteStage === "LOST" ? { quoteStage: "WON" as const } : {}),
     },
   });
   revalidateDesk(existing.id, existing.shareToken);

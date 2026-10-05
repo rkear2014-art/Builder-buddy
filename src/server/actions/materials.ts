@@ -6,6 +6,7 @@ import { tenantWhere } from "@/lib/tenancy";
 import { parseMaterialForm } from "@/lib/validators";
 import { requireUser } from "@/server/dal";
 import { getPrisma } from "@/server/prisma";
+import { noteQuoteMade } from "@/server/quote-progress";
 import { revalidateDesk } from "@/server/revalidate";
 
 async function ownedJob(businessId: string, jobId: string) {
@@ -39,6 +40,7 @@ export async function addJobMaterial(_state: ActionState, formData: FormData): P
       sortOrder,
     },
   });
+  await noteQuoteMade(job.id);
   revalidateDesk(job.id, job.shareToken);
   redirect(`/jobs/${job.id}#materials`);
 }
@@ -65,6 +67,7 @@ export async function addSavedMaterialToJob(formData: FormData): Promise<void> {
       sortOrder,
     },
   });
+  await noteQuoteMade(job.id);
   revalidateDesk(job.id, job.shareToken);
 }
 
@@ -96,6 +99,7 @@ export async function applyTemplate(formData: FormData): Promise<void> {
       sortOrder += 1;
     }
   });
+  await noteQuoteMade(job.id);
   revalidateDesk(job.id, job.shareToken);
   redirect(`/jobs/${job.id}#materials`);
 }

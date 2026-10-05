@@ -64,6 +64,7 @@ describe("diary bookings", () => {
       booking({ id: "enquiry", onDiary: false, status: "ENQUIRY", customerName: "Chidi Okonkwo" }),
       booking({ id: "done", onDiary: false, status: "COMPLETE", customerName: "Dave Singh" }),
       booking({ id: "dated", onDiary: true, status: "BOOKED", customerName: "Anita Patel" }),
+      booking({ id: "lost", onDiary: false, status: "BOOKED", customerName: "Lost Job", quoteStage: "LOST" }),
     ];
     assert.equal(isToBook(jobs[0]), true);
     assert.deepEqual(

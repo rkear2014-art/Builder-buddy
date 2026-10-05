@@ -23,6 +23,7 @@ import { formatDocumentNumber, quoteIsExpired } from "@/lib/documents";
 import { balancePence, invoiceGlance, invoiceStanding, invoiceTotals, type InvoiceStanding, type PaymentMethod } from "@/lib/invoice";
 import { chargeVat, parseQuoteChips, quoteMoney, type QuoteChrome } from "@/lib/quote";
 import { trustBadges } from "@/lib/trust";
+import { customerSubtotalPence } from "@/lib/customer-price";
 import { materialsTotals, quantityFromStored } from "@/lib/materials";
 import { presentShare, type SharePresentation } from "@/lib/share";
 import { tenantWhere } from "@/lib/tenancy";
@@ -56,6 +57,7 @@ const businessBrandingSelect = {
   guarantee: true,
   accreditations: true,
   reviewUrl: true,
+  totalOnlyDefault: true,
 } as const;
 
 const jobInclude = {
@@ -106,6 +108,9 @@ function mapJob(job: JobWithRelations): DeskJob {
     vatRatePercent: job.business.vatRatePercent,
     omitVat: job.omitVat,
     vatNumber: job.business.vatNumber,
+    quoteStage: job.quoteStage,
+    totalOnly: job.totalOnly,
+    fixedPricePence: job.fixedPricePence,
     materials: job.materials.map((material) => ({
       id: material.id,
       name: material.name,
@@ -297,18 +302,24 @@ function mapGlanceJob(
     createdAt: Date;
     updatedAt: Date;
     omitVat: boolean;
+    quoteStage: GlanceJob["quoteStage"];
+    fixedPricePence: number | null;
     user: { name: string };
     signOff: { id: string } | null;
     materials: Array<{ quantity: { toString(): string }; unitPricePence: number | null }>;
   },
   vat: { vatRegistered: boolean; vatRatePercent: number },
 ): GlanceJob {
-  const subtotalPence = materialsTotals(
+  const materialsTotalPence = materialsTotals(
     job.materials.map((material) => ({
       quantity: quantityFromStored(material.quantity.toString()),
       unitPricePence: material.unitPricePence,
     })),
   ).totalPence;
+  const subtotalPence = customerSubtotalPence({
+    materialsTotalPence,
+    fixedPricePence: job.fixedPricePence,
+  });
   return {
     id: job.id,
     customerName: job.customerName,
@@ -321,6 +332,7 @@ function mapGlanceJob(
     updatedAt: job.updatedAt.toISOString(),
     assigneeName: job.user.name,
     signed: Boolean(job.signOff),
+    quoteStage: job.quoteStage ?? undefined,
     totalPence: quoteMoney({
       subtotalPence,
       vatRegistered: chargeVat({ vatRegistered: vat.vatRegistered, omitVat: job.omitVat }),
@@ -338,6 +350,7 @@ export async function countChase(businessId: string): Promise<number> {
     where: {
       ...tenantWhere(businessId),
       onDiary: true,
+      quoteStage: { not: "LOST" },
       signOff: null,
       OR: [
         {
@@ -361,7 +374,7 @@ export async function getGlance(
   const end = monthEndIso(today) > week[6] ? monthEndIso(today) : week[6];
   const freshSince = new Date(now.getTime() - 24 * 60 * 60 * 1000);
   const prisma = getPrisma();
-  const [ranged, fresh, recent, grouped] = await Promise.all([
+  const [ranged, fresh, recent, grouped, readyRows] = await Promise.all([
     prisma.job.findMany({
       where: {
         ...tenantWhere(businessId),
@@ -384,6 +397,22 @@ export async function getGlance(
       by: ["status"],
       where: tenantWhere(businessId),
       _count: { _all: true },
+    }),
+    prisma.job.findMany({
+      where: {
+        ...tenantWhere(businessId),
+        quoteStage: "WON",
+        onDiary: false,
+        status: { not: "COMPLETE" },
+      },
+      select: {
+        id: true,
+        customerName: true,
+        address: true,
+        signOff: { select: { id: true } },
+      },
+      orderBy: { updatedAt: "desc" },
+      take: 8,
     }),
   ]);
   const byId = new Map<string, (typeof ranged)[number]>();
@@ -450,6 +479,12 @@ export async function getGlance(
     heroCaption: hero?.caption.trim() ? hero.caption.trim() : null,
     accentColour: branding.accentColour,
     accentInk: branding.accentInk,
+    readyToBook: readyRows.map((job) => ({
+      id: job.id,
+      customerName: job.customerName,
+      address: job.address,
+      signed: Boolean(job.signOff),
+    })),
   };
 }
 
@@ -494,6 +529,7 @@ const diaryBookingSelect = {
   spanDays: true,
   onDiary: true,
   assignedName: true,
+  quoteStage: true,
   user: { select: { name: true } },
 } as const;
 
@@ -509,6 +545,7 @@ function toDiaryBooking(job: {
   spanDays: number;
   onDiary: boolean;
   assignedName: string;
+  quoteStage: string;
   user: { name: string };
 }): DiaryBooking {
   const spanDays = job.spanDays >= 1 && job.spanDays <= MAX_SPAN_DAYS ? job.spanDays : 1;
@@ -524,6 +561,7 @@ function toDiaryBooking(job: {
     spanDays,
     startDate: utcDateToIso(job.scheduledDate),
     onDiary: job.onDiary,
+    quoteStage: job.quoteStage,
   };
 }
 
@@ -534,9 +572,10 @@ export async function listDiaryBoard(businessId: string, fromIso: string, toIso:
       OR: [
         {
           onDiary: true,
+          quoteStage: { not: "LOST" },
           scheduledDate: { gte: isoToUtcDate(fromIso), lte: isoToUtcDate(toIso) },
         },
-        { onDiary: false, status: { in: [...DIARY_OPEN_STATUSES] } },
+        { onDiary: false, quoteStage: { not: "LOST" }, status: { in: [...DIARY_OPEN_STATUSES] } },
       ],
     },
     select: diaryBookingSelect,
@@ -548,7 +587,11 @@ export async function listDiaryBoard(businessId: string, fromIso: string, toIso:
 /** Enquiry, booked and live jobs that can be put on a tapped day. */
 export async function listPlaceableJobs(businessId: string): Promise<DiaryBooking[]> {
   const jobs = await getPrisma().job.findMany({
-    where: { ...tenantWhere(businessId), status: { in: [...DIARY_OPEN_STATUSES] } },
+    where: {
+      ...tenantWhere(businessId),
+      quoteStage: { not: "LOST" },
+      status: { in: [...DIARY_OPEN_STATUSES] },
+    },
     select: diaryBookingSelect,
     orderBy: [{ onDiary: "asc" }, { customerName: "asc" }],
   });
@@ -680,6 +723,8 @@ export const getShareView = cache(async (token: string): Promise<ShareView> => {
         timeSlot: mapped.timeSlot,
         showLinePrices: mapped.showLinePrices,
         depositPence: mapped.depositPence,
+        totalOnly: mapped.totalOnly,
+        fixedPricePence: mapped.fixedPricePence,
         vatRegistered: mapped.vatRegistered,
         vatRatePercent: mapped.vatRatePercent,
         materials: mapped.materials,
@@ -704,20 +749,7 @@ export const getShareView = cache(async (token: string): Promise<ShareView> => {
         return src ? [{ id: photo.id, caption: photo.caption, src }] : [];
       }),
     },
-    photos: mapped.showPhotos
-      ? (
-          await getPrisma().jobPhoto.findMany({
-            where: { jobId: job.id, businessId: job.businessId },
-            select: { id: true, stage: true },
-            orderBy: { createdAt: "asc" },
-            take: 12,
-          })
-        ).map((photo) => ({
-          id: photo.id,
-          stage: photo.stage,
-          src: `/sign/${token}/photo/${photo.id}`,
-        }))
-      : [],
+    photos: [],
   };
 });
 
@@ -770,6 +802,8 @@ export type InvoiceDetail = {
   paidPence: number;
   balancePence: number;
   vatOn: boolean;
+  totalOnly: boolean;
+  description: string;
   bankAccountName: string;
   bankSortCode: string;
   bankAccountNumber: string;
@@ -779,7 +813,7 @@ export type InvoiceDetail = {
 const invoiceInclude = {
   lines: { orderBy: { sortOrder: "asc" as const } },
   payments: { orderBy: { paidOn: "asc" as const } },
-  job: { select: { customerName: true, address: true, phone: true, email: true, quoteNumber: true } },
+  job: { select: { customerName: true, address: true, phone: true, email: true, quoteNumber: true, description: true } },
   business: { select: businessBrandingSelect },
 };
 
@@ -794,9 +828,10 @@ function mapInvoice(invoice: {
   depositPence: number | null;
   vatRegistered: boolean;
   vatRatePercent: number;
+  totalOnly: boolean;
   lines: Array<{ id: string; name: string; quantity: { toString(): string }; unit: string; unitPricePence: number | null }>;
   payments: Array<{ id: string; amountPence: number; paidOn: Date; method: PaymentMethod }>;
-  job: { customerName: string; address: string; phone: string; email: string };
+  job: { customerName: string; address: string; phone: string; email: string; description: string };
   business: { name: string; bankAccountName?: string; bankSortCode?: string; bankAccountNumber?: string };
 }): InvoiceDetail {
   const lines = invoice.lines.map((line) => ({
@@ -849,6 +884,8 @@ function mapInvoice(invoice: {
     paidPence,
     balancePence: balancePence(totals.duePence, paidPence),
     vatOn: invoice.vatRegistered,
+    totalOnly: invoice.totalOnly,
+    description: invoice.job.description,
     bankAccountName: invoice.business.bankAccountName ?? "",
     bankSortCode: invoice.business.bankSortCode ?? "",
     bankAccountNumber: invoice.business.bankAccountNumber ?? "",

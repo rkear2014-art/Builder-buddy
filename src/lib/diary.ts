@@ -25,6 +25,7 @@ export type DiaryBooking = {
   spanDays: number;
   startDate: string;
   onDiary: boolean;
+  quoteStage?: string;
 };
 
 export type DiaryCard = DiaryBooking & {
@@ -97,7 +98,10 @@ export function cardsForDate(bookings: DiaryBooking[], date: string): DiaryCard[
 /** Jobs that can still be put on a day. Finished work stays off the waiting list. */
 export const DIARY_OPEN_STATUSES = ["ENQUIRY", "BOOKED", "IN_PROGRESS"] as const;
 
-export function isToBook(booking: Pick<DiaryBooking, "onDiary" | "status">): boolean {
+export function isToBook(
+  booking: Pick<DiaryBooking, "onDiary" | "status"> & { quoteStage?: string },
+): boolean {
+  if (booking.quoteStage === "LOST") return false;
   return !booking.onDiary && (DIARY_OPEN_STATUSES as readonly string[]).includes(booking.status);
 }
 

@@ -6,6 +6,9 @@ import { parseBusinessExtras } from "@/lib/business-extras";
 import { documentEmail } from "@/lib/branded-email";
 import { canEditBusiness } from "@/lib/branding";
 import { isInternalCrewName } from "@/lib/crew";
+import { customerSubtotalPence, hidesMaterialLines, scopeLine } from "@/lib/customer-price";
+import { materialsTotals } from "@/lib/materials";
+import { stageAfterSent } from "@/lib/quote-stage";
 import { addDays, isIsoDate, isoToUtcDate, londonToday } from "@/lib/dates";
 import type { ActionState } from "@/lib/form-state";
 import { invoiceTotals, invoiceVatIsLocked, statusAfterPayment, PAYMENT_METHODS, type PaymentMethod } from "@/lib/invoice";
@@ -71,6 +74,34 @@ export async function raiseInvoice(_state: ActionState, formData: FormData): Pro
   if (!job) return { error: "That job could not be found." };
   const today = londonToday();
   const deposit = depositTaken && job.depositPence && job.depositPence > 0 ? job.depositPence : null;
+  const customerMaterials = job.materials.filter((material) => !isInternalCrewName(material.name));
+  const hideLines = hidesMaterialLines({ totalOnly: job.totalOnly, fixedPricePence: job.fixedPricePence });
+  const pricedSubtotal = customerSubtotalPence({
+    materialsTotalPence: materialsTotals(
+      customerMaterials.map((material) => ({
+        quantity: material.quantity.toString(),
+        unitPricePence: material.unitPricePence,
+      })),
+    ).totalPence,
+    fixedPricePence: job.fixedPricePence,
+  });
+  const invoiceLines = hideLines
+    ? [
+        {
+          name: scopeLine(job.trade),
+          quantity: "1",
+          unit: "job",
+          unitPricePence: pricedSubtotal,
+          sortOrder: 0,
+        },
+      ]
+    : customerMaterials.map((material, index) => ({
+        name: material.name,
+        quantity: material.quantity,
+        unit: material.unit,
+        unitPricePence: material.unitPricePence,
+        sortOrder: index,
+      }));
   const invoice = await getPrisma().$transaction(async (tx) => {
     const allocated = await tx.business.update({
       where: { id: user.businessId },
@@ -87,15 +118,10 @@ export async function raiseInvoice(_state: ActionState, formData: FormData): Pro
         depositPence: deposit,
         vatRegistered: chargeVat({ vatRegistered: job.business.vatRegistered, omitVat: job.omitVat }),
         vatRatePercent: job.business.vatRatePercent,
+        totalOnly: hideLines,
         shareToken: createShareToken(),
         lines: {
-          create: job.materials.filter((material) => !isInternalCrewName(material.name)).map((material, index) => ({
-            name: material.name,
-            quantity: material.quantity,
-            unit: material.unit,
-            unitPricePence: material.unitPricePence,
-            sortOrder: index,
-          })),
+          create: invoiceLines,
         },
       },
       select: { id: true },
@@ -303,7 +329,7 @@ export async function sendBrandedMessage(_state: ActionState, formData: FormData
     const jobId = String(formData.get("jobId") ?? "");
     const job = await getPrisma().job.findFirst({
       where: { id: jobId, ...tenantWhere(user.businessId) },
-      select: { id: true, email: true, customerName: true, shareToken: true, shareActive: true },
+      select: { id: true, email: true, customerName: true, shareToken: true, shareActive: true, quoteStage: true },
     });
     if (!job) return { error: "That job could not be found." };
     to = job.email.trim();
@@ -335,6 +361,20 @@ export async function sendBrandedMessage(_state: ActionState, formData: FormData
     html: built.html,
   });
   if (!sent.ok) return { error: sent.error };
+
+  if (kind === "quote") {
+    const jobId = String(formData.get("jobId") ?? "");
+    const job = await getPrisma().job.findFirst({
+      where: { id: jobId, ...tenantWhere(user.businessId) },
+      select: { id: true, quoteStage: true },
+    });
+    if (job) {
+      const next = stageAfterSent(job.quoteStage);
+      if (next !== job.quoteStage) {
+        await getPrisma().job.update({ where: { id: job.id }, data: { quoteStage: next } });
+      }
+    }
+  }
 
   if (kind === "invoice" && invoiceId) {
     const invoice = await getPrisma().invoice.findFirst({

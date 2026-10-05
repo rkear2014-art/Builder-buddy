@@ -2,7 +2,8 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { CSSProperties } from "react";
 import { agreementChanges, parseLockedAgreement, toPublicAgreement } from "@/lib/agreement";
-import { JOB_STATUSES, STATUS_LABELS, slotLabel, visibleTradeLabel } from "@/lib/constants";
+import { slotLabel, visibleTradeLabel } from "@/lib/constants";
+import { customerSubtotalPence, hidesMaterialLines, poundsFieldValue, scopeLine } from "@/lib/customer-price";
 import { quoteMessage } from "@/lib/customer-message";
 import { formatDocumentNumber, quoteIsExpired } from "@/lib/documents";
 import { formatIsoDate, formatLondonDateTime, londonToday } from "@/lib/dates";
@@ -13,13 +14,12 @@ import { costTotals, materialsTotals } from "@/lib/materials";
 import { formatPence } from "@/lib/money";
 import { depositFromPercent, paymentNote, percentFromDeposit, pricesIncludeVatLine, quoteMoney } from "@/lib/quote";
 import { raiseInvoice, saveQuoteValidity } from "@/server/actions/customer-finish";
-import { savePaymentTerms, saveQuoteVat, setShowLinePrices } from "@/server/actions/job-desk";
+import { saveCustomerPrice, savePaymentTerms, saveQuoteVat, setShowLinePrices } from "@/server/actions/job-desk";
 import {
   deleteJob,
   revokeShareLink,
   rotateShareLink,
   saveJobAsTemplate,
-  setJobStatus,
   updateJob,
 } from "@/server/actions/jobs";
 import { deleteJobMaterial, toggleMaterialBought } from "@/server/actions/materials";
@@ -27,13 +27,11 @@ import { brandedEmailReady } from "@/server/email";
 import { isInternalCrewName, startingCrew } from "@/lib/crew";
 import { formatM2, roomAreas, type MeasureMode } from "@/lib/measure";
 import { CrewForm } from "@/components/crew-form";
-import { EmptyState } from "@/components/empty-state";
-import { getJob, getLibrary, listCrewRates, listJobCrew, listJobInvoices, listJobPhotos, listRoomMeasures, requireUser } from "@/server/dal";
+import { JobStatusRow } from "@/components/job-status-row";
+import { getJob, getLibrary, listCrewRates, listJobCrew, listJobInvoices, listRoomMeasures, requireUser } from "@/server/dal";
 import { requestOrigin } from "@/server/origin";
 import { InlineForm } from "@/components/inline-form";
-import { DeletePhotoForm, JobPhotoForm, PhotoShareButton, ShowPhotosForm } from "@/components/job-photo-form";
 import { JobForm } from "@/components/job-form";
-import { PHOTO_STAGE_LABELS } from "@/lib/photos";
 import { SendQuote } from "@/components/send-quote";
 import { SharePortal } from "@/components/share-portal";
 import { SubmitButton } from "@/components/submit-button";
@@ -57,7 +55,6 @@ export default async function JobPage({ params }: { params: Promise<{ id: string
   const job = await getJob(user.businessId, id);
   if (!job) notFound();
   const library = await getLibrary(user.businessId);
-  const photos = await listJobPhotos(user.businessId, job.id);
   const invoices = await listJobInvoices(user.businessId, job.id);
   const measured = await listRoomMeasures(user.businessId, job.id);
   const [crewRates, jobCrew] = await Promise.all([listCrewRates(user.businessId), listJobCrew(user.businessId, job.id)]);
@@ -76,8 +73,12 @@ export default async function JobPage({ params }: { params: Promise<{ id: string
   const locked = job.signOff ? parseLockedAgreement(job.signOff.snapshot) : null;
   const changes = locked ? agreementChanges(locked, toPublicAgreement(job)) : [];
   const customerTotal = materialsTotals(job.materials.filter((material) => !isInternalCrewName(material.name)));
+  const customerSubtotal = customerSubtotalPence({
+    materialsTotalPence: customerTotal.totalPence,
+    fixedPricePence: job.fixedPricePence,
+  });
   const price = quoteMoney({
-    subtotalPence: customerTotal.totalPence,
+    subtotalPence: customerSubtotal,
     vatRegistered: job.vatRegistered,
     vatRatePercent: job.vatRatePercent,
     depositPence: job.depositPence,
@@ -113,9 +114,11 @@ export default async function JobPage({ params }: { params: Promise<{ id: string
           {[tradeBit, formatIsoDate(job.scheduledDate, "long"), slotLabel(job.timeSlot)].filter(Boolean).join(" · ")}
         </p>
         <div className="flex flex-wrap gap-2">
-          <Link href={`/jobs/${job.id}/book`} className="btn btn-primary min-h-[4.5rem] w-full text-xl">
-            Book in on diary
-          </Link>
+          {job.quoteStage === "WON" && !job.onDiary ? null : (
+            <Link href={`/jobs/${job.id}/book`} className="btn btn-primary min-h-[4.5rem] w-full text-xl">
+              Book in on diary
+            </Link>
+          )}
           <Link href={`/jobs/${job.id}/choose`} className="btn" style={{ background: accent, color: accentInk }}>
             Choose a job / add materials
           </Link>
@@ -157,21 +160,15 @@ export default async function JobPage({ params }: { params: Promise<{ id: string
           </button>
         </form>
       </div>
-      <div className="flex flex-wrap gap-2" aria-label="Status">
-        {JOB_STATUSES.map((status) => (
-          <form key={status} action={setJobStatus}>
-            <input type="hidden" name="jobId" value={job.id} />
-            <input type="hidden" name="status" value={status} />
-            <button
-              className="btn btn-secondary"
-              style={job.status === status ? { background: accent, color: accentInk, borderColor: accent } : undefined}
-              type="submit"
-            >
-              {STATUS_LABELS[status]}
-            </button>
-          </form>
-        ))}
-      </div>
+      <JobStatusRow
+        jobId={job.id}
+        quoteStage={job.quoteStage}
+        status={job.status}
+        onDiary={job.onDiary}
+        signed={Boolean(job.signOff)}
+        accent={accent}
+        accentInk={accentInk}
+      />
 
       <section className="card grid gap-3">
         <div className="flex flex-wrap items-baseline justify-between gap-2">
@@ -367,6 +364,38 @@ export default async function JobPage({ params }: { params: Promise<{ id: string
           </label>
           <SubmitButton variant="secondary">Save VAT</SubmitButton>
         </InlineForm>
+        <InlineForm action={saveCustomerPrice} className="grid gap-3 rounded-2xl border border-line p-4">
+          <input type="hidden" name="jobId" value={job.id} />
+          <input type="hidden" name="totalOnly" value="no" />
+          <label className="flex items-start gap-3 text-lg font-bold">
+            <input type="checkbox" name="totalOnly" value="yes" defaultChecked={job.totalOnly} className="mt-1 h-7 w-7" />
+            <span>
+              Show the customer the total only
+              <span className="mt-1 block text-sm font-semibold text-stone">
+                The customer quote, the invoice and the customer link show “{scopeLine(job.trade)}”, the description of
+                the work, then subtotal, VAT and total. Material lines stay on this page for your costing.
+              </span>
+            </span>
+          </label>
+          <label className="field">
+            Price the whole job
+            <span>Pounds, before VAT. Leave blank to use the materials total. This replaces the calculated price.</span>
+            <input
+              name="fixedPrice"
+              inputMode="decimal"
+              defaultValue={poundsFieldValue(job.fixedPricePence)}
+              placeholder="1079.00"
+              className="text-2xl"
+            />
+          </label>
+          {hidesMaterialLines(job) ? (
+            <p className="font-bold">
+              Customer price {formatPence(price.subtotalPence)}
+              {price.vatPence != null ? ` + VAT ${formatPence(price.vatPence)} = ${formatPence(price.totalPence)}` : ""}
+            </p>
+          ) : null}
+          <SubmitButton variant="secondary">Save customer price</SubmitButton>
+        </InlineForm>
         {customerTotal.unpricedCount > 0 ? (
           <p className="text-stone">
             {customerTotal.unpricedCount} {customerTotal.unpricedCount === 1 ? "item has" : "items have"} no customer
@@ -461,36 +490,6 @@ export default async function JobPage({ params }: { params: Promise<{ id: string
           ) : null}
           <SubmitButton>Raise invoice</SubmitButton>
         </InlineForm>
-      </section>
-
-      <section id="photos" className="card grid gap-4">
-        <h2 className="font-display text-2xl">Before and after</h2>
-        <p className="text-stone">Add several photos from the camera or gallery. They are stored with this job.</p>
-        <ShowPhotosForm jobId={job.id} showPhotos={job.showPhotos} />
-        {photos.length === 0 ? <EmptyState compact>No photos yet.</EmptyState> : null}
-        <ul className="grid gap-4 sm:grid-cols-2">
-          {photos.map((photo) => {
-            const src = `/jobs/${job.id}/photos/${photo.id}`;
-            const filename = `${photo.stage.toLowerCase()}.webp`;
-            return (
-              <li key={photo.id} className="grid gap-2">
-                <div className="photo-zoom rounded-2xl">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={src} alt="" className="aspect-[4/3] w-full object-cover" />
-                </div>
-                <p className="font-extrabold">{PHOTO_STAGE_LABELS[photo.stage]}</p>
-                <div className="grid grid-cols-2 gap-2">
-                  <a className="btn btn-secondary" href={`${src}?download=1`}>
-                    Download
-                  </a>
-                  <PhotoShareButton src={src} filename={filename} />
-                </div>
-                <DeletePhotoForm photoId={photo.id} />
-              </li>
-            );
-          })}
-        </ul>
-        <JobPhotoForm jobId={job.id} />
       </section>
 
       {canAskReview ? (
