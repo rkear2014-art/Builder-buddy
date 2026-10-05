@@ -65,11 +65,14 @@ export function QuoteJobs({
                 <input name="title" maxLength={80} defaultValue={section.title} placeholder="Skim lounge" />
               </label>
               <p className="font-display text-3xl">{formatPence(subtotal)}</p>
-              <label className="field">
-                Price this job
-                <span>Before VAT. Leave blank to use the materials and labour on this job.</span>
-                <input name="fixedPrice" inputMode="decimal" defaultValue={poundsFieldValue(section.fixedPricePence)} placeholder="360.00" />
-              </label>
+              <details>
+                <summary className="cursor-pointer font-bold">Price this job</summary>
+                <label className="field mt-3">
+                  Before VAT
+                  <span>Leave blank to use the materials and labour on this job.</span>
+                  <input name="fixedPrice" inputMode="decimal" defaultValue={poundsFieldValue(section.fixedPricePence)} placeholder="360.00" />
+                </label>
+              </details>
               <SubmitButton variant="secondary">Save this job</SubmitButton>
             </form>
             {section.rooms.length > 0 ? (
@@ -97,31 +100,36 @@ export function QuoteJobs({
               Add materials
             </Link>
             {section.materials.length === 0 ? <p className="text-stone">No materials yet.</p> : null}
-            <ul className="grid gap-3">
-              {section.materials.map((material) => (
-                <li key={material.id} className="grid gap-3 border-b border-line pb-3 sm:grid-cols-[9rem_1fr_auto] sm:items-center">
-                  <form action={toggleMaterialBought}>
-                    <input type="hidden" name="materialId" value={material.id} />
-                    <button className={`btn w-full ${material.bought ? "btn-pine" : "btn-secondary"}`} type="submit">
-                      {material.bought ? "Bought" : "To buy"}
-                    </button>
-                  </form>
-                  <div>
-                    <p className="text-lg font-bold">{material.name}</p>
-                    <p>
-                      {material.quantity} {material.unit}
-                      {material.unitPricePence == null ? "" : ` · ${formatPence(material.unitPricePence)}`}
-                    </p>
-                  </div>
-                  <form action={deleteJobMaterial}>
-                    <input type="hidden" name="materialId" value={material.id} />
-                    <button className="btn btn-secondary w-full" type="submit">
-                      Remove
-                    </button>
-                  </form>
-                </li>
-              ))}
-            </ul>
+            {section.materials.length > 0 ? (
+              <details>
+                <summary className="cursor-pointer font-bold">Materials ({section.materials.length})</summary>
+                <ul className="mt-3 grid gap-3">
+                  {section.materials.map((material) => (
+                    <li key={material.id} className="grid gap-3 border-b border-line pb-3 sm:grid-cols-[9rem_1fr_auto] sm:items-center">
+                      <form action={toggleMaterialBought}>
+                        <input type="hidden" name="materialId" value={material.id} />
+                        <button className={`btn w-full ${material.bought ? "btn-pine" : "btn-secondary"}`} type="submit">
+                          {material.bought ? "Bought" : "To buy"}
+                        </button>
+                      </form>
+                      <div>
+                        <p className="text-lg font-bold">{material.name}</p>
+                        <p>
+                          {material.quantity} {material.unit}
+                          {material.unitPricePence == null ? "" : ` · ${formatPence(material.unitPricePence)}`}
+                        </p>
+                      </div>
+                      <form action={deleteJobMaterial}>
+                        <input type="hidden" name="materialId" value={material.id} />
+                        <button className="btn btn-secondary w-full" type="submit">
+                          Remove
+                        </button>
+                      </form>
+                    </li>
+                  ))}
+                </ul>
+              </details>
+            ) : null}
             <details>
               <summary className="cursor-pointer font-bold">Crew and labour</summary>
               <div className="mt-3">
