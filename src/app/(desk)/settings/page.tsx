@@ -18,7 +18,8 @@ import { InlineForm } from "@/components/inline-form";
 import { SubmitButton } from "@/components/submit-button";
 import { starterTemplatesFor } from "@/lib/trade-starters";
 import { saveBusinessMeasure } from "@/server/actions/measure";
-import { getBusinessWastage, listHeroPhotos, listLabourRates, requireUser } from "@/server/dal";
+import { CREW_ROLES, poundsField } from "@/lib/crew";
+import { getBusinessWastage, listCrewRates, listHeroPhotos, listLabourRates, requireUser } from "@/server/dal";
 import { formatPence } from "@/lib/money";
 import Link from "next/link";
 
@@ -90,10 +91,11 @@ export default async function SettingsPage({
   searchParams: Promise<{ saved?: string; notice?: string; added?: string }>;
 }) {
   const user = await requireUser();
-  const [photos, wastage, labourRates] = await Promise.all([
+  const [photos, wastage, labourRates, crewRates] = await Promise.all([
     listHeroPhotos(user.businessId),
     getBusinessWastage(user.businessId),
     listLabourRates(user.businessId),
+    listCrewRates(user.businessId),
   ]);
   const query = await searchParams;
   const saved = savedMessage(query.saved, query.added);
@@ -122,7 +124,7 @@ export default async function SettingsPage({
       <ProfileSection user={user} owner={owner} />
       <QuoteSection user={user} owner={owner} />
       <ExtrasSection user={user} owner={owner} />
-      <MeasureSection owner={owner} wastage={wastage} labourRates={labourRates} />
+      <MeasureSection owner={owner} wastage={wastage} labourRates={labourRates} crewRates={crewRates} />
     </div>
   );
 }
@@ -445,10 +447,12 @@ function MeasureSection({
   owner,
   wastage,
   labourRates,
+  crewRates,
 }: {
   owner: boolean;
   wastage: number;
   labourRates: Array<{ jobTypeKey: string; labourPerM2Pence: number | null }>;
+  crewRates: Array<{ role: string; basis: string; ratePence: number | null }>;
 }) {
   const rates = new Map(labourRates.map((rate) => [rate.jobTypeKey, rate.labourPerM2Pence]));
   const types = starterTemplatesFor("Plasterer");
@@ -456,7 +460,7 @@ function MeasureSection({
     <section className="card grid gap-4">
       <h2 className="font-display text-2xl">Rooms and labour</h2>
       <p className="text-stone">
-        Wastage is added before bags, sheets and rolls are rounded up. Labour per m² is optional and starts blank. The same
+        Wastage is added before bags, sheets and rolls are rounded up. Labour per m² and crew rates are optional and start blank. The same
         prices can be set in Library.
       </p>
       {owner ? (
@@ -465,6 +469,26 @@ function MeasureSection({
             Wastage %
             <input name="wastagePercent" inputMode="decimal" defaultValue={String(wastage)} />
           </label>
+          {CREW_ROLES.map((role) => {
+            const stored = crewRates.find((item) => item.role === role.id);
+            const basis = stored?.basis === "m2" || stored?.basis === "day" ? stored.basis : role.defaultBasis;
+            return (
+              <div key={role.id} className="grid gap-2 sm:grid-cols-[1fr_12rem]">
+                <label className="field">
+                  {role.label} rate (£)
+                  <span>Blank until you set it. A job can override it.</span>
+                  <input name={`crewRate:${role.id}`} inputMode="decimal" placeholder="Blank" defaultValue={poundsField(stored?.ratePence)} />
+                </label>
+                <label className="field">
+                  Rate type
+                  <select name={`crewBasis:${role.id}`} defaultValue={basis}>
+                    <option value="day">Per day</option>
+                    <option value="m2">Per m²</option>
+                  </select>
+                </label>
+              </div>
+            );
+          })}
           {types.map((type) => (
             <label key={type.id} className="field">
               {type.name} labour per m²

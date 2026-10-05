@@ -83,6 +83,8 @@ model Business {
   payments   Payment[]
   jobPhotos  JobPhoto[]
   labourRates LabourRate[]
+  crewRates  CrewRate[]
+  jobCrew    JobCrew[]
   roomMeasures RoomMeasure[]
 }
 
@@ -185,6 +187,7 @@ model Job {
   invoices      Invoice[]
   photos        JobPhoto[]
   rooms         RoomMeasure[]
+  crew          JobCrew[]
 
   @@unique([businessId, quoteNumber])
   @@index([userId, scheduledDate])
@@ -340,6 +343,36 @@ model SavedMaterial {
   @@unique([businessId, trade, name])
   @@index([userId, trade])
   @@index([businessId, trade])
+}
+
+/// Usual crew rates for the business. Blank stays null so no price is invented.
+model CrewRate {
+  id         String   @id @default(cuid())
+  businessId String
+  business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  role       String
+  basis      String   @default("day")
+  ratePence  Int?
+
+  @@unique([businessId, role])
+  @@index([businessId])
+}
+
+/// People on one job. Labourer and subcontractor amounts stay off the customer quote.
+model JobCrew {
+  id         String   @id @default(cuid())
+  businessId String
+  business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  jobId      String
+  job        Job      @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  role       String
+  count      Int      @default(0)
+  basis      String   @default("day")
+  ratePence  Int?
+
+  @@unique([jobId, role])
+  @@index([businessId])
+  @@index([jobId])
 }
 
 /// Labour £ per m² for one job type. Blank stays null. jobTypeKey is a starter id or template:id.

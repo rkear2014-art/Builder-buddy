@@ -818,6 +818,21 @@ export async function listLabourRates(businessId: string): Promise<Array<{ jobTy
   return rates;
 }
 
+export async function listCrewRates(businessId: string): Promise<Array<{ role: string; basis: string; ratePence: number | null }>> {
+  return getPrisma().crewRate.findMany({
+    where: tenantWhere(businessId),
+    select: { role: true, basis: true, ratePence: true },
+    orderBy: { role: "asc" },
+  });
+}
+
+export async function listJobCrew(businessId: string, jobId: string): Promise<Array<{ role: string; count: number; basis: string; ratePence: number | null }>> {
+  return getPrisma().jobCrew.findMany({
+    where: { jobId, ...tenantWhere(businessId) },
+    select: { role: true, count: true, basis: true, ratePence: true },
+  });
+}
+
 export async function getBusinessWastage(businessId: string): Promise<number> {
   const business = await getPrisma().business.findFirst({
     where: { id: businessId },

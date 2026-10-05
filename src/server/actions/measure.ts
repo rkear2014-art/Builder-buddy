@@ -3,6 +3,7 @@
 import { redirect } from "next/navigation";
 import { isCoverageBasis, starterCoverage, type CoverageBasis } from "@/lib/coverage";
 import type { ActionState } from "@/lib/form-state";
+import { parseCrewFields } from "@/lib/crew";
 import { parseRoomInputs, parseWastagePercent, quoteFromMeasure, type RoomInput } from "@/lib/measure";
 import {
   extraMeasureLines,
@@ -14,6 +15,7 @@ import {
 import { parsePoundsToPence } from "@/lib/money";
 import { tenantWhere } from "@/lib/tenancy";
 import { findStarterTemplate, isRetiredTemplateName, PLASTERING_STARTER_TEMPLATES } from "@/lib/trade-starters";
+import { writeCrewDefaults } from "@/server/crew-store";
 import { requireUser } from "@/server/dal";
 import { getPrisma } from "@/server/prisma";
 import { revalidateDesk } from "@/server/revalidate";
@@ -38,11 +40,13 @@ export async function saveMeasuredQuote(_state: ActionState, formData: FormData)
   }
   const wastage = parseWastagePercent(String(formData.get("wastagePercent") ?? ""));
   if (!wastage.ok) return { error: wastage.error };
+  const crew = parseCrewFields(formData);
+  if (!crew.ok) return { error: crew.error };
   const dayRate = parsePoundsToPence(String(formData.get("dayRate") ?? ""));
   if (!dayRate.ok) return { error: dayRate.error };
   const dayCountRaw = String(formData.get("dayCount") ?? "").trim();
-  let dayCount: number | null = null;
-  if (dayCountRaw) {
+  let dayCount: number | null = crew.crew.days;
+  if (!formData.has("crewDays") && dayCountRaw) {
     if (!/^\d+(\.\d{1,2})?$/.test(dayCountRaw)) return { error: "Enter the days as a number, such as 1 or 1.5." };
     dayCount = Number(dayCountRaw);
     if (dayCount <= 0 || dayCount > 60) return { error: "Enter the days from 0.5 to 60, or leave them blank." };
@@ -77,8 +81,9 @@ export async function saveMeasuredQuote(_state: ActionState, formData: FormData)
     materials: materialsForChoices(prepared.materials, prepared.plan, choices),
     wastagePercent: wastage.percent,
     labourPerM2Pence: rate?.labourPerM2Pence ?? null,
-    dayRatePence: dayRate.pence,
-    dayCount,
+    dayRatePence: formData.has("crewDays") ? null : dayRate.pence,
+    dayCount: formData.has("crewDays") ? null : dayCount,
+    crew: formData.has("crewDays") ? crew.crew : null,
     included,
   });
   const lines = quote.lines.filter((line) => line.quantity && (included == null || included.includes(line.name)));
@@ -93,12 +98,28 @@ export async function saveMeasuredQuote(_state: ActionState, formData: FormData)
         wastagePercent: wastage.percent,
         measureTypeKey: typeKey,
         measureTypeName: typeName || prepared.name,
-        dayRatePence: dayRate.pence,
+        dayRatePence: formData.has("crewDays") ? null : dayRate.pence,
         dayCount: dayCount == null ? null : dayCount.toFixed(2),
         measureSelection: serialiseMeasureSelection(choices, included ?? []),
         description: job.description.trim() ? undefined : prepared.description,
       },
     });
+    if (formData.has("crewDays")) {
+      for (const role of crew.crew.roles) {
+        await tx.jobCrew.upsert({
+          where: { jobId_role: { jobId: job.id, role: role.role } },
+          create: {
+            businessId: user.businessId,
+            jobId: job.id,
+            role: role.role,
+            count: role.count,
+            basis: role.basis,
+            ratePence: role.ratePence,
+          },
+          update: { count: role.count, basis: role.basis, ratePence: role.ratePence },
+        });
+      }
+    }
     await tx.roomMeasure.createMany({
       data: rooms.map((room, index) => ({
         businessId: user.businessId,
@@ -237,6 +258,8 @@ export async function saveBusinessMeasure(formData: FormData): Promise<void> {
   const wastage = parseWastagePercent(String(formData.get("wastagePercent") ?? ""));
   if (!wastage.ok) redirect("/settings?notice=wastage");
   await getPrisma().business.update({ where: { id: user.businessId }, data: { wastagePercent: wastage.percent } });
+  const crewSaved = await writeCrewDefaults(user.businessId, formData);
+  if (!crewSaved) redirect("/settings?notice=wastage");
   for (const [key, value] of formData.entries()) {
     if (!key.startsWith("labour:") || typeof value !== "string") continue;
     const jobTypeKey = key.slice("labour:".length).slice(0, 80);

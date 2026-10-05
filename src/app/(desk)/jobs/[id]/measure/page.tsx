@@ -2,11 +2,12 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { CSSProperties } from "react";
 import { isCoverageBasis, starterCoverage } from "@/lib/coverage";
+import { startingCrew } from "@/lib/crew";
 import { measureDefaults, type MeasureMode, type RoomInput } from "@/lib/measure";
 import { extraMeasureLines, measurePlanFor, normaliseChoices, parseMeasureSelection } from "@/lib/measure-plan";
 import { findStarterTemplate, isRetiredTemplateName, PLASTERING_STARTER_TEMPLATES } from "@/lib/trade-starters";
 import { MeasureForm } from "@/components/measure-form";
-import { getBusinessWastage, getJob, getLibrary, listLabourRates, listRoomMeasures, requireUser } from "@/server/dal";
+import { getBusinessWastage, getJob, getLibrary, listCrewRates, listJobCrew, listLabourRates, listRoomMeasures, requireUser } from "@/server/dal";
 
 export const dynamic = "force-dynamic";
 
@@ -22,9 +23,11 @@ export default async function MeasurePage({
   const user = await requireUser();
   const job = await getJob(user.businessId, id);
   if (!job) notFound();
-  const [library, rates, wastageDefault, saved] = await Promise.all([
+  const [library, rates, crewRates, jobCrew, wastageDefault, saved] = await Promise.all([
     getLibrary(user.businessId),
     listLabourRates(user.businessId),
+    listCrewRates(user.businessId),
+    listJobCrew(user.businessId, job.id),
     getBusinessWastage(user.businessId),
     listRoomMeasures(user.businessId, job.id),
   ]);
@@ -89,6 +92,13 @@ export default async function MeasurePage({
       }))
     : [];
   const rate = rates.find((item) => item.jobTypeKey === typeKey)?.labourPerM2Pence ?? null;
+  const crew = startingCrew({
+    defaults: crewRates,
+    saved: sameJob ? jobCrew : jobCrew.length > 0 ? jobCrew : null,
+    legacyDayRatePence: sameJob ? saved?.dayRatePence : null,
+    legacyDays: saved?.dayCount,
+    jobTypeLabourPerM2Pence: rate,
+  });
   const accent = user.branding.accentColour;
 
   return (
@@ -115,8 +125,8 @@ export default async function MeasurePage({
         wastagePercent={sameJob && saved?.wastagePercent != null ? saved.wastagePercent : wastageDefault}
         labourPerM2Pence={rate}
         initialRooms={initialRooms}
-        initialDayRate={sameJob && saved?.dayRatePence != null ? (saved.dayRatePence / 100).toFixed(2) : ""}
-        initialDayCount={sameJob && saved?.dayCount ? saved.dayCount : ""}
+        initialDays={crew.days}
+        initialRoles={crew.roles}
         defaults={defaults}
         plan={plan}
         initialChoices={initialChoices}

@@ -1,7 +1,8 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { formatPence } from "@/lib/money";
+import type { CrewDraftRole, CrewRoleId } from "@/lib/crew";
+import { formatPence, parsePoundsToPence } from "@/lib/money";
 import {
   DEFAULT_CEILING_HEIGHT_M,
   DEFAULT_DOOR_M2,
@@ -20,6 +21,7 @@ import {
   type MeasurePlan,
 } from "@/lib/measure-plan";
 import { saveMeasuredQuote } from "@/server/actions/measure";
+import { CrewEditor, CrewHiddenFields } from "@/components/crew-editor";
 import { InlineForm } from "@/components/inline-form";
 import { SubmitButton } from "@/components/submit-button";
 
@@ -64,8 +66,8 @@ export function MeasureForm({
   wastagePercent,
   labourPerM2Pence,
   initialRooms,
-  initialDayRate,
-  initialDayCount,
+  initialDays,
+  initialRoles,
   defaults,
   plan,
   initialChoices,
@@ -80,8 +82,8 @@ export function MeasureForm({
   wastagePercent: number;
   labourPerM2Pence: number | null;
   initialRooms: RoomInput[];
-  initialDayRate: string;
-  initialDayCount: string;
+  initialDays: string;
+  initialRoles: CrewDraftRole[];
   defaults: { mode: MeasureMode; includeWalls: boolean; includeCeiling: boolean };
   plan: MeasurePlan;
   initialChoices: Record<string, string>;
@@ -91,15 +93,18 @@ export function MeasureForm({
     initialRooms.length > 0 ? initialRooms : [blankRoom("Living room", defaults.mode, defaults.includeWalls, defaults.includeCeiling)],
   );
   const [wastage, setWastage] = useState(String(wastagePercent || DEFAULT_WASTAGE_PERCENT));
-  const [dayRate, setDayRate] = useState(initialDayRate);
-  const [dayCount, setDayCount] = useState(initialDayCount);
+  const [days, setDays] = useState(initialDays);
+  const [roles, setRoles] = useState(initialRoles);
   const [choices, setChoices] = useState(initialChoices);
   const [included, setIncluded] = useState<string[]>(
     initialIncluded ?? defaultIncludedNames(materialsForChoices(materials, plan, initialChoices), plan),
   );
   const wastageNumber = /^\d{1,3}$/.test(wastage) ? Math.min(100, Number(wastage)) : DEFAULT_WASTAGE_PERCENT;
-  const dayRatePence = dayRate.trim() ? Math.round(Number(dayRate) * 100) : null;
-  const dayCountNumber = dayCount.trim() ? Number(dayCount) : null;
+  const daysNumber = days.trim() && /^\d+(\.\d{1,2})?$/.test(days.trim()) ? Number(days) : null;
+
+  function onRole(role: CrewRoleId, patch: Partial<CrewDraftRole>) {
+    setRoles((current) => current.map((item) => (item.role === role ? { ...item, ...patch } : item)));
+  }
 
   const activeMaterials = useMemo(() => materialsForChoices(materials, plan, choices), [materials, plan, choices]);
   const quote = useMemo(
@@ -109,11 +114,23 @@ export function MeasureForm({
         materials: activeMaterials,
         wastagePercent: wastageNumber,
         labourPerM2Pence,
-        dayRatePence: dayRatePence != null && Number.isFinite(dayRatePence) ? dayRatePence : null,
-        dayCount: dayCountNumber != null && Number.isFinite(dayCountNumber) ? dayCountNumber : null,
+        dayRatePence: null,
+        dayCount: null,
+        crew: {
+          days: daysNumber,
+          roles: roles.map((role) => ({
+            role: role.role,
+            count: role.count,
+            basis: role.basis,
+            ratePence: (() => {
+              const parsed = parsePoundsToPence(role.rate);
+              return parsed.ok ? parsed.pence : null;
+            })(),
+          })),
+        },
         included,
       }),
-    [rooms, activeMaterials, wastageNumber, labourPerM2Pence, dayRatePence, dayCountNumber, included],
+    [rooms, activeMaterials, wastageNumber, labourPerM2Pence, daysNumber, roles, included],
   );
 
   function choose(groupId: string, optionId: string) {
@@ -293,22 +310,20 @@ export function MeasureForm({
           <span>Added before bags, sheets and rolls are rounded up. 10% is the usual. You can change the business default on the Business page.</span>
           <input inputMode="decimal" value={wastage} onChange={(event) => setWastage(event.target.value)} />
         </label>
-        <p className="text-stone">
-          {labourPerM2Pence == null
-            ? "No labour price per m² for this job type yet. Set one in Library or on the Business page. It is left blank until you do."
-            : `Labour is ${formatPence(labourPerM2Pence)} per m².`}
-        </p>
-        <div className="grid gap-3 sm:grid-cols-2">
-          <label className="field">
-            Day rate (£)
-            <span>Optional. Added as its own line.</span>
-            <input inputMode="decimal" value={dayRate} placeholder="180" onChange={(event) => setDayRate(event.target.value)} />
-          </label>
-          <label className="field">
-            Days
-            <input inputMode="decimal" value={dayCount} placeholder="1" onChange={(event) => setDayCount(event.target.value)} />
-          </label>
-        </div>
+        <CrewEditor
+          days={days}
+          roles={roles}
+          totalM2={quote.totalM2}
+          accent={accent}
+          accentInk={accentInk}
+          onDays={setDays}
+          onRole={onRole}
+        />
+        {labourPerM2Pence != null ? (
+          <p className="text-sm text-stone">
+            This job type has {formatPence(labourPerM2Pence)} per m² in Library. It is used for the plasterer when that rate is still blank and nobody has been added yet. Add a plasterer to use the crew rate instead.
+          </p>
+        ) : null}
         <ul className="grid gap-3">
           {quote.lines.map((line) => {
             const on = included.includes(line.name);
@@ -346,8 +361,7 @@ export function MeasureForm({
           <input type="hidden" name="typeName" value={typeName} />
           <input type="hidden" name="rooms" value={JSON.stringify(rooms)} />
           <input type="hidden" name="wastagePercent" value={wastage} />
-          <input type="hidden" name="dayRate" value={dayRate} />
-          <input type="hidden" name="dayCount" value={dayCount} />
+          <CrewHiddenFields days={days} roles={roles} />
           <input type="hidden" name="choices" value={JSON.stringify(choices)} />
           <input type="hidden" name="included" value={JSON.stringify(included)} />
           <SubmitButton>Add to quote</SubmitButton>
