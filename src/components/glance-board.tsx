@@ -6,6 +6,7 @@ import type { JobStatus } from "@/lib/constants";
 import type { GlanceCard, GlanceListRow, GlancePage } from "@/lib/glance";
 import { HERO_VISIT_COOKIE } from "@/lib/heroes";
 import { formatPence } from "@/lib/money";
+import { EmptyState } from "@/components/empty-state";
 import { StatusBadge } from "@/components/status-badge";
 
 const HIDE_MONEY_KEY = "builder-buddy-hide-money";
@@ -78,7 +79,7 @@ function Hero({ data }: { data: GlancePage }) {
   }, [data.heroId]);
   return (
     <section
-      className={`relative overflow-hidden rounded-[1.6rem] text-white shadow-sm ${data.heroSrc ? "min-h-80" : ""}`}
+      className="soft-card relative min-h-80 overflow-hidden text-white"
       style={{
         background: data.heroSrc
           ? "#12161c"
@@ -93,23 +94,21 @@ function Hero({ data }: { data: GlancePage }) {
         className="absolute inset-0"
         style={{
           background: data.heroSrc
-            ? "linear-gradient(105deg, rgba(8,10,14,0.92) 0%, rgba(8,10,14,0.78) 42%, rgba(8,10,14,0.55) 100%)"
+            ? "linear-gradient(115deg, rgba(10,12,16,0.72) 0%, rgba(10,12,16,0.28) 46%, rgba(10,12,16,0.08) 100%)"
             : "linear-gradient(100deg, rgba(12,16,22,0.2) 0%, rgba(12,16,22,0) 70%)",
         }}
       />
-      {data.logoSrc && !data.heroSrc ? (
-        <div className="absolute bottom-8 right-4 top-5 hidden w-36 items-center justify-center rounded-2xl bg-white/95 p-2 sm:flex">
+      {data.logoSrc ? (
+        <div className="absolute right-4 top-4 z-10 flex h-16 w-16 items-center justify-center rounded-2xl bg-white p-1.5 shadow-md sm:h-20 sm:w-20">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={data.logoSrc} alt="" className="max-h-full max-w-full object-contain" />
         </div>
       ) : null}
-      <div
-        className={`relative z-10 px-5 pb-5 pt-6 sm:px-7 sm:pt-7 ${data.logoSrc && !data.heroSrc ? "sm:pr-44" : "max-w-xl"} ${data.heroSrc ? "drop-shadow-md" : ""}`}
-      >
+      <div className={`relative z-10 max-w-xl px-5 pb-6 pt-7 sm:px-7 sm:pt-8 ${data.logoSrc ? "pr-24" : ""} ${data.heroSrc ? "drop-shadow-md" : ""}`}>
         <p className="text-xs font-extrabold tracking-wide" style={{ color: `color-mix(in srgb, ${accent} 58%, white)` }}>
           {data.eyebrow}
         </p>
-        <h1 className="mt-2 font-display text-4xl leading-none sm:text-5xl">
+        <h1 className="mt-2 font-display text-5xl leading-none tracking-tight sm:text-6xl">
           {data.greeting}
           <span style={{ color: `color-mix(in srgb, ${accent} 58%, white)` }}>.</span>
         </h1>
@@ -179,7 +178,7 @@ function DeskShortcuts({ data }: { data: GlancePage }) {
 
 function GlanceCardView({ card, accent, hideMoney }: { card: GlanceCard; accent: string; hideMoney: boolean }) {
   return (
-    <article id={card.id === "chase" ? "to-chase" : undefined} className="flex flex-col rounded-3xl bg-white p-4 shadow-sm">
+    <article id={card.id === "chase" ? "to-chase" : undefined} className="soft-card flex flex-col p-4">
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-center gap-2">
           <CardIcon id={card.id} accent={accent} />
@@ -187,11 +186,11 @@ function GlanceCardView({ card, accent, hideMoney }: { card: GlanceCard; accent:
         </div>
         <p className="text-right text-[0.7rem] font-extrabold tracking-wide text-stone">{card.meta}</p>
       </div>
-      <p className="mt-3 font-display text-4xl leading-none">{hideMoney && card.moneyPence != null ? "Hidden" : card.value}</p>
+      <p className="mt-3 font-display text-5xl leading-none tracking-tight tabular-nums">{hideMoney && card.moneyPence != null ? "Hidden" : card.value}</p>
       <p className="mt-1 text-sm text-stone">{card.sub}</p>
       <div className="mt-3 grid gap-2 border-t border-line pt-3">
         {card.rows.length === 0 ? (
-          card.moneyPence ? null : <p className="text-sm text-stone">{card.empty}</p>
+          card.moneyPence ? null : <EmptyState compact>{card.empty}</EmptyState>
         ) : (
           card.rows.map((row) => <CardRow key={row.id} row={row} accent={accent} />)
         )}
@@ -220,7 +219,7 @@ function CardRow({ row, accent }: { row: GlanceListRow; accent: string }) {
 
 function WeekCard({ data, accent }: { data: GlancePage; accent: string }) {
   return (
-    <section className="rounded-3xl bg-white p-4 shadow-sm">
+    <section className="soft-card p-4">
       <p className="text-xs font-extrabold tracking-wide" style={{ color: accent }}>
         {data.week.eyebrow}
       </p>
@@ -234,13 +233,17 @@ function WeekCard({ data, accent }: { data: GlancePage; accent: string }) {
       <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
         {data.week.tiles.map((tile) => (
           <div key={tile.label} className="rounded-2xl bg-[#f4f6f8] px-3 py-2">
-            <p className="font-display text-2xl leading-none">{tile.value}</p>
+            <p className="font-display text-3xl leading-none tracking-tight tabular-nums">{tile.value}</p>
             <p className="text-xs font-bold text-stone">{tile.label}</p>
           </div>
         ))}
       </div>
       <ul className="mt-4 grid gap-2">
-        {data.week.rows.length === 0 ? <li className="text-sm text-stone">Nothing booked this week.</li> : null}
+        {data.week.rows.length === 0 ? (
+          <li>
+            <EmptyState compact>Nothing booked this week.</EmptyState>
+          </li>
+        ) : null}
         {data.week.rows.map((row) => (
           <li key={row.id}>
             <Link href={row.href} className="grid grid-cols-[0.35rem_5.5rem_1fr_auto] items-center gap-3 rounded-2xl px-1 py-1">
@@ -261,12 +264,12 @@ function WeekCard({ data, accent }: { data: GlancePage; accent: string }) {
 
 function MonthCard({ data, accent, hideMoney }: { data: GlancePage; accent: string; hideMoney: boolean }) {
   return (
-    <section className="rounded-3xl bg-white p-4 shadow-sm">
-      <h2 className="font-display text-3xl leading-none">This month · {data.month.title}</h2>
+    <section className="soft-card p-4">
+      <h2 className="font-display text-3xl leading-none tracking-tight">This month · {data.month.title}</h2>
       <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-1">
         <div className="rounded-3xl bg-[#17171a] p-4 text-white">
           <p className="text-xs font-extrabold tracking-wide text-white/60">PRICED WORK</p>
-          <p className="mt-2 font-display text-4xl leading-none">
+          <p className="mt-2 font-display text-5xl leading-none tracking-tight tabular-nums">
             {hideMoney ? "Hidden" : formatPence(data.month.totalPence)}
           </p>
           <p className="mt-2 text-sm text-white/70">
@@ -275,7 +278,7 @@ function MonthCard({ data, accent, hideMoney }: { data: GlancePage; accent: stri
         </div>
         <div className="rounded-3xl p-4" style={{ background: `color-mix(in srgb, ${accent} 12%, white)` }}>
           <p className="text-xs font-extrabold tracking-wide text-stone">COMPLETE</p>
-          <p className="mt-2 font-display text-4xl leading-none">{data.month.completeCount}</p>
+          <p className="mt-2 font-display text-5xl leading-none tracking-tight tabular-nums">{data.month.completeCount}</p>
           <p className="mt-2 text-sm text-stone">finished this month</p>
         </div>
       </div>
@@ -285,7 +288,7 @@ function MonthCard({ data, accent, hideMoney }: { data: GlancePage; accent: stri
 
 function RecentCard({ data }: { data: GlancePage }) {
   return (
-    <section className="rounded-3xl bg-white p-4 shadow-sm">
+    <section className="soft-card p-4">
       <div className="flex items-end justify-between gap-3">
         <h2 className="text-lg font-extrabold">Recent jobs</h2>
         <Link href="/jobs" className="text-sm font-extrabold" style={{ color: data.accentColour }}>
@@ -293,7 +296,11 @@ function RecentCard({ data }: { data: GlancePage }) {
         </Link>
       </div>
       <ul className="mt-3 divide-y divide-line">
-        {data.recent.length === 0 ? <li className="py-3 text-sm text-stone">No jobs yet.</li> : null}
+        {data.recent.length === 0 ? (
+          <li className="py-3">
+            <EmptyState compact>No jobs yet.</EmptyState>
+          </li>
+        ) : null}
         {data.recent.map((row) => (
           <li key={row.id}>
             <Link href={row.href} className="flex items-center gap-3 py-3">

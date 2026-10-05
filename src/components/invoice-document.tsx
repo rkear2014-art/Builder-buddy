@@ -1,4 +1,5 @@
 import type { CSSProperties } from "react";
+import { accentInk } from "@/lib/accent";
 import type { CustomerLetterhead } from "@/lib/branding";
 import { formatIsoDate } from "@/lib/dates";
 import { PAYMENT_METHOD_LABELS, type InvoiceStanding } from "@/lib/invoice";
@@ -44,7 +45,7 @@ export function InvoiceDocument({
 
   return (
     <article className="quote" style={{ "--quote-accent": accent } as CSSProperties}>
-      <section className="quote-sheet px-5 py-6">
+      <section className="quote-sheet letterhead-sheet px-5 py-6">
         <div className="flex items-start justify-between gap-4">
           <div>
             {logoSrc ? (
@@ -61,7 +62,7 @@ export function InvoiceDocument({
           <div className="text-right">
             <h1 className="font-display text-4xl leading-none">Invoice</h1>
             <p className="mt-2 font-extrabold">{invoice.reference}</p>
-            <p className="mt-1 inline-block rounded-full px-3 py-1 text-sm font-extrabold text-white" style={{ background: accent }}>
+            <p className="mt-1 inline-block rounded-full px-3 py-1 text-sm font-extrabold" style={{ background: accent, color: accentInk(accent) }}>
               {invoice.standing}
             </p>
           </div>
@@ -130,7 +131,7 @@ export function InvoiceDocument({
             <MoneyLine label="Deposit already taken" amount={`−${formatPence(invoice.depositPence)}`} />
           ) : null}
           <MoneyLine label="Paid" amount={formatPence(invoice.paidPence)} />
-          <p className="mt-2 flex items-center justify-between rounded-2xl px-3 py-3 text-white" style={{ background: accent }}>
+          <p className="mt-2 flex items-center justify-between rounded-2xl px-3 py-3" style={{ background: accent, color: accentInk(accent) }}>
             <span className="font-extrabold">Balance due</span>
             <span className="font-display text-3xl leading-none">{formatPence(invoice.balancePence)}</span>
           </p>

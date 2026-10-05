@@ -84,12 +84,12 @@ export default async function JobSheetPage({ params }: { params: Promise<{ id: s
             <h2 className="font-display text-2xl">Before and after</h2>
             <ul className="mt-3 grid gap-4 sm:grid-cols-2">
               {photos.map((photo) => (
-                <li key={photo.id}>
+                <li key={photo.id} className="photo-zoom rounded-2xl">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     src={`/jobs/${job.id}/photos/${photo.id}`}
                     alt=""
-                    className="aspect-[4/3] w-full rounded-2xl object-cover"
+                    className="aspect-[4/3] w-full object-cover"
                   />
                   <p className="mt-1 font-extrabold">{PHOTO_STAGE_LABELS[photo.stage]}</p>
                 </li>

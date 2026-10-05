@@ -24,7 +24,7 @@ export function LoginForm({ showDemo }: { showDemo: boolean }) {
       </label>
       <SubmitButton pendingLabel="Signing in…">Sign in</SubmitButton>
       {showDemo ? (
-        <p className="text-sm text-stone">
+        <p className="signin-demo text-sm text-stone">
           Demo: demo@builderbuddy.co.uk / Plaster-tea-1. Change this before real jobs go in.
         </p>
       ) : null}

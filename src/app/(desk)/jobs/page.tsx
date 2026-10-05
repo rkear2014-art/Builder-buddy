@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { JOB_STATUSES, STATUS_LABELS, isJobStatus } from "@/lib/constants";
 import { listJobs, requireUser } from "@/server/dal";
+import { EmptyState } from "@/components/empty-state";
 import { JobCard } from "@/components/job-card";
 
 export const dynamic = "force-dynamic";
@@ -29,7 +30,7 @@ export default async function JobsPage({
   return (
     <div className="grid gap-4">
       <div className="flex items-center justify-between gap-3">
-        <h1 className="font-display text-4xl">Jobs</h1>
+        <h1 className="font-display text-5xl leading-none tracking-tight">Jobs</h1>
         <Link href="/jobs/new" className="btn btn-primary">
           Book in
         </Link>
@@ -59,7 +60,7 @@ export default async function JobsPage({
         ))}
       </div>
       {jobs.length === 0 ? (
-        <p className="card text-stone">No jobs match. Book one in, or clear the search.</p>
+        <EmptyState>No jobs match. Book one in, or clear the search.</EmptyState>
       ) : (
         <div className="grid gap-3">
           {jobs.map((job) => (

@@ -414,8 +414,10 @@ function TilePhoto({
   return (
     <div className="grid gap-2">
       {src ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img src={src} alt="" className="h-28 w-full rounded-xl object-cover" />
+        <div className="photo-zoom rounded-xl">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={src} alt="" className="h-28 w-full object-cover" />
+        </div>
       ) : (
         <p className="text-sm text-stone">No tile photo of your own yet. Choose a job shows a work photo until you set one here.</p>
       )}

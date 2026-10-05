@@ -81,8 +81,8 @@ export default async function ChooseItemPage({ params }: { params: Promise<{ id:
               if (!starter) return null;
               const picture = tileSrc(starter.id, starter.id);
               return (
-                <li key={starter.id} className="overflow-hidden rounded-2xl border border-line bg-white">
-                  <div className="relative aspect-[4/3]" style={picture ? undefined : { background: `linear-gradient(145deg, #eef2f6, ${accent})` }}>
+                <li key={starter.id} className="soft-card overflow-hidden">
+                  <div className="photo-zoom relative aspect-[4/3]" style={picture ? undefined : { background: `linear-gradient(145deg, #eef2f6, ${accent})` }}>
                     {picture ? (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img src={picture.src} alt="" className="h-full w-full object-cover" />
@@ -117,8 +117,8 @@ export default async function ChooseItemPage({ params }: { params: Promise<{ id:
             {templates.map((template) => {
               const picture = tileSrc(template.id);
               return (
-                <li key={template.id} className="overflow-hidden rounded-2xl border border-line bg-white">
-                  <div className="relative aspect-[4/3]" style={picture ? undefined : { background: `linear-gradient(145deg, #eef2f6, ${accent})` }}>
+                <li key={template.id} className="soft-card overflow-hidden">
+                  <div className="photo-zoom relative aspect-[4/3]" style={picture ? undefined : { background: `linear-gradient(145deg, #eef2f6, ${accent})` }}>
                     {picture ? (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img src={picture.src} alt="" className="h-full w-full object-cover" />
