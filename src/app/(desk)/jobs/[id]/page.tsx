@@ -6,6 +6,7 @@ import { JOB_STATUSES, STATUS_LABELS, slotLabel, visibleTradeLabel } from "@/lib
 import { quoteMessage } from "@/lib/customer-message";
 import { formatDocumentNumber, quoteIsExpired } from "@/lib/documents";
 import { formatIsoDate, formatLondonDateTime, londonToday } from "@/lib/dates";
+import { bookingKindLabel } from "@/lib/diary";
 import type { DeskJob } from "@/lib/desk";
 import { quoteStatusLabel } from "@/lib/job-desk";
 import { costTotals, materialsTotals } from "@/lib/materials";
@@ -114,6 +115,18 @@ export default async function JobPage({ params }: { params: Promise<{ id: string
       </header>
 
       <p className="job-contact">Best time to contact: {slotLabel(job.timeSlot)}</p>
+      {job.bookingKind !== "job" || job.spanDays > 1 || job.assignedName.trim() || !job.onDiary ? (
+        <p className="font-bold">
+          {[
+            bookingKindLabel(job.bookingKind),
+            job.spanDays > 1 ? `${job.spanDays} days` : null,
+            job.assignedName.trim() || null,
+            job.onDiary ? null : "Date still to book",
+          ]
+            .filter(Boolean)
+            .join(" · ")}
+        </p>
+      ) : null}
 
       <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="job-status-pill">{quoteStatus.pill}</p>

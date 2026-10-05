@@ -70,10 +70,43 @@ describe("plastering-only desk", () => {
     assert.equal(parsed.data.postcode, "BS7 8NS");
     assert.equal(parsed.data.description, "");
     assert.equal(parsed.data.trade, "Plasterer");
+    assert.equal(parsed.data.bookingKind, "job");
+    assert.equal(parsed.data.spanDays, 1);
+    assert.equal(parsed.data.onDiary, true);
+    assert.equal(parsed.data.status, "ENQUIRY");
     const missing = parseBookingForm(form);
     form.set("addressLine1", "");
     assert.equal(parseBookingForm(form).ok, false);
     assert.equal(missing.ok, true);
+  });
+
+  it("books a quote visit, and a won job with the date still to book", () => {
+    const form = new FormData();
+    form.set("customerName", "Mrs Patel");
+    form.set("postcode", "BS7 8NS");
+    form.set("addressLine1", "14 Larkspur Road");
+    form.set("phone", "07700 900123");
+    form.set("scheduledDate", "2026-10-06");
+    form.set("timeSlot", "morning");
+    form.set("bookingKind", "quote");
+    form.set("spanDays", "2");
+    form.set("assignedName", "Sam");
+    const visit = parseBookingForm(form);
+    assert.equal(visit.ok, true);
+    if (!visit.ok) return;
+    assert.equal(visit.data.bookingKind, "quote");
+    assert.equal(visit.data.spanDays, 2);
+    assert.equal(visit.data.assignedName, "Sam");
+    assert.equal(visit.data.onDiary, true);
+    form.set("dateToBook", "yes");
+    form.set("bookingKind", "job");
+    const waiting = parseBookingForm(form);
+    assert.equal(waiting.ok, true);
+    if (!waiting.ok) return;
+    assert.equal(waiting.data.onDiary, false);
+    assert.equal(waiting.data.status, "BOOKED");
+    form.set("spanDays", "40");
+    assert.equal(parseBookingForm(form).ok, false);
   });
 });
 

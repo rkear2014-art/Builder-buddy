@@ -176,6 +176,10 @@ model Job {
   county         String      @default("")
   scheduledDate DateTime     @db.Date
   timeSlot      String
+  bookingKind   String       @default("job")
+  spanDays      Int          @default(1)
+  onDiary       Boolean      @default(true)
+  assignedName  String       @default("")
   status        JobStatus
   shareToken    String       @unique
   createdAt     DateTime     @default(now())

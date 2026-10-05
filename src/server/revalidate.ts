@@ -5,6 +5,7 @@ export function revalidateDesk(jobId?: string, shareToken?: string): void {
   revalidatePath("/");
   revalidatePath("/jobs");
   revalidatePath("/diary");
+  revalidatePath("/diary/print");
   revalidatePath("/library");
   revalidatePath("/quotes");
   revalidatePath("/invoices");

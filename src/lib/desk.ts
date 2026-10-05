@@ -1,5 +1,6 @@
 import type { BusinessBranding } from "./branding";
 import type { JobStatus } from "./constants";
+import type { BookingKind } from "./diary";
 
 export type DeskMaterial = {
   id: string;
@@ -32,6 +33,10 @@ export type DeskJob = {
   internalNotes: string;
   scheduledDate: string;
   timeSlot: string;
+  bookingKind: BookingKind;
+  spanDays: number;
+  onDiary: boolean;
+  assignedName: string;
   showLinePrices: boolean;
   depositPence: number | null;
   shareActive: boolean;

@@ -294,6 +294,11 @@ summary.btn::-webkit-details-marker {
     display: none !important;
   }
 
+  #content {
+    padding-bottom: 0 !important;
+    background: white;
+  }
+
   .quote {
     display: block !important;
     gap: 0;
@@ -410,6 +415,106 @@ summary.btn::-webkit-details-marker {
 .choice-card:has(input:checked) {
   border-color: var(--job-accent, #dd1f29);
   box-shadow: inset 0 0 0 1px var(--job-accent, #dd1f29);
+}
+
+.diary-card {
+  display: grid;
+  gap: 0.15rem;
+  overflow-wrap: anywhere;
+  border-radius: 0.75rem;
+  border: 2px solid var(--color-line);
+  background: white;
+  padding: 0.35rem 0.4rem;
+  color: var(--color-ink);
+}
+
+.diary-card-job {
+  background: var(--color-moss);
+  border-color: var(--color-pine);
+}
+
+.diary-card-quote {
+  background: var(--color-mist);
+  border-color: var(--color-sky);
+}
+
+.diary-card-remedial {
+  background: #fff4d6;
+  border-color: var(--color-amber);
+}
+
+.diary-card-other {
+  background: var(--color-sand);
+  border-color: var(--color-stone);
+}
+
+.diary-swatch {
+  display: inline-block;
+  height: 0.85rem;
+  width: 0.85rem;
+  flex: none;
+  border-radius: 0.2rem;
+  border: 2px solid var(--color-line);
+}
+
+.diary-swatch-job {
+  background: var(--color-moss);
+  border-color: var(--color-pine);
+}
+
+.diary-swatch-quote {
+  background: var(--color-mist);
+  border-color: var(--color-sky);
+}
+
+.diary-swatch-remedial {
+  background: #fff4d6;
+  border-color: var(--color-amber);
+}
+
+.diary-swatch-other {
+  background: var(--color-sand);
+  border-color: var(--color-stone);
+}
+
+.diary-pill {
+  display: inline-block;
+  width: fit-content;
+  border-radius: 999px;
+  background: white;
+  padding: 0.05rem 0.35rem;
+  font-size: 0.65rem;
+  font-weight: 800;
+  line-height: 1.3;
+}
+
+.diary-today {
+  border-radius: 1rem;
+  background: white;
+  box-shadow: inset 0 0 0 3px var(--color-ink);
+}
+
+.diary-kind {
+  display: flex;
+  min-height: 4.25rem;
+  align-items: center;
+  gap: 0.75rem;
+  border-radius: 1rem;
+  border: 2px solid var(--color-line);
+  background: white;
+  padding: 0.7rem 0.85rem;
+  cursor: pointer;
+}
+
+.diary-kind input {
+  width: 1.4rem;
+  height: 1.4rem;
+  flex: none;
+}
+
+.diary-kind:has(input:checked) {
+  border-color: var(--color-ink);
+  background: var(--color-sand);
 }
 
 .catalogue-chip {
