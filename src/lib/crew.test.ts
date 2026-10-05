@@ -1,7 +1,10 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
+import { customerSubtotalPence, hidesMaterialLines } from "./customer-price";
 import { isInternalCrewName, parseCrewFields, priceCrew, startingCrew } from "./crew";
+import { invoiceTotals } from "./invoice";
 import { quoteFromMeasure, type RoomInput } from "./measure";
+import { quoteMoney } from "./vat";
 
 function room(): RoomInput {
   return {
@@ -37,15 +40,76 @@ describe("crew labour", () => {
     assert.equal(byRole.get("plasterer")?.amountPence, 120000);
     assert.equal(byRole.get("labourer")?.amountPence, 36000);
     assert.equal(byRole.get("subcontractor")?.amountPence, 72000);
-    assert.equal(priced.customerPence, 120000);
+    assert.equal(priced.customerPence, 228000);
     assert.equal(priced.costPence, 108000);
-    assert.equal(priced.marginPence, 12000);
+    assert.equal(priced.marginPence, 120000);
+    assert.equal(priced.costUnitPricePence, 108000);
     assert.equal(priced.customerLine?.name, "Labour");
+    assert.equal(priced.customerLine?.quantity, "1");
+    assert.equal(priced.customerLine?.unit, "job");
+    assert.equal(priced.customerLine?.unitPricePence, 228000);
+    assert.equal(priced.customerLine?.lineTotalPence, 228000);
+    assert.equal(byRole.get("plasterer")?.onQuote, true);
+    assert.equal(byRole.get("labourer")?.onQuote, true);
+    assert.equal(byRole.get("subcontractor")?.onQuote, true);
+  });
+
+  it("adds a plasterer and a labourer on the same days into one Labour line", () => {
+    const priced = priceCrew({
+      days: 3,
+      totalM2: 72,
+      roles: [
+        { role: "plasterer", count: 2, basis: "day", ratePence: 20000 },
+        { role: "labourer", count: 1, basis: "day", ratePence: 12000 },
+      ],
+    });
     assert.equal(priced.customerLine?.quantity, "3");
     assert.equal(priced.customerLine?.unit, "day");
-    assert.equal(priced.customerLine?.unitPricePence, 40000);
-    assert.equal(byRole.get("labourer")?.onQuote, false);
-    assert.equal(byRole.get("subcontractor")?.onQuote, false);
+    assert.equal(priced.customerLine?.unitPricePence, 52000);
+    assert.equal(priced.customerLine?.lineTotalPence, 156000);
+    assert.equal(priced.customerPence, 156000);
+    assert.equal(priced.costPence, 36000);
+    assert.equal(priced.costUnitPricePence, 12000);
+    assert.equal(priced.marginPence, 120000);
+    const withVat = quoteMoney({
+      subtotalPence: priced.customerPence,
+      vatRegistered: true,
+      vatRatePercent: 20,
+      depositPence: null,
+    });
+    assert.equal(withVat.vatPence, 31200);
+    assert.equal(withVat.totalPence, 187200);
+    const invoice = invoiceTotals({
+      lines: [
+        {
+          quantity: priced.customerLine?.quantity ?? "0",
+          unitPricePence: priced.customerLine?.unitPricePence ?? 0,
+        },
+      ],
+      vatRegistered: true,
+      vatRatePercent: 20,
+      depositPence: null,
+    });
+    assert.equal(invoice.subtotalPence, 156000);
+    assert.equal(invoice.vatPence, 31200);
+    assert.equal(invoice.totalPence, 187200);
+  });
+
+  it("puts a labourer on the Labour line when there is no plasterer", () => {
+    const priced = priceCrew({
+      days: 2,
+      totalM2: 0,
+      roles: [{ role: "labourer", count: 1, basis: "day", ratePence: 12000 }],
+    });
+    assert.equal(priced.customerLine?.quantity, "2");
+    assert.equal(priced.customerLine?.unit, "day");
+    assert.equal(priced.customerLine?.unitPricePence, 12000);
+    assert.equal(priced.customerLine?.lineTotalPence, 24000);
+    assert.equal(priced.customerPence, 24000);
+    assert.equal(priced.costPence, 24000);
+    assert.equal(priced.costUnitPricePence, 12000);
+    assert.equal(priced.marginPence, 0);
+    assert.equal(priced.roles.find((role) => role.role === "labourer")?.onQuote, true);
   });
 
   it("leaves a blank rate off the money and ignores a role with nobody on it", () => {
@@ -81,7 +145,7 @@ describe("crew labour", () => {
     assert.match(missingArea.roles.find((role) => role.role === "subcontractor")?.note ?? "", /m²/);
   });
 
-  it("puts only the plasterer labour on the quote, in place of a separate day-rate line", () => {
+  it("puts plasterer, labourer and subcontractor into one Labour line on the quote", () => {
     const quote = quoteFromMeasure({
       rooms: [room()],
       materials: [],
@@ -101,10 +165,39 @@ describe("crew labour", () => {
     assert.equal(quote.totalM2, 72);
     const names = quote.lines.map((line) => line.name);
     assert.deepEqual(names, ["Labour"]);
-    assert.equal(quote.lines[0]?.lineTotalPence, 120000);
-    assert.equal(quote.totalPence, 120000);
+    assert.equal(quote.lines[0]?.quantity, "1");
+    assert.equal(quote.lines[0]?.unit, "job");
+    assert.equal(quote.lines[0]?.lineTotalPence, 228000);
+    assert.equal(quote.totalPence, 228000);
     assert.equal(names.includes("Labourer"), false);
     assert.equal(names.includes("Subcontractor"), false);
+    const suggested = customerSubtotalPence({ materialsTotalPence: quote.totalPence, fixedPricePence: null });
+    assert.equal(suggested, 228000);
+    const wholeJob = customerSubtotalPence({ materialsTotalPence: quote.totalPence, fixedPricePence: 250000 });
+    assert.equal(wholeJob, 250000);
+    assert.equal(hidesMaterialLines({ totalOnly: false, fixedPricePence: 250000 }), true);
+    assert.equal(hidesMaterialLines({ totalOnly: true, fixedPricePence: null }), true);
+  });
+
+  it("replaces library labour when only a labourer is on the crew", () => {
+    const quote = quoteFromMeasure({
+      rooms: [room()],
+      materials: [],
+      wastagePercent: 0,
+      labourPerM2Pence: 1000,
+      dayRatePence: 18000,
+      dayCount: 1,
+      crew: {
+        days: 2,
+        roles: [{ role: "labourer", count: 1, basis: "day", ratePence: 9000 }],
+      },
+    });
+    assert.deepEqual(
+      quote.lines.map((line) => line.name),
+      ["Labour"],
+    );
+    assert.equal(quote.lines[0]?.lineTotalPence, 18000);
+    assert.equal(quote.totalPence, 18000);
   });
 
   it("keeps the library labour price while nobody is added to the crew", () => {

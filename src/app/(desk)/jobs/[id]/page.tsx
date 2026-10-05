@@ -193,7 +193,7 @@ export default async function JobPage({ params }: { params: Promise<{ id: string
           </label>
           <label className="field">
             Price the whole job
-            <span>Before VAT. Leave blank to use the materials.</span>
+            <span>Before VAT. Leave blank to charge {formatPence(customerTotal.totalPence)} from the materials and labour.</span>
             <input
               name="fixedPrice"
               inputMode="decimal"

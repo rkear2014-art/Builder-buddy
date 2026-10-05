@@ -141,8 +141,8 @@ export function CrewEditor({
                 : role.amountPence == null
                   ? "Not on this job"
                   : role.basis === "day"
-                    ? `${role.count} × ${formatPence(role.ratePence ?? 0)} × ${role.quantity} ${role.quantity === "1" ? "day" : "days"} = ${formatPence(role.amountPence)}`
-                    : `${role.count} on the job · ${formatPence(role.ratePence ?? 0)} × ${role.quantity} m² = ${formatPence(role.amountPence)}`}
+                    ? `${role.count} × ${formatPence(role.ratePence ?? 0)} × ${role.quantity} ${role.quantity === "1" ? "day" : "days"} = ${formatPence(role.amountPence)}. On the Labour line.`
+                    : `${role.count} on the job · ${formatPence(role.ratePence ?? 0)} × ${role.quantity} m² = ${formatPence(role.amountPence)}. On the Labour line.`}
             </p>
           </article>
         );
@@ -151,16 +151,17 @@ export function CrewEditor({
         <p className="font-extrabold">Labour on the quote</p>
         <p className="font-display text-4xl">{priced.customerLine ? formatPence(priced.customerPence) : "—"}</p>
         <p className="text-sm text-stone">
-          The customer sees one Labour line{totalM2 > 0 ? `, from ${formatM2(totalM2)}` : ""}. Labourer and subcontractor pay stays off the quote.
+          The customer sees one Labour line{totalM2 > 0 ? `, from ${formatM2(totalM2)}` : ""}. Plasterer, labourer and subcontractor pay are all in it, on the quote and the invoice.
         </p>
       </div>
       <div className="private-panel rounded-2xl p-4">
-        <h3 className="font-bold">What you pay — the customer never sees this</h3>
+        <h3 className="font-bold">Paid out, inside the Labour line</h3>
+        <p className="text-sm text-stone">The customer pays this as part of Labour. It is not a separate row.</p>
         <p className="mt-2">Labourers {formatPence(priced.roles.find((role) => role.role === "labourer")?.amountPence ?? 0)}</p>
         <p>Subcontractors {formatPence(priced.roles.find((role) => role.role === "subcontractor")?.amountPence ?? 0)}</p>
         <p className="mt-2 font-display text-3xl">{formatPence(priced.costPence)}</p>
-        <p className="mt-2 font-bold">Margin {formatPence(priced.marginPence)}</p>
-        <p className="text-sm text-stone">The labour on the quote, after labourers and subcontractors.</p>
+        <p className="mt-2 font-bold">Your plastering {formatPence(priced.marginPence)}</p>
+        <p className="text-sm text-stone">Labour on the quote, after the labourer and subcontractor pay.</p>
       </div>
     </section>
   );

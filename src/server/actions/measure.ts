@@ -3,7 +3,7 @@
 import { redirect } from "next/navigation";
 import { isCoverageBasis, starterCoverage, type CoverageBasis } from "@/lib/coverage";
 import type { ActionState } from "@/lib/form-state";
-import { parseCrewFields } from "@/lib/crew";
+import { parseCrewFields, priceCrew } from "@/lib/crew";
 import { parseRoomInputs, parseWastagePercent, quoteFromMeasure, type RoomInput } from "@/lib/measure";
 import {
   extraMeasureLines,
@@ -88,6 +88,7 @@ export async function saveMeasuredQuote(_state: ActionState, formData: FormData)
     included,
   });
   const lines = quote.lines.filter((line) => line.quantity && (included == null || included.includes(line.name)));
+  const crewPrice = formData.has("crewDays") ? priceCrew({ ...crew.crew, totalM2: quote.totalM2 }) : null;
   if (lines.length === 0) return { error: "Enter a room size before adding this to the quote." };
 
   await getPrisma().$transaction(async (tx) => {
@@ -157,7 +158,7 @@ export async function saveMeasuredQuote(_state: ActionState, formData: FormData)
           quantity: line.quantity ?? "1",
           unit: line.unit,
           unitPricePence: line.unitPricePence,
-          costPricePence: null,
+          costPricePence: line.name === "Labour" ? (crewPrice?.costUnitPricePence ?? null) : null,
           fromMeasure: true,
           sortOrder,
         },
