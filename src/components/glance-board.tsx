@@ -94,7 +94,7 @@ function Hero({ data }: { data: GlancePage }) {
         className="absolute inset-0"
         style={{
           background: data.heroSrc
-            ? "linear-gradient(115deg, rgba(10,12,16,0.72) 0%, rgba(10,12,16,0.28) 46%, rgba(10,12,16,0.08) 100%)"
+            ? "linear-gradient(180deg, rgba(8,10,14,0.2) 0%, rgba(8,10,14,0.28) 38%, rgba(8,10,14,0.82) 100%), linear-gradient(100deg, rgba(8,10,14,0.84) 0%, rgba(8,10,14,0.5) 46%, rgba(8,10,14,0.12) 100%)"
             : "linear-gradient(100deg, rgba(12,16,22,0.2) 0%, rgba(12,16,22,0) 70%)",
         }}
       />
@@ -104,19 +104,24 @@ function Hero({ data }: { data: GlancePage }) {
           <img src={data.logoSrc} alt="" className="max-h-full max-w-full object-contain" />
         </div>
       ) : null}
-      <div className={`relative z-10 max-w-xl px-5 pb-6 pt-7 sm:px-7 sm:pt-8 ${data.logoSrc ? "pr-24" : ""} ${data.heroSrc ? "drop-shadow-md" : ""}`}>
-        <p className="text-xs font-extrabold tracking-wide" style={{ color: `color-mix(in srgb, ${accent} 58%, white)` }}>
+      <div className={`relative z-10 max-w-xl px-5 pb-6 pt-7 sm:px-7 sm:pt-8 ${data.logoSrc ? "pr-24" : ""}`}>
+        <p className="text-xs font-extrabold tracking-wide text-white" style={{ textShadow: "0 1px 2px rgba(0,0,0,0.65)" }}>
           {data.eyebrow}
         </p>
-        <h1 className="mt-2 font-display text-5xl leading-none tracking-tight sm:text-6xl">
+        <h1
+          className="mt-2 font-display text-5xl leading-none tracking-tight text-white sm:text-6xl"
+          style={{ color: "#fff", textShadow: "0 1px 2px rgba(0,0,0,0.7)" }}
+        >
           {data.greeting}
-          <span style={{ color: `color-mix(in srgb, ${accent} 58%, white)` }}>.</span>
+          <span style={{ color: "#fff" }}>.</span>
         </h1>
-        <p className="mt-3 text-base text-white/90 sm:text-lg">{data.summary}</p>
+        <p className="mt-3 text-base text-white sm:text-lg" style={{ textShadow: "0 1px 2px rgba(0,0,0,0.65)" }}>
+          {data.summary}
+        </p>
         {data.chips.length > 0 ? (
           <ul className="mt-4 flex flex-wrap gap-2">
             {data.chips.map((chip) => (
-              <li key={chip} className="rounded-full bg-white/12 px-3 py-1 text-sm font-bold text-white/90 ring-1 ring-white/15">
+              <li key={chip} className="rounded-full bg-black/45 px-3 py-1 text-sm font-bold text-white ring-1 ring-white/35">
                 {chip}
               </li>
             ))}

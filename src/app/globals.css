@@ -213,12 +213,17 @@ body {
   }
 }
 
-.rise-in {
-  animation: rise-in 0.38s ease both;
+/* Resting state is fully visible. The fade only runs when motion is allowed, and fill-mode both holds opacity 1 when it ends. Cards are not faded, so a missed animation cannot leave them pale. */
+.rise-in,
+.soft-card {
+  opacity: 1;
+  transform: none;
 }
 
-.soft-card {
-  animation: rise-in 0.45s ease both;
+@media (prefers-reduced-motion: no-preference) {
+  .rise-in {
+    animation: rise-in 0.28s ease-out both;
+  }
 }
 
 .private-panel {
@@ -796,20 +801,37 @@ summary.btn::-webkit-details-marker {
 }
 
 .signin {
+  position: relative;
   display: grid;
   min-height: 100dvh;
   place-items: center;
+  overflow: hidden;
   padding: 1.25rem;
-  background:
-    linear-gradient(165deg, rgba(16, 14, 12, 0.78) 0%, rgba(16, 14, 12, 0.42) 48%, rgba(16, 14, 12, 0.7) 100%),
-    url("/work/plaster-room.webp") center / cover no-repeat;
+  background: #12161c;
   color: white;
 }
 
+.signin-photo {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+}
+
+.signin-shade {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(8, 10, 14, 0.72) 0%, rgba(8, 10, 14, 0.5) 46%, rgba(8, 10, 14, 0.68) 100%);
+}
+
 .signin-panel {
+  position: relative;
+  z-index: 1;
   width: min(100%, 28rem);
   border-radius: 1.6rem;
-  background: rgba(255, 253, 248, 0.96);
+  background: rgba(255, 253, 248, 0.97);
   padding: 1.5rem 1.25rem 1.25rem;
   color: var(--color-ink);
   box-shadow: 0 24px 60px -28px rgba(0, 0, 0, 0.65);
@@ -870,6 +892,8 @@ summary.btn::-webkit-details-marker {
   .skeleton,
   .animate-spin {
     animation: none !important;
+    opacity: 1;
+    transform: none;
   }
 
   .btn,

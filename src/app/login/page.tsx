@@ -36,6 +36,9 @@ export default async function LoginPage() {
   const offerCreate = loginOffersCreate(check);
   return (
     <main className="signin" style={{ "--brand": DEFAULT_ACCENT, "--brand-ink": accentInk(DEFAULT_ACCENT) } as CSSProperties}>
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src="/work/site-photo.webp" alt="" className="signin-photo" />
+      <div className="signin-shade" aria-hidden="true" />
       <div className="signin-panel">
         <p className="font-bold text-stone">For the tradesperson</p>
         <h1 className="font-display text-5xl leading-none tracking-tight">Builder Buddy</h1>
