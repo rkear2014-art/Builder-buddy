@@ -374,7 +374,7 @@ export async function getGlance(
   const end = monthEndIso(today) > week[6] ? monthEndIso(today) : week[6];
   const freshSince = new Date(now.getTime() - 24 * 60 * 60 * 1000);
   const prisma = getPrisma();
-  const [ranged, fresh, recent, grouped, readyRows] = await Promise.all([
+  const [ranged, fresh, recent, grouped, readyRows, owner] = await Promise.all([
     prisma.job.findMany({
       where: {
         ...tenantWhere(businessId),
@@ -413,6 +413,11 @@ export async function getGlance(
       },
       orderBy: { updatedAt: "desc" },
       take: 8,
+    }),
+    prisma.user.findFirst({
+      where: { businessId, role: "OWNER" },
+      select: { name: true },
+      orderBy: { createdAt: "asc" },
     }),
   ]);
   const byId = new Map<string, (typeof ranged)[number]>();
@@ -465,6 +470,7 @@ export async function getGlance(
     hour: londonHour(now),
     now,
     businessName: branding.name,
+    ownerName: owner?.name ?? "",
     enquiryCount,
     jobs: [...byId.values()].filter((job) => job.onDiary).map((job) => mapGlanceJob(job, branding)),
     invoices: glanceInvoices,

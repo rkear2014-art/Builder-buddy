@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { accentFromImage, DEFAULT_ACCENT, isReplacedAccent, normaliseAccent } from "@/lib/accent";
 import { parseQuoteSettings } from "@/lib/quote";
-import { businessLogoQuery, canEditBusiness, parseBusinessProfile } from "@/lib/branding";
+import { businessLogoQuery, canEditBusiness, parseBusinessProfile, parseOwnerName } from "@/lib/branding";
 import type { ActionState } from "@/lib/form-state";
 import { AK_HERO_CAPTION, MAX_HERO_PHOTOS, missingSampleHeroKeys } from "@/lib/heroes";
 import { detectLogoMime, MAX_HERO_STORED_BYTES, MAX_LOGO_UPLOAD_BYTES, prepareHero, prepareLogo } from "@/lib/logo";
@@ -39,6 +39,21 @@ export async function saveQuoteSettings(_state: ActionState, formData: FormData)
   });
   refreshBranding();
   redirect("/settings?saved=quote");
+}
+
+export async function saveOwnerName(_state: ActionState, formData: FormData): Promise<ActionState> {
+  const user = await requireUser();
+  if (!canEditBusiness(user.role)) {
+    return { error: "Only the owner can change the business details." };
+  }
+  const parsed = parseOwnerName(formData);
+  if (!parsed.ok) return { error: parsed.error };
+  await getPrisma().user.update({
+    where: { id: user.id },
+    data: { name: parsed.data.name },
+  });
+  refreshBranding();
+  redirect("/settings?saved=name");
 }
 
 export async function saveBusinessProfile(_state: ActionState, formData: FormData): Promise<ActionState> {

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { buildGlance, glanceChips, glanceSummary, isChaseJob, type GlanceJob } from "./glance";
+import { buildGlance, dashboardGreeting, glanceChips, glanceSummary, isChaseJob, type GlanceJob } from "./glance";
 
 function job(overrides: Partial<GlanceJob> & Pick<GlanceJob, "id" | "scheduledDate" | "status">): GlanceJob {
   return {
@@ -29,6 +29,9 @@ describe("dashboard glance", () => {
       "Redditch",
     ]);
     assert.deepEqual(glanceChips("", ""), []);
+    assert.equal(dashboardGreeting(18, "AK"), "Good evening, AK");
+    assert.equal(dashboardGreeting(9, "Sam Hart"), "Good morning, Sam Hart");
+    assert.equal(dashboardGreeting(14, "   "), "Good afternoon");
   });
 
   it("chases overdue sign-offs and stale enquiries, and does not invent quotes", () => {
@@ -51,6 +54,7 @@ describe("dashboard glance", () => {
       hour: 18,
       now: new Date("2026-10-04T17:00:00.000Z"),
       businessName: "AK Plastering",
+      ownerName: "AK",
       enquiryCount: 1,
       jobs: [
         job({
@@ -86,7 +90,7 @@ describe("dashboard glance", () => {
       ],
     });
 
-    assert.equal(glance.greeting, "Good evening");
+    assert.equal(glance.greeting, "Good evening, AK");
     assert.match(glance.eyebrow, /AK PLASTERING · SUNDAY 4 OCTOBER/);
     assert.equal(glance.summary, "1 booking today · 3 to chase · 1 job to book in");
     assert.equal(glance.chaseCount, 3);

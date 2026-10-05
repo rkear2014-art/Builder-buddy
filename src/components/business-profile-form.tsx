@@ -38,8 +38,11 @@ export function BusinessProfileForm({ initial }: { initial: BusinessProfile }) {
         />
       </label>
       <label className="field">
-        Tagline
-        <span>Optional. Shown under the name on the customer agreement.</span>
+        Subtitle
+        <span>
+          Optional. Shown under the business name at the top of the app. For example, Plastering &amp; rendering
+          specialists. It is also printed on the customer agreement.
+        </span>
         <input
           name="tagline"
           value={profile.tagline}
