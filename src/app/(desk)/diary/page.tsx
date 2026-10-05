@@ -2,8 +2,9 @@ import Link from "next/link";
 import type { CSSProperties } from "react";
 import { isIsoDate, londonToday } from "@/lib/dates";
 import { diaryFetchWindow, diaryHref, diaryView, shiftDiaryAnchor, toBookJobs } from "@/lib/diary";
-import { listDiaryBoard, requireUser } from "@/server/dal";
+import { listDiaryBoard, listPlaceableJobs, requireUser } from "@/server/dal";
 import {
+  DiaryDayOffer,
   DiaryLegend,
   DiaryList,
   DiaryMonth,
@@ -20,15 +21,17 @@ export const metadata = { title: "Diary" };
 export default async function DiaryPage({
   searchParams,
 }: {
-  searchParams: Promise<{ date?: string; view?: string; book?: string }>;
+  searchParams: Promise<{ date?: string; view?: string; book?: string; pick?: string }>;
 }) {
   const user = await requireUser();
   const params = await searchParams;
   const today = londonToday();
   const anchor = params.date && isIsoDate(params.date) ? params.date : today;
   const view = diaryView(params.view);
+  const pick = params.pick && isIsoDate(params.pick) ? params.pick : null;
   const window = diaryFetchWindow(anchor, today);
   const bookings = await listDiaryBoard(user.businessId, window.from, window.to);
+  const placeable = pick ? await listPlaceableJobs(user.businessId) : [];
   const waiting = toBookJobs(bookings);
   const selected = waiting.find((job) => job.id === params.book) ?? null;
   const title = diaryTitle(view, anchor);
@@ -82,7 +85,9 @@ export default async function DiaryPage({
         <DiaryLegend />
       </div>
 
-      {selected ? <p className="text-lg font-extrabold">Tap a day to book {selected.customerName}.</p> : null}
+      {selected ? <p className="text-lg font-extrabold">Tap Book on a day to book {selected.customerName}.</p> : null}
+      {pick ? <DiaryDayOffer date={pick} jobs={placeable} view={view} /> : null}
+      <DiaryToBook jobs={waiting} selectedId={selected?.id ?? null} view={view} anchor={anchor} />
 
       {view === "month" ? (
         <DiaryMonth anchor={anchor} today={today} bookings={bookings} bookJob={selected} view={view} />
@@ -92,7 +97,6 @@ export default async function DiaryPage({
       ) : null}
       {view === "list" ? <DiaryList anchor={anchor} bookings={bookings} bookJob={selected} view={view} /> : null}
 
-      <DiaryToBook jobs={waiting} selectedId={selected?.id ?? null} view={view} anchor={anchor} />
       <DiaryUpcoming bookings={bookings} today={today} />
     </div>
   );

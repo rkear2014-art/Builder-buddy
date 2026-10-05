@@ -113,6 +113,9 @@ export default async function JobPage({ params }: { params: Promise<{ id: string
           {[tradeBit, formatIsoDate(job.scheduledDate, "long"), slotLabel(job.timeSlot)].filter(Boolean).join(" · ")}
         </p>
         <div className="flex flex-wrap gap-2">
+          <Link href={`/jobs/${job.id}/book`} className="btn btn-primary min-h-[4.5rem] w-full text-xl">
+            Book in on diary
+          </Link>
           <Link href={`/jobs/${job.id}/choose`} className="btn" style={{ background: accent, color: accentInk }}>
             Choose a job / add materials
           </Link>

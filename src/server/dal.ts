@@ -15,7 +15,7 @@ import { HERO_VISIT_COOKIE, pickRotatingHero } from "@/lib/heroes";
 import { isConfigured } from "@/lib/config";
 import type { JobStatus } from "@/lib/constants";
 import { addDays, isoToUtcDate, londonHour, londonToday, utcDateToIso, weekDates } from "@/lib/dates";
-import { MAX_SPAN_DAYS, normaliseBookingKind, shortJobSummary, type DiaryBooking } from "@/lib/diary";
+import { DIARY_OPEN_STATUSES, MAX_SPAN_DAYS, normaliseBookingKind, shortJobSummary, type DiaryBooking } from "@/lib/diary";
 import { postcodeFromAddress } from "@/lib/place";
 import type { DeskJob, JobSummary, MaterialTemplateView, SavedItem, SessionUser } from "@/lib/desk";
 import { buildGlance, glanceChips, type GlanceJob, type GlancePage } from "@/lib/glance";
@@ -482,6 +482,51 @@ export async function getDiaryJobs(businessId: string, fromIso: string, toIso: s
   return jobs.map(mapSummary);
 }
 
+const diaryBookingSelect = {
+  id: true,
+  customerName: true,
+  address: true,
+  postcode: true,
+  description: true,
+  status: true,
+  scheduledDate: true,
+  bookingKind: true,
+  spanDays: true,
+  onDiary: true,
+  assignedName: true,
+  user: { select: { name: true } },
+} as const;
+
+function toDiaryBooking(job: {
+  id: string;
+  customerName: string;
+  address: string;
+  postcode: string;
+  description: string;
+  status: JobStatus;
+  scheduledDate: Date;
+  bookingKind: string;
+  spanDays: number;
+  onDiary: boolean;
+  assignedName: string;
+  user: { name: string };
+}): DiaryBooking {
+  const spanDays = job.spanDays >= 1 && job.spanDays <= MAX_SPAN_DAYS ? job.spanDays : 1;
+  const bookingKind = normaliseBookingKind(job.bookingKind);
+  return {
+    id: job.id,
+    customerName: job.customerName,
+    postcode: job.postcode.trim() || postcodeFromAddress(job.address),
+    summary: shortJobSummary(job.description, bookingKind),
+    status: job.status,
+    assignedName: job.assignedName.trim() || job.user.name,
+    bookingKind,
+    spanDays,
+    startDate: utcDateToIso(job.scheduledDate),
+    onDiary: job.onDiary,
+  };
+}
+
 export async function listDiaryBoard(businessId: string, fromIso: string, toIso: string): Promise<DiaryBooking[]> {
   const jobs = await getPrisma().job.findMany({
     where: {
@@ -491,41 +536,23 @@ export async function listDiaryBoard(businessId: string, fromIso: string, toIso:
           onDiary: true,
           scheduledDate: { gte: isoToUtcDate(fromIso), lte: isoToUtcDate(toIso) },
         },
-        { onDiary: false, status: { in: ["BOOKED", "IN_PROGRESS"] } },
+        { onDiary: false, status: { in: [...DIARY_OPEN_STATUSES] } },
       ],
     },
-    select: {
-      id: true,
-      customerName: true,
-      address: true,
-      postcode: true,
-      description: true,
-      status: true,
-      scheduledDate: true,
-      bookingKind: true,
-      spanDays: true,
-      onDiary: true,
-      assignedName: true,
-      user: { select: { name: true } },
-    },
+    select: diaryBookingSelect,
     orderBy: [{ customerName: "asc" }],
   });
-  return jobs.map((job) => {
-    const spanDays = job.spanDays >= 1 && job.spanDays <= MAX_SPAN_DAYS ? job.spanDays : 1;
-    const bookingKind = normaliseBookingKind(job.bookingKind);
-    return {
-      id: job.id,
-      customerName: job.customerName,
-      postcode: job.postcode.trim() || postcodeFromAddress(job.address),
-      summary: shortJobSummary(job.description, bookingKind),
-      status: job.status,
-      assignedName: job.assignedName.trim() || job.user.name,
-      bookingKind,
-      spanDays,
-      startDate: utcDateToIso(job.scheduledDate),
-      onDiary: job.onDiary,
-    };
+  return jobs.map(toDiaryBooking);
+}
+
+/** Enquiry, booked and live jobs that can be put on a tapped day. */
+export async function listPlaceableJobs(businessId: string): Promise<DiaryBooking[]> {
+  const jobs = await getPrisma().job.findMany({
+    where: { ...tenantWhere(businessId), status: { in: [...DIARY_OPEN_STATUSES] } },
+    select: diaryBookingSelect,
+    orderBy: [{ onDiary: "asc" }, { customerName: "asc" }],
   });
+  return jobs.map(toDiaryBooking);
 }
 
 export async function listCataloguePhotos(
