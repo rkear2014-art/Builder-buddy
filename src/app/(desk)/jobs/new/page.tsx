@@ -20,9 +20,11 @@ export default async function NewJobPage({
   return (
     <div className="mx-auto grid max-w-2xl gap-4">
       <h1 className="font-display text-4xl">Book in a job</h1>
-      <p className="text-stone">Customer, the work, and when you are going.</p>
+      <p className="text-stone">
+        Customer, the work, and when you are going. After you save, the photo tiles open so you can choose the job.
+      </p>
       <div className="card">
-        <JobForm action={createJob} submitLabel="Save job" defaultDate={defaultDate} />
+        <JobForm action={createJob} submitLabel="Save and choose a job" defaultDate={defaultDate} />
       </div>
     </div>
   );

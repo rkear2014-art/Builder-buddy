@@ -94,6 +94,9 @@ export default async function JobPage({ params }: { params: Promise<{ id: string
           {[tradeBit, formatIsoDate(job.scheduledDate, "long"), slotLabel(job.timeSlot)].filter(Boolean).join(" · ")}
         </p>
         <div className="flex flex-wrap gap-2">
+          <Link href={`/jobs/${job.id}/choose`} className="btn" style={{ background: accent, color: accentInk }}>
+            Choose a job / add materials
+          </Link>
           <a className="btn btn-pine" href={telHref(job.phone)}>
             Call
           </a>
@@ -203,7 +206,7 @@ export default async function JobPage({ params }: { params: Promise<{ id: string
         <div className="grid gap-3 sm:grid-cols-2">
           <Link href={`/jobs/${job.id}/choose`} className="job-choice" style={{ color: accent, borderColor: accent }}>
             <span className="text-3xl leading-none">+</span>
-            Add materials
+            Choose a job / add materials
           </Link>
           {job.shareActive ? (
             <Link href={`/sign/${job.shareToken}`} className="job-choice job-choice-fill" style={{ background: accent, color: accentInk }}>

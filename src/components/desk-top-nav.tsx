@@ -51,7 +51,7 @@ export function DeskTopNav({
 
   return (
     <header className="sticky top-0 z-30 bg-[#17171a] text-white">
-      <div className="mx-auto flex max-w-6xl items-center gap-2 px-3 py-2.5 sm:gap-4">
+      <div className="mx-auto flex max-w-6xl items-center gap-2 px-3 py-2.5">
         <Link href="/" className="flex min-w-0 items-center gap-2">
           {logoSrc ? (
             // eslint-disable-next-line @next/next/no-img-element
@@ -69,19 +69,6 @@ export function DeskTopNav({
             {businessName.toUpperCase()}
           </span>
         </Link>
-        <nav className="hidden min-w-0 flex-1 items-center gap-0.5 overflow-x-auto sm:flex" aria-label="Main">
-          {links.map((link) => (
-            <NavLink
-              key={link.href}
-              link={link}
-              active={isActive(pathname, link.href)}
-              chaseCount={chaseCount}
-              accentColour={accentColour}
-              accentInk={accentInk}
-            />
-          ))}
-          <LogoutButton compact />
-        </nav>
         <div className="ml-auto flex shrink-0 items-center gap-2">
           <button
             type="button"
@@ -103,7 +90,7 @@ export function DeskTopNav({
           </Link>
         </div>
       </div>
-      <nav className="flex gap-1 overflow-x-auto px-3 pb-2 sm:hidden" aria-label="Main">
+      <nav className="mx-auto hidden max-w-6xl flex-wrap items-center gap-1 px-3 pb-2 sm:flex" aria-label="Main">
         {links.map((link) => (
           <NavLink
             key={link.href}
@@ -137,7 +124,8 @@ function NavLink({
     <Link
       href={link.href}
       aria-current={active ? "page" : undefined}
-      className={`inline-flex min-h-10 shrink-0 items-center gap-1.5 rounded-full px-2.5 text-sm font-bold sm:px-3 ${active ? "bg-white/10 text-white" : "text-white/70"}`}
+      className={`inline-flex min-h-10 items-center gap-1.5 rounded-full px-3 text-sm font-bold ${link.href === "/settings" ? "" : active ? "bg-white/10 text-white" : "text-white/70"}`}
+      style={link.href === "/settings" ? { background: accentColour, color: accentInk } : undefined}
     >
       {link.label}
       {link.chase && chaseCount > 0 ? (
