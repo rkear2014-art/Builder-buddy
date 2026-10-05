@@ -14,7 +14,7 @@ export function BookingKindFields({
   spanDays?: number;
   assignedName?: string;
   onDiary?: boolean;
-  dateChoice: "create" | "edit";
+  dateChoice: "create" | "edit" | "none";
 }) {
   const [kind, setKind] = useState(normaliseBookingKind(bookingKind));
   const [days, setDays] = useState(spanDays >= 1 && spanDays <= MAX_SPAN_DAYS ? spanDays : 1);
@@ -58,33 +58,25 @@ export function BookingKindFields({
           </button>
         </div>
       </div>
+      {dateChoice === "none" ? null : (
       <label className="field">
         Who is on the job
         <span>Optional. Leave blank to use your name.</span>
         <input name="assignedName" defaultValue={assignedName} autoComplete="name" placeholder="e.g. Sam" />
       </label>
-      {dateChoice === "create" ? (
-        <label className="flex items-start gap-3 font-bold">
-          <input type="checkbox" name="dateToBook" value="yes" className="mt-1 h-6 w-6" />
-          <span>
-            Won — date still to book
-            <span className="mt-1 block text-sm font-semibold text-stone">
-              It waits under To book. Tap it, then tap a day. The date above stays aside until then.
-            </span>
-          </span>
-        </label>
-      ) : (
+      )}
+      {dateChoice === "edit" ? (
         <label className="flex items-start gap-3 font-bold">
           <input type="hidden" name="onDiary" value="no" />
           <input type="checkbox" name="onDiary" value="yes" defaultChecked={onDiary} className="mt-1 h-6 w-6" />
           <span>
             On the diary
             <span className="mt-1 block text-sm font-semibold text-stone">
-              Untick a won job that still needs a day. It then shows under To book.
+              Leave this ticked so the date shows on the week. Untick only when the day is still to be chosen.
             </span>
           </span>
         </label>
-      )}
+      ) : null}
     </div>
   );
 }

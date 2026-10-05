@@ -25,7 +25,7 @@ export function DeskNav({ accentColour }: { accentColour: string }) {
   const pathname = usePathname();
 
   return (
-    <nav className="tab-nav no-print fixed inset-x-0 bottom-0 z-20 border-t border-line bg-card shadow-[0_-8px_24px_-18px_rgba(23,23,26,0.45)] lg:hidden" aria-label="Main">
+    <nav className="tab-nav no-print fixed inset-x-0 bottom-0 z-20 border-t border-line bg-card pb-[env(safe-area-inset-bottom)] shadow-[0_-8px_24px_-18px_rgba(23,23,26,0.45)] lg:hidden" aria-label="Main">
       <ul className="grid grid-cols-5">
         {items.map((item) => {
           const active = isActive(pathname, item.href);
@@ -34,7 +34,7 @@ export function DeskNav({ accentColour }: { accentColour: string }) {
               <Link
                 href={item.href}
                 aria-current={active ? "page" : undefined}
-                className={`flex flex-col items-center justify-center gap-0.5 px-1 text-center text-[0.72rem] font-extrabold sm:text-sm ${active ? "text-ink" : "text-stone"}`}
+                className={`flex min-h-[4.5rem] flex-col items-center justify-center gap-0.5 px-1 py-1.5 text-center text-[0.72rem] font-extrabold sm:text-sm ${active ? "text-ink" : "text-stone"}`}
               >
                 <span className="h-1 w-8 rounded-full" style={active ? { background: accentColour } : undefined} />
                 <span style={active ? { color: accentColour } : undefined}>

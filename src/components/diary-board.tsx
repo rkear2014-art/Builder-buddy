@@ -44,14 +44,16 @@ export function DiaryToBook({
         <div>
           <h2 className="text-xl font-extrabold">To book</h2>
           <p className="text-sm text-stone">
-            {selectedId ? "Tap a day to put this job on the diary." : "Won jobs with no date booked. Tap one, then tap a day."}
+            {selectedId
+              ? "Tap Book on a day to put this job on the diary."
+              : "Enquiry, booked and in-progress jobs with no day yet. Tap one, then tap Book on a day."}
           </p>
         </div>
         <span className="diary-count">{jobs.length}</span>
       </div>
       {jobs.length === 0 ? (
         <div className="mt-3">
-          <EmptyState compact>Nothing waiting. On Book in, tick “Won — date still to book”.</EmptyState>
+          <EmptyState compact>Nothing waiting. Tap an empty day, or open a job and tap Book in on diary.</EmptyState>
         </div>
       ) : (
         <div className="mt-3 grid gap-2">
@@ -93,10 +95,58 @@ function BookDayForm({
       <input type="hidden" name="jobId" value={jobId} />
       <input type="hidden" name="date" value={date} />
       <input type="hidden" name="view" value={view} />
-      <button type="submit" className="diary-book">
+      <button type="submit" className="diary-book no-print">
         {label}
       </button>
     </form>
+  );
+}
+
+function EmptyDayLink({ day, view }: { day: string; view: DiaryView }) {
+  return (
+    <Link href={diaryHref({ view, date: day, pick: day })} className="diary-book no-print">
+      Book a job
+    </Link>
+  );
+}
+
+export function DiaryDayOffer({
+  date,
+  jobs,
+  view,
+}: {
+  date: string;
+  jobs: DiaryBooking[];
+  view: DiaryView;
+}) {
+  return (
+    <section className="card grid gap-3" aria-label={`Book a job on ${formatIsoDate(date, "long")}`}>
+      <h2 className="font-display text-3xl leading-tight">Book a job on {formatIsoDate(date, "long")}</h2>
+      <p className="font-semibold">Tap a name to put that job on this day.</p>
+      {jobs.length === 0 ? (
+        <EmptyState compact>No open jobs yet.</EmptyState>
+      ) : (
+        <div className="grid gap-2">
+          {jobs.map((job) => {
+            const here = job.onDiary && job.startDate === date;
+            return (
+              <form key={job.id} action={placeDiaryJob}>
+                <input type="hidden" name="jobId" value={job.id} />
+                <input type="hidden" name="date" value={date} />
+                <input type="hidden" name="view" value={view} />
+                <button type="submit" className="btn btn-secondary min-h-16 w-full justify-between text-left">
+                  <span className="font-extrabold">{job.customerName}</span>
+                  <span>{here ? "On this day" : job.onDiary ? "Move here" : "Book here"}</span>
+                </button>
+              </form>
+            );
+          })}
+        </div>
+      )}
+      <Link href={`/jobs/new?date=${date}`} className="btn btn-primary min-h-16 w-full text-lg">
+        Book in a new job on this day
+      </Link>
+    </section>
   );
 }
 
@@ -121,6 +171,7 @@ export function DiaryWeek({
       {days.map((day) => {
         const cards = cardsForDate(bookings, day);
         const todayColumn = day === today;
+        const firstName = bookJob?.customerName.split(" ")[0];
         return (
           <section key={day} className={`diary-col ${todayColumn ? "diary-col-today" : ""}`}>
             <div className="diary-col-head">
@@ -129,7 +180,6 @@ export function DiaryWeek({
                 {todayColumn ? <span className="diary-today-pill">{formatDiaryDay(day)}</span> : <span className="text-sm font-extrabold">{formatDiaryDay(day)}</span>}
                 {todayColumn ? <span className="diary-today-tag">Today</span> : null}
               </div>
-              {bookJob ? <BookDayForm jobId={bookJob.id} date={day} view={view} label="Book" /> : null}
               {showDayPrint ? (
                 <Link href={`/diary/print?scope=day&date=${day}`} className="diary-print-link">
                   Print
@@ -141,6 +191,13 @@ export function DiaryWeek({
                 <DiaryCardView key={`${card.id}-${day}`} card={card} compact />
               ))}
             </div>
+            {showDayPrint ? (
+              bookJob ? (
+                <BookDayForm jobId={bookJob.id} date={day} view={view} label={firstName ? `Book ${firstName}` : "Book"} />
+              ) : (
+                <EmptyDayLink day={day} view={view} />
+              )
+            ) : null}
           </section>
         );
       })}
@@ -194,14 +251,15 @@ export function DiaryMonth({
                   <input type="hidden" name="jobId" value={bookJob.id} />
                   <input type="hidden" name="date" value={day} />
                   <input type="hidden" name="view" value={view} />
-                  <button type="submit" className="text-left">
+                  <button type="submit" className="min-h-16 text-left">
                     {body}
+                    <span className="mt-1 block text-xs font-extrabold">Book</span>
                   </button>
                 </form>
               );
             }
             return (
-              <Link key={day} href={diaryHref({ view: "week", date: day })} className={className}>
+              <Link key={day} href={diaryHref({ view: "week", date: day, pick: cards.length === 0 ? day : null })} className={className}>
                 {body}
               </Link>
             );
@@ -224,11 +282,9 @@ export function DiaryList({
   view: DiaryView;
 }) {
   const days = weekDates(anchor).map((date) => ({ date, cards: cardsForDate(bookings, date) }));
-  const filled = days.filter((day) => day.cards.length > 0 || bookJob);
-  if (filled.length === 0) return <p className="card">Nothing in this week.</p>;
   return (
     <div className="grid gap-4">
-      {filled.map((day) => (
+      {days.map((day) => (
         <section key={day.date} className="grid gap-2">
           <div className="flex items-center justify-between gap-2">
             <h2 className="font-display text-2xl">{formatIsoDate(day.date, "long")}</h2>
@@ -236,7 +292,11 @@ export function DiaryList({
               Print
             </Link>
           </div>
-          {bookJob ? <BookDayForm jobId={bookJob.id} date={day.date} view={view} label={`Book ${bookJob.customerName.split(" ")[0]}`} /> : null}
+          {bookJob ? (
+            <BookDayForm jobId={bookJob.id} date={day.date} view={view} label={`Book ${bookJob.customerName.split(" ")[0]}`} />
+          ) : (
+            <EmptyDayLink day={day.date} view={view} />
+          )}
           {day.cards.length === 0 ? <p className="text-sm font-semibold text-stone">Nothing else this day.</p> : null}
           {day.cards.map((card) => (
             <DiaryCardView key={`${card.id}-${day.date}`} card={card} />

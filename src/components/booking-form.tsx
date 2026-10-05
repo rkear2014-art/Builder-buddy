@@ -134,7 +134,8 @@ export function BookingForm({
       <BookingKindFields dateChoice="create" />
       <div className="grid gap-4 sm:grid-cols-2">
         <label className="field">
-          Date
+          Diary date
+          <span>This is the day it shows on the diary.</span>
           <input name="scheduledDate" type="date" required defaultValue={defaultDate} />
         </label>
         <label className="field">
@@ -148,6 +149,15 @@ export function BookingForm({
           </select>
         </label>
       </div>
+      <label className="flex items-start gap-3 font-bold">
+        <input type="checkbox" name="dateToBook" value="yes" className="mt-1 h-6 w-6" />
+        <span>
+          Not on the diary yet
+          <span className="mt-1 block text-sm font-semibold text-stone">
+            Leave this unticked. The date above is the day on the diary. Tick it only when you still need to choose the day.
+          </span>
+        </span>
+      </label>
       <SubmitButton>Save and choose a job</SubmitButton>
     </InlineForm>
   );

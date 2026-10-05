@@ -143,14 +143,24 @@ function DeskShortcuts({ data }: { data: GlancePage }) {
   const weekJobs = data.week.rows.slice(0, 4);
   return (
     <section className="grid gap-3" aria-label="Shortcuts">
-      <Link
-        href="/choose"
-        className="grid min-h-24 place-items-center rounded-3xl px-4 py-5 text-center shadow-sm"
-        style={{ background: accent, color: data.accentInk }}
-      >
-        <span className="font-display text-4xl leading-none">Choose a job</span>
-        <span className="mt-2 text-sm font-bold">Open the photo tiles for this week’s work</span>
-      </Link>
+      <div className="grid gap-3 sm:grid-cols-2">
+        <Link
+          href="/jobs/new"
+          className="grid min-h-24 place-items-center rounded-3xl px-4 py-5 text-center shadow-sm"
+          style={{ background: accent, color: data.accentInk }}
+        >
+          <span className="font-display text-4xl leading-none">New job</span>
+          <span className="mt-2 text-sm font-bold">Book in a job or a quote visit, with a date</span>
+        </Link>
+        <Link
+          href="/choose"
+          className="grid min-h-24 place-items-center rounded-3xl px-4 py-5 text-center shadow-sm"
+          style={{ background: accent, color: data.accentInk }}
+        >
+          <span className="font-display text-4xl leading-none">Choose a job</span>
+          <span className="mt-2 text-sm font-bold">Open the photo tiles for this week’s work</span>
+        </Link>
+      </div>
       {weekJobs.length > 0 ? (
         <ul className="grid gap-2 sm:grid-cols-2">
           {weekJobs.map((job) => (

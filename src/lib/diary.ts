@@ -94,8 +94,11 @@ export function cardsForDate(bookings: DiaryBooking[], date: string): DiaryCard[
   return cards.sort((a, b) => a.customerName.localeCompare(b.customerName, "en-GB"));
 }
 
+/** Jobs that can still be put on a day. Finished work stays off the waiting list. */
+export const DIARY_OPEN_STATUSES = ["ENQUIRY", "BOOKED", "IN_PROGRESS"] as const;
+
 export function isToBook(booking: Pick<DiaryBooking, "onDiary" | "status">): boolean {
-  return !booking.onDiary && (booking.status === "BOOKED" || booking.status === "IN_PROGRESS");
+  return !booking.onDiary && (DIARY_OPEN_STATUSES as readonly string[]).includes(booking.status);
 }
 
 export function toBookJobs(bookings: DiaryBooking[]): DiaryBooking[] {
@@ -152,12 +155,35 @@ export function formatDiaryRange(start: string, end: string): string {
   return `${startDay} ${startMonthName} ${startYear} – ${endDay} ${endMonthName} ${endYear}`;
 }
 
-export function diaryHref(input: { view?: string; date: string; book?: string | null }): string {
+export function diaryHref(input: { view?: string; date: string; book?: string | null; pick?: string | null }): string {
   const params = new URLSearchParams();
   params.set("view", diaryView(input.view));
   params.set("date", input.date);
   if (input.book) params.set("book", input.book);
+  if (input.pick && isIsoDate(input.pick)) params.set("pick", input.pick);
   return `/diary?${params.toString()}`;
+}
+
+export type DiaryPlaceInput = {
+  scheduledDate: string;
+  spanDays: number;
+  bookingKind: BookingKind;
+};
+
+/** Date, days on site, and Job or Quote visit from the book-in form. */
+export function parseDiaryPlace(formData: FormData): { ok: true; data: DiaryPlaceInput } | { ok: false; error: string } {
+  const scheduledDate = String(formData.get("scheduledDate") ?? "").trim();
+  if (!isIsoDate(scheduledDate)) return { ok: false, error: "Choose a date." };
+  const span = parseSpanDays(String(formData.get("spanDays") ?? ""));
+  if (!span.ok) return span;
+  return {
+    ok: true,
+    data: {
+      scheduledDate,
+      spanDays: span.days,
+      bookingKind: normaliseBookingKind(String(formData.get("bookingKind") ?? "job")),
+    },
+  };
 }
 
 export function diaryFetchWindow(anchor: string, today: string): { from: string; to: string } {

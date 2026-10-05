@@ -448,6 +448,14 @@ summary.btn::-webkit-details-marker {
     display: none !important;
   }
 
+  .diary-week {
+    grid-template-columns: repeat(7, minmax(0, 1fr)) !important;
+  }
+
+  .diary-book {
+    display: none !important;
+  }
+
   #content {
     padding-bottom: 0 !important;
     background: white;
@@ -652,8 +660,7 @@ summary.btn::-webkit-details-marker {
   color: var(--diary-accent, #dd1f29);
 }
 
-.diary-print-link,
-.diary-book {
+.diary-print-link {
   font-size: 0.75rem;
   font-weight: 800;
   color: #5d6772;
@@ -661,14 +668,30 @@ summary.btn::-webkit-details-marker {
 
 .diary-book {
   display: flex;
-  min-height: 2.5rem;
+  min-height: 3.25rem;
   width: 100%;
   align-items: center;
   justify-content: center;
-  border-radius: 0.7rem;
-  border: 2px solid var(--diary-accent, #1c1915);
-  background: white;
-  color: var(--color-ink);
+  border-radius: 0.85rem;
+  border: 0;
+  background: var(--diary-accent, var(--brand, #1c1915));
+  padding: 0.45rem 0.7rem;
+  color: var(--diary-ink, #fff);
+  font-size: 1rem;
+  font-weight: 800;
+  text-align: center;
+}
+
+@media (max-width: 1023px) {
+  .diary-week {
+    grid-template-columns: 1fr;
+  }
+
+  .diary-col {
+    border-right: 0;
+    border-bottom: 1px solid #e8edf2;
+    padding: 0.85rem;
+  }
 }
 
 .diary-kicker {

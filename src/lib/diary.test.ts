@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import {
   cardsForDate,
+  parseDiaryPlace,
   dayNumberOn,
   dayProgressLabel,
   diaryFetchWindow,
@@ -56,7 +57,7 @@ describe("diary bookings", () => {
     );
   });
 
-  it("lists won jobs with no date, and leaves enquiries off that list", () => {
+  it("lists enquiry, booked and in-progress jobs that still need a day", () => {
     const jobs = [
       booking({ id: "won", onDiary: false, status: "BOOKED", customerName: "Tom Ellis" }),
       booking({ id: "live", onDiary: false, status: "IN_PROGRESS", customerName: "Priya Shah" }),
@@ -67,7 +68,7 @@ describe("diary bookings", () => {
     assert.equal(isToBook(jobs[0]), true);
     assert.deepEqual(
       toBookJobs(jobs).map((job) => job.customerName),
-      ["Priya Shah", "Tom Ellis"],
+      ["Chidi Okonkwo", "Priya Shah", "Tom Ellis"],
     );
   });
 
@@ -91,6 +92,10 @@ describe("diary bookings", () => {
     assert.equal(shiftDiaryAnchor("week", "2026-10-05", 1), "2026-10-12");
     assert.equal(shiftDiaryAnchor("month", "2026-10-31", 1), "2026-11-30");
     assert.equal(diaryHref({ view: "week", date: "2026-10-05", book: "abc" }), "/diary?view=week&date=2026-10-05&book=abc");
+    assert.equal(
+      diaryHref({ view: "week", date: "2026-10-07", pick: "2026-10-07" }),
+      "/diary?view=week&date=2026-10-07&pick=2026-10-07",
+    );
   });
 
   it("looks far enough back to catch a job that started before the week", () => {
@@ -106,5 +111,20 @@ describe("diary bookings", () => {
     assert.equal(parseSpanDays("32").ok, false);
     assert.equal(shortJobSummary("", "quote"), "Quote visit");
     assert.equal(shortJobSummary("Skim the lounge.", "job"), "Skim the lounge.");
+  });
+
+  it("reads a diary date, the days, and a quote visit", () => {
+    const form = new FormData();
+    form.set("scheduledDate", "2026-10-07");
+    form.set("spanDays", "2");
+    form.set("bookingKind", "quote");
+    const parsed = parseDiaryPlace(form);
+    assert.equal(parsed.ok, true);
+    if (!parsed.ok) return;
+    assert.equal(parsed.data.scheduledDate, "2026-10-07");
+    assert.equal(parsed.data.spanDays, 2);
+    assert.equal(parsed.data.bookingKind, "quote");
+    form.set("scheduledDate", "");
+    assert.equal(parseDiaryPlace(form).ok, false);
   });
 });
