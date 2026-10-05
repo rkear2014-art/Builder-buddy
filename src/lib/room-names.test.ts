@@ -6,7 +6,9 @@ import type { RoomInput } from "./measure";
 import {
   ROOM_NAME_OPTIONS,
   ROOM_NAME_OTHER,
+  WALL_NAME_OPTIONS,
   applyRoomNamePick,
+  isExteriorMeasure,
   isPresetRoomName,
   roomPickerOptions,
   roomPickerValue,
@@ -92,5 +94,28 @@ describe("room name picker", () => {
     });
     assert.match(text, /Kitchen diner/);
     assert.match(text, /Playroom/);
+  });
+
+  it("lists exterior walls for rendering and keeps indoor rooms for plastering", () => {
+    assert.deepEqual(WALL_NAME_OPTIONS, [
+      "Front elevation",
+      "Rear elevation",
+      "Left side elevation",
+      "Right side elevation",
+      "Gable end",
+      "Garden wall",
+      "Garage wall",
+      "Extension wall",
+      "Chimney",
+    ]);
+    assert.equal(roomPickerOptions("Front elevation", WALL_NAME_OPTIONS).at(-1), ROOM_NAME_OTHER);
+    assert.equal(roomPickerOptions("Bay", WALL_NAME_OPTIONS)[0], "Bay");
+    assert.deepEqual(applyRoomNamePick("Front elevation", "Gable end", WALL_NAME_OPTIONS), { name: "Gable end", typing: false });
+    assert.deepEqual(applyRoomNamePick("Front elevation", ROOM_NAME_OTHER, WALL_NAME_OPTIONS), { name: "", typing: true });
+    assert.deepEqual(applyRoomNamePick("Bay", ROOM_NAME_OTHER, WALL_NAME_OPTIONS), { name: "Bay", typing: true });
+    assert.equal(isExteriorMeasure("plaster-render", "Rendering"), true);
+    assert.equal(isExteriorMeasure("template:1", "Rendering the gable"), true);
+    assert.equal(isExteriorMeasure("plaster-skim", "Skim a room"), false);
+    assert.equal(isExteriorMeasure("plaster-stud-wall", "Stud wall partitioning"), false);
   });
 });

@@ -35,6 +35,7 @@ export async function signAgreement(_state: ActionState, formData: FormData): Pr
     where: { shareToken: token },
     include: {
       materials: { orderBy: { sortOrder: "asc" } },
+      sections: { orderBy: { sortOrder: "asc" }, include: { materials: { orderBy: { sortOrder: "asc" } } } },
       signOff: true,
       business: { select: { name: true, address: true, phone: true, terms: true, vatRegistered: true, vatRatePercent: true } },
     },
@@ -70,6 +71,17 @@ export async function signAgreement(_state: ActionState, formData: FormData): Pr
         unit: material.unit,
         unitPricePence: material.unitPricePence,
         costPricePence: material.costPricePence,
+      })),
+      sections: job.sections.map((section) => ({
+        title: section.title,
+        typeKey: section.typeKey,
+        fixedPricePence: section.fixedPricePence,
+        materials: section.materials.map((material) => ({
+          name: material.name,
+          quantity: material.quantity.toString(),
+          unit: material.unit,
+          unitPricePence: material.unitPricePence,
+        })),
       })),
     },
     { signerName: signer.data.signerName, signedAt, termsText },

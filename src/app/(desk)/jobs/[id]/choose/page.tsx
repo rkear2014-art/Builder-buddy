@@ -4,6 +4,7 @@ import type { CSSProperties } from "react";
 import { deskCatalogueSrc, deskHeroSrc } from "@/lib/branding";
 import { catalogueGroupsFor, defaultTileSource, fittingHeroId } from "@/lib/catalogue";
 import { isEnabledTrade } from "@/lib/constants";
+import { isExteriorMeasure } from "@/lib/room-names";
 import { findStarterTemplate, isRetiredTemplateName } from "@/lib/trade-starters";
 import { addJobMaterial, addSavedMaterialToJob, applyTemplate } from "@/server/actions/materials";
 import { applyStarterToJob } from "@/server/actions/starters";
@@ -21,8 +22,16 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
   return { title: job ? `New item · ${job.customerName}` : "New item" };
 }
 
-export default async function ChooseItemPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function ChooseItemPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ section?: string }>;
+}) {
   const { id } = await params;
+  const query = await searchParams;
+  const sectionId = query.section ?? "";
   const user = await requireUser();
   const job = await getJob(user.businessId, id);
   if (!job) notFound();
@@ -92,11 +101,12 @@ export default async function ChooseItemPage({ params }: { params: Promise<{ id:
                   <div className="grid gap-2 p-4">
                     <h3 className="font-display text-2xl leading-tight">{starter.name}</h3>
                     <p className="text-sm text-stone">{starter.description}</p>
-                    <Link href={`/jobs/${job.id}/measure?starter=${starter.id}`} className="btn text-center" style={{ background: accent, color: user.branding.accentInk }}>
-                      Measure the room
+                    <Link href={`/jobs/${job.id}/measure?starter=${starter.id}${sectionId ? `&section=${sectionId}` : ""}`} className="btn text-center" style={{ background: accent, color: user.branding.accentInk }}>
+                      {isExteriorMeasure(starter.id, starter.name) ? "Measure the wall" : "Measure the room"}
                     </Link>
                     <form action={applyStarterToJob}>
                       <input type="hidden" name="jobId" value={job.id} />
+                      <input type="hidden" name="sectionId" value={sectionId} />
                       <input type="hidden" name="starterId" value={starter.id} />
                       <button className="font-bold text-stone" type="submit">
                         Add the list without measuring
@@ -130,11 +140,12 @@ export default async function ChooseItemPage({ params }: { params: Promise<{ id:
                     <p className="text-sm text-stone">
                       Your saved list · {template.items.length} {template.items.length === 1 ? "item" : "items"}
                     </p>
-                    <Link href={`/jobs/${job.id}/measure?template=${template.id}`} className="btn text-center" style={{ background: accent, color: user.branding.accentInk }}>
-                      Measure the room
+                    <Link href={`/jobs/${job.id}/measure?template=${template.id}${sectionId ? `&section=${sectionId}` : ""}`} className="btn text-center" style={{ background: accent, color: user.branding.accentInk }}>
+                      {isExteriorMeasure(`template:${template.id}`, template.name) ? "Measure the wall" : "Measure the room"}
                     </Link>
                     <form action={applyTemplate}>
                       <input type="hidden" name="jobId" value={job.id} />
+                      <input type="hidden" name="sectionId" value={sectionId} />
                       <input type="hidden" name="templateId" value={template.id} />
                       <button className="font-bold text-stone" type="submit">
                         Add the list without measuring
@@ -161,6 +172,7 @@ export default async function ChooseItemPage({ params }: { params: Promise<{ id:
             </select>
           </label>
           <input type="hidden" name="jobId" value={job.id} />
+          <input type="hidden" name="sectionId" value={sectionId} />
           <SubmitButton variant="secondary">Add saved item</SubmitButton>
         </form>
       ) : null}
@@ -169,6 +181,7 @@ export default async function ChooseItemPage({ params }: { params: Promise<{ id:
         <h2 className="font-display text-2xl">One item</h2>
         <InlineForm action={addJobMaterial} className="mt-3 grid gap-3">
           <input type="hidden" name="jobId" value={job.id} />
+          <input type="hidden" name="sectionId" value={sectionId} />
           <label className="field">
             Name
             <input name="name" required placeholder="Thistle MultiFinish plaster" />

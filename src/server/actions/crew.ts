@@ -7,6 +7,7 @@ import { tenantWhere } from "@/lib/tenancy";
 import { measuredAreaM2, writeCrewDefaults } from "@/server/crew-store";
 import { requireUser } from "@/server/dal";
 import { getPrisma } from "@/server/prisma";
+import { sectionForWrite } from "@/server/quote-section";
 import { noteQuoteMade } from "@/server/quote-progress";
 import { revalidateDesk } from "@/server/revalidate";
 
@@ -28,16 +29,19 @@ export async function saveJobCrew(_state: ActionState, formData: FormData): Prom
     select: { id: true, shareToken: true },
   });
   if (!job) redirect("/jobs");
-  const totalM2 = await measuredAreaM2(user.businessId, job.id);
+  const section = await sectionForWrite(user.businessId, job.id, String(formData.get("sectionId") ?? ""));
+  const totalM2 = await measuredAreaM2(user.businessId, job.id, section.id);
   const priced = priceCrew({ ...parsed.crew, totalM2 });
   const labour = priced.customerLine;
+  const dayCount = parsed.crew.days == null ? null : parsed.crew.days.toFixed(2);
   await getPrisma().$transaction(async (tx) => {
     for (const role of parsed.crew.roles) {
       await tx.jobCrew.upsert({
-        where: { jobId_role: { jobId: job.id, role: role.role } },
+        where: { sectionId_role: { sectionId: section.id, role: role.role } },
         create: {
           businessId: user.businessId,
           jobId: job.id,
+          sectionId: section.id,
           role: role.role,
           count: role.count,
           basis: role.basis,
@@ -46,14 +50,12 @@ export async function saveJobCrew(_state: ActionState, formData: FormData): Prom
         update: { count: role.count, basis: role.basis, ratePence: role.ratePence },
       });
     }
-    await tx.job.update({
-      where: { id: job.id },
-      data: { dayCount: parsed.crew.days == null ? null : parsed.crew.days.toFixed(2) },
-    });
+    await tx.jobSection.update({ where: { id: section.id }, data: { dayCount } });
+    await tx.job.update({ where: { id: job.id }, data: { dayCount } });
     if (labour) {
       await tx.jobMaterial.deleteMany({
         where: {
-          jobId: job.id,
+          sectionId: section.id,
           ...tenantWhere(user.businessId),
           fromMeasure: true,
           name: { in: ["Labour", "Labour, day rate"] },
@@ -68,6 +70,7 @@ export async function saveJobCrew(_state: ActionState, formData: FormData): Prom
         data: {
           businessId: user.businessId,
           jobId: job.id,
+          sectionId: section.id,
           name: labour.name,
           quantity: labour.quantity,
           unit: labour.unit,
@@ -81,5 +84,5 @@ export async function saveJobCrew(_state: ActionState, formData: FormData): Prom
   });
   await noteQuoteMade(job.id);
   revalidateDesk(job.id, job.shareToken);
-  redirect(`/jobs/${job.id}#crew`);
+  redirect(`/jobs/${job.id}#quote-jobs`);
 }

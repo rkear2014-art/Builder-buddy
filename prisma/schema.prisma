@@ -102,6 +102,7 @@ model Business {
   crewRates  CrewRate[]
   jobCrew    JobCrew[]
   roomMeasures RoomMeasure[]
+  jobSections JobSection[]
 }
 
 /// A picture for one chooser tile. catalogueKey is a built-in list id or a saved template id.
@@ -216,6 +217,7 @@ model Job {
   photos        JobPhoto[]
   rooms         RoomMeasure[]
   crew          JobCrew[]
+  sections      JobSection[]
 
   @@unique([businessId, quoteNumber])
   @@index([userId, scheduledDate])
@@ -236,9 +238,12 @@ model JobMaterial {
   bought         Boolean @default(false)
   fromMeasure    Boolean @default(false)
   sortOrder      Int     @default(0)
+  sectionId      String
+  section        JobSection @relation(fields: [sectionId], references: [id], onDelete: Cascade)
 
   @@index([jobId])
   @@index([businessId])
+  @@index([sectionId])
 }
 
 model Invoice {
@@ -393,21 +398,47 @@ model CrewRate {
   @@index([businessId])
 }
 
-/// People on one job. Their pay is added together on the Labour line.
+/// People on one job section. Their pay is added together on the Labour line.
 model JobCrew {
   id         String   @id @default(cuid())
   businessId String
   business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
   jobId      String
   job        Job      @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  sectionId  String
+  section    JobSection @relation(fields: [sectionId], references: [id], onDelete: Cascade)
   role       String
   count      Int      @default(0)
   basis      String   @default("day")
   ratePence  Int?
 
-  @@unique([jobId, role])
+  @@unique([sectionId, role])
   @@index([businessId])
   @@index([jobId])
+  @@index([sectionId])
+}
+
+/// One piece of work on a quote, such as skimming a lounge or rendering a wall.
+model JobSection {
+  id              String   @id @default(cuid())
+  businessId      String
+  business        Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  jobId           String
+  job             Job      @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  sortOrder       Int      @default(0)
+  title           String   @default("")
+  typeKey         String   @default("")
+  /// Price for this job before VAT. Null uses its materials and labour.
+  fixedPricePence Int?
+  dayCount        Decimal? @db.Decimal(6, 2)
+  /// Calculator choices for this job, so reopening the measure does not use another job's list.
+  measureSelection String   @default("")
+  materials       JobMaterial[]
+  rooms           RoomMeasure[]
+  crew            JobCrew[]
+
+  @@index([businessId])
+  @@index([jobId, sortOrder])
 }
 
 /// Labour £ per m² for one job type. Blank stays null. jobTypeKey is a starter id or template:id.
@@ -444,7 +475,10 @@ model RoomMeasure {
   externalCorners Int     @default(0)
   stopBeadM      Decimal  @default(0) @db.Decimal(8, 2)
   sortOrder      Int      @default(0)
+  sectionId      String
+  section        JobSection @relation(fields: [sectionId], references: [id], onDelete: Cascade)
 
   @@index([jobId])
   @@index([businessId])
+  @@index([sectionId])
 }

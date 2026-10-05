@@ -77,17 +77,20 @@ describe("business isolation", () => {
             shareToken: token,
             quoteNumber: 1,
             validUntil: new Date("2026-11-03T00:00:00.000Z"),
-            materials: {
-              create: [
-                {
-                  businessId: businessB.id,
-                  name: "Secret pipe",
-                  quantity: "1",
-                  unit: "each",
-                  sortOrder: 0,
-                },
-              ],
-            },
+          },
+        });
+        const section = await tx.jobSection.create({
+          data: { businessId: businessB.id, jobId: job.id, title: "Plumbing", sortOrder: 0 },
+        });
+        await tx.jobMaterial.create({
+          data: {
+            businessId: businessB.id,
+            jobId: job.id,
+            sectionId: section.id,
+            name: "Secret pipe",
+            quantity: "1",
+            unit: "each",
+            sortOrder: 0,
           },
         });
         await tx.signOff.create({

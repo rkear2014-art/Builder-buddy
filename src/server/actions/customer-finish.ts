@@ -4,11 +4,11 @@ import { redirect } from "next/navigation";
 import { createShareToken } from "@/lib/access";
 import { parseBusinessExtras } from "@/lib/business-extras";
 import { documentEmail } from "@/lib/branded-email";
-import { customerQuoteSections, quoteBreakdownText, roomInputFromStored } from "@/lib/quote-breakdown";
+import { customerQuoteSections, quoteBreakdownText, quoteJobsBreakdownText, roomInputFromStored } from "@/lib/quote-breakdown";
+import { areasLabelFor, invoiceLinesForSections, sectionSubtotalPence, sectionTitle } from "@/lib/quote-sections";
 import { canEditBusiness } from "@/lib/branding";
-import { isInternalCrewName } from "@/lib/crew";
-import { customerSubtotalPence, hidesMaterialLines, scopeLine } from "@/lib/customer-price";
-import { materialsTotals } from "@/lib/materials";
+import { hidesMaterialLines } from "@/lib/customer-price";
+import { formatPence } from "@/lib/money";
 import { stageAfterSent } from "@/lib/quote-stage";
 import { addDays, isIsoDate, isoToUtcDate, londonToday } from "@/lib/dates";
 import type { ActionState } from "@/lib/form-state";
@@ -69,40 +69,46 @@ export async function raiseInvoice(_state: ActionState, formData: FormData): Pro
     where: { id: jobId, ...tenantWhere(user.businessId) },
     include: {
       materials: { orderBy: { sortOrder: "asc" } },
+      sections: { orderBy: { sortOrder: "asc" }, include: { materials: { orderBy: { sortOrder: "asc" } } } },
       business: { select: { invoiceDueDays: true, vatRegistered: true, vatRatePercent: true } },
     },
   });
   if (!job) return { error: "That job could not be found." };
   const today = londonToday();
   const deposit = depositTaken && job.depositPence && job.depositPence > 0 ? job.depositPence : null;
-  const customerMaterials = job.materials.filter((material) => !isInternalCrewName(material.name));
   const hideLines = hidesMaterialLines({ totalOnly: job.totalOnly, fixedPricePence: job.fixedPricePence });
-  const pricedSubtotal = customerSubtotalPence({
-    materialsTotalPence: materialsTotals(
-      customerMaterials.map((material) => ({
-        quantity: material.quantity.toString(),
-        unitPricePence: material.unitPricePence,
-      })),
-    ).totalPence,
+  const sections =
+    job.sections.length > 0
+      ? job.sections.map((section) => ({
+          title: section.title,
+          typeKey: section.typeKey,
+          fixedPricePence: section.fixedPricePence,
+          materials: section.materials.map((material) => ({
+            name: material.name,
+            quantity: material.quantity.toString(),
+            unit: material.unit,
+            unitPricePence: material.unitPricePence,
+          })),
+        }))
+      : [
+          {
+            title: "",
+            typeKey: "",
+            fixedPricePence: null,
+            materials: job.materials.map((material) => ({
+              name: material.name,
+              quantity: material.quantity.toString(),
+              unit: material.unit,
+              unitPricePence: material.unitPricePence,
+            })),
+          },
+        ];
+  const invoiceLines = invoiceLinesForSections({
+    trade: job.trade,
+    sections,
     fixedPricePence: job.fixedPricePence,
+    totalOnly: job.totalOnly,
   });
-  const invoiceLines = hideLines
-    ? [
-        {
-          name: scopeLine(job.trade),
-          quantity: "1",
-          unit: "job",
-          unitPricePence: pricedSubtotal,
-          sortOrder: 0,
-        },
-      ]
-    : customerMaterials.map((material, index) => ({
-        name: material.name,
-        quantity: material.quantity,
-        unit: material.unit,
-        unitPricePence: material.unitPricePence,
-        sortOrder: index,
-      }));
   const invoice = await getPrisma().$transaction(async (tx) => {
     const allocated = await tx.business.update({
       where: { id: user.businessId },
@@ -366,21 +372,64 @@ export async function sendBrandedMessage(_state: ActionState, formData: FormData
         fixedPricePence: true,
         materials: { orderBy: { sortOrder: "asc" }, select: { name: true, quantity: true, unit: true } },
         rooms: { orderBy: { sortOrder: "asc" } },
+        sections: {
+          orderBy: { sortOrder: "asc" },
+          include: {
+            materials: { orderBy: { sortOrder: "asc" }, select: { name: true, quantity: true, unit: true, unitPricePence: true } },
+            rooms: { orderBy: { sortOrder: "asc" } },
+          },
+        },
       },
     });
     if (quoted) {
-      const detail = quoteBreakdownText(
-        customerQuoteSections({
-          show: user.branding.showQuoteRooms,
-          wholeJob: hidesMaterialLines({ totalOnly: quoted.totalOnly, fixedPricePence: quoted.fixedPricePence }),
-          rooms: quoted.rooms.map(roomInputFromStored),
-          materials: quoted.materials.map((line) => ({
-            name: line.name,
-            quantity: line.quantity.toString(),
-            unit: line.unit,
-          })),
-        }),
-      );
+      const wholeJob = hidesMaterialLines({ totalOnly: quoted.totalOnly, fixedPricePence: quoted.fixedPricePence });
+      const detail =
+        quoted.sections.length > 1
+          ? quoteJobsBreakdownText(
+              quoted.sections.map((section) => {
+                const areasLabel = areasLabelFor(section.typeKey, section.title);
+                const scope = customerQuoteSections({
+                  show: user.branding.showQuoteRooms,
+                  wholeJob,
+                  areasLabel,
+                  rooms: section.rooms.map(roomInputFromStored),
+                  materials: section.materials.map((line) => ({
+                    name: line.name,
+                    quantity: line.quantity.toString(),
+                    unit: line.unit,
+                  })),
+                });
+                const subtotal = sectionSubtotalPence({
+                  fixedPricePence: section.fixedPricePence,
+                  materials: section.materials.map((line) => ({
+                    name: line.name,
+                    quantity: line.quantity.toString(),
+                    unit: line.unit,
+                    unitPricePence: line.unitPricePence,
+                  })),
+                });
+                return {
+                  title: sectionTitle(section.title),
+                  areasLabel,
+                  rooms: scope.rooms,
+                  materials: scope.materials,
+                  priceLabel: wholeJob ? undefined : formatPence(subtotal),
+                };
+              }),
+            )
+          : quoteBreakdownText(
+              customerQuoteSections({
+                show: user.branding.showQuoteRooms,
+                wholeJob,
+                areasLabel: areasLabelFor(quoted.sections[0]?.typeKey ?? "", quoted.sections[0]?.title ?? ""),
+                rooms: (quoted.sections[0]?.rooms ?? quoted.rooms).map(roomInputFromStored),
+                materials: (quoted.sections[0]?.materials ?? quoted.materials).map((line) => ({
+                  name: line.name,
+                  quantity: line.quantity.toString(),
+                  unit: line.unit,
+                })),
+              }),
+            );
       if (detail) body = `${message}\n\n${detail}`;
     }
   }
