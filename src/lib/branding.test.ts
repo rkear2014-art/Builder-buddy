@@ -7,6 +7,7 @@ import {
   canEditBusiness,
   customerLogoSrc,
   parseBusinessProfile,
+  parseOwnerName,
   websiteHref,
 } from "./branding";
 
@@ -17,6 +18,12 @@ function profileForm(values: Record<string, string>): FormData {
 }
 
 describe("business profile", () => {
+  it("keeps the owner name used in the dashboard greeting", () => {
+    const parsed = parseOwnerName(profileForm({ name: "  AK  " }));
+    assert.equal(parsed.ok && parsed.data.name, "AK");
+    assert.equal(parseOwnerName(profileForm({ name: "   " })).ok, false);
+  });
+
   it("keeps contact details optional and stores a normal website", () => {
     const parsed = parseBusinessProfile(profileForm({ name: "Hart & Co" }));
     assert.equal(parsed.ok, true);

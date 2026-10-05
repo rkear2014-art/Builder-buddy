@@ -1,5 +1,6 @@
 import type { CSSProperties } from "react";
 import { deskSmallLogoSrc } from "@/lib/branding";
+import { initials } from "@/lib/place";
 import { DeskNav } from "@/components/desk-nav";
 import { DeskTopNav } from "@/components/desk-top-nav";
 import { PageTransition } from "@/components/page-transition";
@@ -23,16 +24,17 @@ export default async function DeskLayout({ children }: { children: React.ReactNo
       </a>
       <DeskTopNav
         businessName={user.businessName}
+        subtitle={user.branding.tagline}
         logoSrc={deskSmallLogoSrc(user.branding)}
         logoCompact={user.branding.hasMark}
         chaseCount={chaseCount}
         accentColour={user.branding.accentColour}
         accentInk={user.branding.accentInk}
       />
-      <main id="content" className="mx-auto w-full max-w-6xl px-3 py-4 pb-[calc(8rem+env(safe-area-inset-bottom))] lg:pb-8">
+      <main id="content" className="mx-auto w-full max-w-6xl px-3 py-3 pb-[calc(5.5rem+env(safe-area-inset-bottom))] lg:pb-8">
         <PageTransition>{children}</PageTransition>
       </main>
-      <DeskNav accentColour={user.branding.accentColour} />
+      <DeskNav accentColour={user.branding.accentColour} initials={initials(user.name)} />
     </div>
   );
 }

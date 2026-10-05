@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { LogoutButton } from "@/components/logout-button";
+import { initials } from "@/lib/place";
 import { NavIcon, type NavIconName } from "@/components/nav-icons";
 
 const links: Array<{ href: string; label: string; icon: NavIconName; chase?: boolean }> = [
@@ -27,6 +28,7 @@ function isActive(pathname: string, href: string): boolean {
 
 export function DeskTopNav({
   businessName,
+  subtitle,
   logoSrc,
   logoCompact = false,
   chaseCount,
@@ -34,6 +36,7 @@ export function DeskTopNav({
   accentInk,
 }: {
   businessName: string;
+  subtitle: string;
   logoSrc: string | null;
   logoCompact?: boolean;
   chaseCount: number;
@@ -52,8 +55,8 @@ export function DeskTopNav({
 
   return (
     <header className="no-print sticky top-0 z-30 bg-[#17171a] text-white">
-      <div className="mx-auto flex max-w-6xl items-center gap-2 px-3 py-2.5">
-        <Link href="/" className="flex min-w-0 items-center gap-2">
+      <div className="mx-auto flex max-w-6xl items-center gap-2 px-3 py-2">
+        <Link href="/" className="flex min-w-0 items-center gap-2.5">
           {logoSrc ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img
@@ -61,19 +64,25 @@ export function DeskTopNav({
               alt=""
               className={
                 logoCompact
-                  ? "h-9 w-9 rounded-lg bg-white object-contain p-0.5"
-                  : "h-9 w-auto max-w-16 rounded-lg bg-white object-contain p-0.5"
+                  ? "h-10 w-10 rounded-full bg-white object-cover p-0.5"
+                  : "h-10 w-10 rounded-full bg-white object-contain p-1"
               }
             />
-          ) : null}
-          <span className="max-w-[7.5rem] truncate text-base font-extrabold tracking-wide sm:max-w-[11rem] sm:text-lg">
-            {businessName.toUpperCase()}
+          ) : (
+            <span className="grid h-10 w-10 place-items-center rounded-full bg-white text-xs font-extrabold text-ink">
+              {initials(businessName)}
+            </span>
+          )}
+          <span className="min-w-0">
+            <span className="block truncate text-sm font-extrabold tracking-wide sm:text-base">{businessName.toUpperCase()}</span>
+            {subtitle.trim() ? (
+              <span className="block truncate text-[0.62rem] font-bold tracking-[0.12em] text-white/65 sm:text-[0.68rem]">
+                {subtitle.trim().toUpperCase()}
+              </span>
+            ) : null}
           </span>
         </Link>
         <div className="ml-auto flex shrink-0 items-center gap-1 sm:gap-2">
-          <Link href="/library" aria-label="Library" className="grid h-10 w-10 place-items-center rounded-full text-white/80 hover:bg-white/10 lg:hidden">
-            <NavIcon name="library" />
-          </Link>
           <button
             type="button"
             className="grid h-10 w-10 place-items-center rounded-full text-white/80 hover:bg-white/10"
@@ -87,17 +96,15 @@ export function DeskTopNav({
           </button>
           <Link
             href="/jobs/new"
-            className="inline-flex min-h-10 items-center rounded-full px-4 text-sm font-extrabold"
+            className="inline-flex min-h-10 items-center gap-1 rounded-full px-3.5 text-sm font-extrabold"
             style={{ background: accentColour, color: accentInk }}
           >
+            <span aria-hidden="true">+</span>
             New job
           </Link>
-          <span className="hidden sm:inline lg:hidden">
-            <LogoutButton compact />
-          </span>
         </div>
       </div>
-      <nav className="mx-auto hidden max-w-6xl flex-wrap items-center gap-1 px-3 pb-2 lg:flex" aria-label="Main">
+      <nav className="mx-auto flex max-w-6xl items-center gap-0.5 overflow-x-auto px-2 pb-2" aria-label="Main">
         {links.map((link) => (
           <NavLink
             key={link.href}
@@ -108,7 +115,9 @@ export function DeskTopNav({
             accentInk={accentInk}
           />
         ))}
-        <LogoutButton compact />
+        <span className="ml-auto shrink-0">
+          <LogoutButton compact />
+        </span>
       </nav>
     </header>
   );
@@ -131,7 +140,7 @@ function NavLink({
     <Link
       href={link.href}
       aria-current={active ? "page" : undefined}
-      className={`inline-flex min-h-10 items-center gap-1.5 rounded-full px-3 text-sm font-bold ${link.href === "/settings" ? "" : active ? "bg-white/10 text-white" : "text-white/70"}`}
+      className={`inline-flex min-h-9 shrink-0 items-center gap-1 rounded-lg px-2 py-1 text-xs font-bold sm:text-sm ${link.href === "/settings" ? "" : active ? "bg-white/10 text-white" : "text-white/75"}`}
       style={link.href === "/settings" ? { background: accentColour, color: accentInk } : undefined}
     >
       <NavIcon name={link.icon} />

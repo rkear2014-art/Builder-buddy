@@ -206,6 +206,7 @@ export function relativeTime(iso: string, now: Date): string {
 }
 
 function chaseSub(chase: GlanceJob[], today: string): string {
+  if (chase.length === 0) return "follow-ups";
   const overdue = chase.filter((job) => job.scheduledDate < today).length;
   const dueToday = chase.filter((job) => job.scheduledDate === today).length;
   const parts: string[] = [];
@@ -215,6 +216,13 @@ function chaseSub(chase: GlanceJob[], today: string): string {
   else if (dueToday > 1) parts.push(`${dueToday} due today`);
   if (parts.length > 0) return parts.join(" · ");
   return chase.length === 1 ? "1 follow-up" : `${chase.length} follow-ups`;
+}
+
+/** Greeting plus the business owner’s name, as saved on the Business page. */
+export function dashboardGreeting(hour: number, ownerName: string): string {
+  const hello = greetingForHour(hour);
+  const name = ownerName.trim().replace(/\s+/g, " ");
+  return name ? `${hello}, ${name}` : hello;
 }
 
 function glanceMoneyRow(row: InvoiceGlanceRow): GlanceListRow {
@@ -233,6 +241,7 @@ export function buildGlance(input: {
   hour: number;
   now: Date;
   businessName: string;
+  ownerName?: string;
   jobs: GlanceJob[];
   enquiryCount: number;
   invoices?: {
@@ -274,7 +283,7 @@ export function buildGlance(input: {
       title: "Today",
       meta: metaDate(today),
       value: String(todayJobs.length),
-      sub: todayJobs.length === 1 ? (visibleTradeLabel(todayJobs[0].trade) ?? "booking") : "bookings",
+      sub: todayJobs.length === 1 ? "booking" : "bookings",
       href: "/diary",
       empty: "Nothing in the diary today.",
       rows: todayJobs.slice(0, 2).map((job) => ({
@@ -289,7 +298,7 @@ export function buildGlance(input: {
       title: "Tomorrow",
       meta: metaDate(tomorrow),
       value: String(tomorrowJobs.length),
-      sub: tomorrowJobs.length === 1 ? (visibleTradeLabel(tomorrowJobs[0].trade) ?? "booking") : "bookings",
+      sub: tomorrowJobs.length === 1 ? "booking" : "bookings",
       href: "/diary",
       empty: "Nothing booked tomorrow.",
       rows: tomorrowJobs.slice(0, 2).map((job) => ({
@@ -376,7 +385,7 @@ export function buildGlance(input: {
 
   return {
     eyebrow: `${input.businessName} · ${formatLongDay(today)}`.toUpperCase(),
-    greeting: greetingForHour(input.hour),
+    greeting: dashboardGreeting(input.hour, input.ownerName ?? ""),
     summary: glanceSummary({
       bookingsToday: bookingsToday.length,
       chaseCount: chase.length,

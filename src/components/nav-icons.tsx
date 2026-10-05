@@ -6,6 +6,8 @@ const paths = {
   business: "M4 20V9l8-5 8 5v11M10 20v-5h4v5M9 11h.01M15 11h.01M9 15h.01M15 15h.01",
   library: "M5 4h4v16H5zM10 6h5v14h-5M16 8h3v12h-3",
   chase: "M12 7v5l3 2M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18z",
+  dashboard: "M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z",
+  messages: "M5 6h14a1 1 0 0 1 1 1v8a1 1 0 0 1-1 1H9l-4 3v-3H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1z",
 } as const;
 
 export type NavIconName = keyof typeof paths;

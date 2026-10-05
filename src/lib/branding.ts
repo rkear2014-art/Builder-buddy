@@ -92,6 +92,14 @@ export function websiteLabel(href: string): string {
   return href.replace(/^https?:\/\//, "");
 }
 
+export function parseOwnerName(formData: FormData): FormParse<{ name: string }> {
+  const name = textField(formData, "name").replace(/\s+/g, " ");
+  if (name.length < 1 || name.length > 80) {
+    return { ok: false, error: "Enter your name." };
+  }
+  return { ok: true, data: { name } };
+}
+
 export function parseBusinessProfile(formData: FormData): FormParse<BusinessProfile> {
   const name = textField(formData, "name");
   const phone = textField(formData, "phone");
@@ -127,7 +135,7 @@ export function parseBusinessProfile(formData: FormData): FormParse<BusinessProf
     storedWebsite = href;
   }
   if (tagline.length > 120) {
-    return { ok: false, error: "Shorten the tagline to 120 characters, or leave it blank." };
+    return { ok: false, error: "Shorten the subtitle to 120 characters, or leave it blank." };
   }
 
   return {

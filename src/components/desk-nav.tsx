@@ -5,28 +5,30 @@ import { usePathname } from "next/navigation";
 import { NavIcon, type NavIconName } from "@/components/nav-icons";
 
 const items: Array<{ href: string; label: string; icon: NavIconName }> = [
+  { href: "/", label: "Dashboard", icon: "dashboard" },
   { href: "/jobs", label: "Jobs", icon: "jobs" },
-  { href: "/diary", label: "Diary", icon: "diary" },
-  { href: "/quotes", label: "Quotes", icon: "quotes" },
-  { href: "/invoices", label: "Invoices", icon: "invoices" },
-  { href: "/settings", label: "Business", icon: "business" },
+  { href: "/diary", label: "Calendar", icon: "diary" },
+  { href: "/#to-chase", label: "Messages", icon: "messages" },
+  { href: "/library", label: "Library", icon: "library" },
 ];
 
 function isActive(pathname: string, href: string): boolean {
+  if (href === "/") return pathname === "/";
+  if (href === "/#to-chase") return false;
   if (href === "/jobs") {
     return pathname === "/jobs" || (/^\/jobs\/.+/.test(pathname) && pathname !== "/jobs/new");
   }
-  if (href === "/invoices") return pathname === "/invoices" || pathname.startsWith("/invoices/");
-  if (href === "/quotes") return pathname === "/quotes";
+  if (href === "/diary") return pathname === "/diary" || pathname.startsWith("/diary/");
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
-export function DeskNav({ accentColour }: { accentColour: string }) {
+export function DeskNav({ accentColour, initials }: { accentColour: string; initials: string }) {
   const pathname = usePathname();
+  const profileActive = pathname === "/settings" || pathname.startsWith("/settings/");
 
   return (
     <nav className="tab-nav no-print fixed inset-x-0 bottom-0 z-20 border-t border-line bg-card pb-[env(safe-area-inset-bottom)] shadow-[0_-8px_24px_-18px_rgba(23,23,26,0.45)] lg:hidden" aria-label="Main">
-      <ul className="grid grid-cols-5">
+      <ul className="grid grid-cols-6">
         {items.map((item) => {
           const active = isActive(pathname, item.href);
           return (
@@ -34,17 +36,32 @@ export function DeskNav({ accentColour }: { accentColour: string }) {
               <Link
                 href={item.href}
                 aria-current={active ? "page" : undefined}
-                className={`flex min-h-[4.5rem] flex-col items-center justify-center gap-0.5 px-1 py-1.5 text-center text-[0.72rem] font-extrabold sm:text-sm ${active ? "text-ink" : "text-stone"}`}
+                className={`flex min-h-16 flex-col items-center justify-center gap-0.5 px-0.5 py-1 text-center text-[0.62rem] font-extrabold leading-none sm:text-xs ${active ? "" : "text-stone"}`}
+                style={active ? { color: accentColour } : undefined}
               >
-                <span className="h-1 w-8 rounded-full" style={active ? { background: accentColour } : undefined} />
-                <span style={active ? { color: accentColour } : undefined}>
-                  <NavIcon name={item.icon} />
-                </span>
+                <NavIcon name={item.icon} />
                 {item.label}
+                <span className="h-0.5 w-6 rounded-full" style={active ? { background: accentColour } : undefined} />
               </Link>
             </li>
           );
         })}
+        <li>
+          <Link
+            href="/settings"
+            aria-label="Your profile"
+            aria-current={profileActive ? "page" : undefined}
+            className="flex min-h-16 flex-col items-center justify-center gap-0.5 px-0.5 py-1"
+          >
+            <span
+              className="grid h-7 w-7 place-items-center rounded-full text-[0.65rem] font-extrabold text-white"
+              style={{ background: profileActive ? accentColour : "#17171a" }}
+            >
+              {initials}
+            </span>
+            <span className="h-0.5 w-6 rounded-full" style={profileActive ? { background: accentColour } : undefined} />
+          </Link>
+        </li>
       </ul>
     </nav>
   );

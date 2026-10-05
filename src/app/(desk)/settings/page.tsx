@@ -4,6 +4,7 @@ import {
   removeBusinessLogo,
   removeHeroPhoto,
   saveAccent,
+  saveOwnerName,
   saveQuoteSettings,
   uploadBusinessLogo,
   uploadHeroPhoto,
@@ -35,6 +36,8 @@ function countParam(value: string | undefined): number | null {
 function savedMessage(saved: string | undefined, added: string | undefined): string | null {
   const count = countParam(added);
   switch (saved) {
+    case "name":
+      return "Your name was saved. The dashboard greeting uses it.";
     case "profile":
       return "Business details saved.";
     case "measure":
@@ -118,6 +121,7 @@ export default async function SettingsPage({
         </p>
       ) : null}
 
+      <OwnerNameSection user={user} owner={owner} />
       <LogoSection user={user} owner={owner} />
       <HeroSection user={user} owner={owner} photos={photos} />
       <AccentSection user={user} owner={owner} />
@@ -286,6 +290,31 @@ function AccentSection({ user, owner }: { user: SessionUser; owner: boolean }) {
   );
 }
 
+function OwnerNameSection({ user, owner }: { user: SessionUser; owner: boolean }) {
+  return (
+    <section className="card grid gap-3">
+      <h2 className="font-display text-2xl">Your name</h2>
+      <p className="text-stone">
+        The dashboard greeting uses this name. For example, Good evening, {user.name.trim() || "AK"}.
+      </p>
+      {owner ? (
+        <InlineForm action={saveOwnerName} className="grid gap-3">
+          <label className="field">
+            Your name
+            <input name="name" required maxLength={80} autoComplete="name" defaultValue={user.name} />
+          </label>
+          <SubmitButton>Save name</SubmitButton>
+        </InlineForm>
+      ) : (
+        <>
+          <p className="font-bold">{user.name}</p>
+          <p className="font-bold">Only the owner can change this.</p>
+        </>
+      )}
+    </section>
+  );
+}
+
 function ProfileSection({ user, owner }: { user: SessionUser; owner: boolean }) {
   const profile = {
     name: user.branding.name,
@@ -299,8 +328,8 @@ function ProfileSection({ user, owner }: { user: SessionUser; owner: boolean }) 
     <section className="card grid gap-4">
       <h2 className="font-display text-2xl">Letterhead</h2>
       <p className="text-stone">
-        Phone, email, address, website, and tagline are optional. They are printed at the top of this business&apos;s
-        customer agreement. The customer&apos;s own phone and email stay on the job.
+        The subtitle is the line under your business name. Phone, email, address, and website are optional. They are
+        printed at the top of this business&apos;s customer agreement. The customer&apos;s own phone and email stay on the job.
       </p>
       {owner ? (
         <BusinessProfileForm initial={profile} />
@@ -310,7 +339,7 @@ function ProfileSection({ user, owner }: { user: SessionUser; owner: boolean }) 
             <dt className="text-sm font-bold text-stone">Business name</dt>
             <dd>{profile.name}</dd>
           </div>
-          <ProfileLine label="Tagline" value={profile.tagline} />
+          <ProfileLine label="Subtitle" value={profile.tagline} />
           <ProfileLine label="Phone" value={profile.phone} />
           <ProfileLine label="Email" value={profile.email} />
           <ProfileLine label="Address" value={profile.address} />
