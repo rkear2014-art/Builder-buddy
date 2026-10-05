@@ -50,7 +50,7 @@ export function DeskTopNav({
   }
 
   return (
-    <header className="sticky top-0 z-30 bg-[#17171a] text-white">
+    <header className="no-print sticky top-0 z-30 bg-[#17171a] text-white">
       <div className="mx-auto flex max-w-6xl items-center gap-2 px-3 py-2.5">
         <Link href="/" className="flex min-w-0 items-center gap-2">
           {logoSrc ? (

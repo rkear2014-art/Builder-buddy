@@ -7,7 +7,8 @@ import {
   singleEnabledTrade,
   type JobStatus,
 } from "./constants";
-import { isIsoDate } from "./dates";
+import { isIsoDate, londonToday } from "./dates";
+import { normaliseBookingKind, parseSpanDays, type BookingKind } from "./diary";
 import { isValidQuantity, normaliseQuantity } from "./materials";
 import { parsePoundsToPence } from "./money";
 import { combineSiteAddress, normaliseUkPostcode } from "./address";
@@ -26,6 +27,10 @@ export type JobInput = {
   status: JobStatus;
   showLinePrices: boolean;
   depositPence: number | null;
+  bookingKind: BookingKind;
+  spanDays: number;
+  onDiary: boolean;
+  assignedName: string;
 };
 
 export type MaterialInput = {
@@ -41,6 +46,32 @@ export type FormParse<T> = { ok: true; data: T } | { ok: false; error: string };
 function field(formData: FormData, key: string): string {
   const value = formData.get(key);
   return typeof value === "string" ? value.trim() : "";
+}
+
+function onDiaryFromForm(formData: FormData): boolean {
+  const flags = formData.getAll("onDiary").map(String);
+  if (flags.length === 0) return true;
+  return flags.includes("yes");
+}
+
+function bookingExtras(
+  formData: FormData,
+  mode: "create" | "edit",
+): FormParse<{ bookingKind: BookingKind; spanDays: number; onDiary: boolean; assignedName: string }> {
+  const span = parseSpanDays(field(formData, "spanDays"));
+  if (!span.ok) return span;
+  const assignedName = field(formData, "assignedName");
+  if (assignedName.length > 80) return { ok: false, error: "Shorten who is on the job." };
+  const dateStillToBook = formData.getAll("dateToBook").map(String).includes("yes");
+  return {
+    ok: true,
+    data: {
+      bookingKind: normaliseBookingKind(field(formData, "bookingKind")),
+      spanDays: span.days,
+      onDiary: mode === "create" ? !dateStillToBook : onDiaryFromForm(formData),
+      assignedName,
+    },
+  };
 }
 
 const jobShape = z.object({
@@ -90,6 +121,8 @@ export function parseJobForm(formData: FormData): FormParse<JobInput> {
   const deposit = parsePoundsToPence(depositRaw);
   if (!deposit.ok) return { ok: false, error: "Enter the deposit in pounds, or leave it blank." };
   const depositPence = deposit.pence != null && deposit.pence > 0 ? deposit.pence : null;
+  const extras = bookingExtras(formData, "edit");
+  if (!extras.ok) return extras;
   return {
     ok: true,
     data: {
@@ -98,6 +131,7 @@ export function parseJobForm(formData: FormData): FormParse<JobInput> {
       status: data.status,
       showLinePrices,
       depositPence,
+      ...extras.data,
     },
   };
 }
@@ -132,7 +166,10 @@ export function parseBookingForm(formData: FormData): FormParse<BookingInput> {
   }
   if (email && !z.email().safeParse(email).success) return { ok: false, error: "Enter a valid email address, or leave it blank." };
   if (!isTrade(trade)) return { ok: false, error: "Choose a trade." };
-  if (!isIsoDate(scheduledDate)) return { ok: false, error: "Choose a date." };
+  const extras = bookingExtras(formData, "create");
+  if (!extras.ok) return extras;
+  const dated = isIsoDate(scheduledDate) ? scheduledDate : extras.data.onDiary ? "" : londonToday();
+  if (!isIsoDate(dated)) return { ok: false, error: "Choose a date." };
   if (!isTimeSlot(timeSlot)) return { ok: false, error: "Choose a time slot." };
   const address = combineSiteAddress({ postcode, addressLine1, addressLine2, town, county });
   if (address.length < 5 || address.length > 400) return { ok: false, error: "Enter the address, including the postcode." };
@@ -146,11 +183,15 @@ export function parseBookingForm(formData: FormData): FormParse<BookingInput> {
       trade,
       description: "",
       internalNotes: field(formData, "internalNotes").slice(0, 5000),
-      scheduledDate,
+      scheduledDate: dated,
       timeSlot,
-      status: "ENQUIRY",
+      status: extras.data.onDiary ? "ENQUIRY" : "BOOKED",
       showLinePrices: true,
       depositPence: null,
+      bookingKind: extras.data.bookingKind,
+      spanDays: extras.data.spanDays,
+      onDiary: extras.data.onDiary,
+      assignedName: extras.data.assignedName,
       postcode,
       addressLine1,
       addressLine2,

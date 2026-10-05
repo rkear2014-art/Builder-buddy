@@ -4,6 +4,7 @@ import { useState } from "react";
 import { TIME_SLOTS, singleEnabledTrade } from "@/lib/constants";
 import type { ActionState } from "@/lib/form-state";
 import { findSiteAddress } from "@/server/actions/address";
+import { BookingKindFields } from "@/components/booking-kind-fields";
 import { InlineForm } from "@/components/inline-form";
 import { SubmitButton } from "@/components/submit-button";
 
@@ -130,6 +131,7 @@ export function BookingForm({
         <span>Access, survey notes…</span>
         <textarea name="internalNotes" placeholder="Access, survey notes…" />
       </label>
+      <BookingKindFields dateChoice="create" />
       <div className="grid gap-4 sm:grid-cols-2">
         <label className="field">
           Date

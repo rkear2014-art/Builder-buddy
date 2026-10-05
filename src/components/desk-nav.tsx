@@ -30,7 +30,7 @@ export function DeskNav() {
 
   return (
     <nav
-      className="tab-nav fixed inset-x-0 bottom-0 z-20 grid grid-cols-4 border-t border-line bg-card sm:hidden"
+      className="tab-nav no-print fixed inset-x-0 bottom-0 z-20 grid grid-cols-4 border-t border-line bg-card sm:hidden"
       aria-label="Main"
     >
       {items.map((item) => {

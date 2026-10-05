@@ -13,6 +13,7 @@ import {
 } from "@/lib/constants";
 import type { ActionState } from "@/lib/form-state";
 import { starterTemplatesFor } from "@/lib/trade-starters";
+import { BookingKindFields } from "@/components/booking-kind-fields";
 import { InlineForm } from "@/components/inline-form";
 import { SubmitButton } from "@/components/submit-button";
 
@@ -38,6 +39,10 @@ export function JobForm({
     internalNotes: string;
     scheduledDate: string;
     timeSlot: string;
+    bookingKind?: string;
+    spanDays?: number;
+    onDiary?: boolean;
+    assignedName?: string;
     status: string;
     showLinePrices: boolean;
     depositPence: number | null;
@@ -160,6 +165,13 @@ export function JobForm({
         <span>This is what the customer will read and sign.</span>
         <textarea name="description" required value={description} onChange={(event) => setDescription(event.target.value)} />
       </label>
+      <BookingKindFields
+        dateChoice="edit"
+        bookingKind={job?.bookingKind}
+        spanDays={job?.spanDays}
+        assignedName={job?.assignedName}
+        onDiary={job?.onDiary}
+      />
       <div className="grid gap-4 sm:grid-cols-2">
         <label className="field">
           Date

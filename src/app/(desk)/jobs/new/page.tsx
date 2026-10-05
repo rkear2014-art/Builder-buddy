@@ -20,7 +20,7 @@ export default async function NewJobPage({
   return (
     <div className="mx-auto grid max-w-2xl gap-4">
       <h1 className="font-display text-4xl">Book in a job</h1>
-      <p className="text-stone">Customer and site details for this survey / quote visit.</p>
+      <p className="text-stone">Customer and site. Choose a quote visit or the job itself.</p>
       <div className="card">
         <BookingForm action={createJob} defaultDate={defaultDate} accent={user.branding.accentColour} accentInk={user.branding.accentInk} />
       </div>

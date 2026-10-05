@@ -1,7 +1,17 @@
 import Link from "next/link";
-import { formatIsoDate, formatMonthTitle, formatWeekday, isIsoDate, londonToday, monthMatrix, weekDates, addDays } from "@/lib/dates";
-import { getDiaryJobs, requireUser } from "@/server/dal";
-import { JobCard } from "@/components/job-card";
+import type { CSSProperties } from "react";
+import { isIsoDate, londonToday } from "@/lib/dates";
+import { diaryFetchWindow, diaryHref, diaryView, shiftDiaryAnchor, toBookJobs } from "@/lib/diary";
+import { listDiaryBoard, requireUser } from "@/server/dal";
+import {
+  DiaryLegend,
+  DiaryList,
+  DiaryMonth,
+  DiaryToBook,
+  DiaryUpcoming,
+  DiaryWeek,
+  diaryTitle,
+} from "@/components/diary-board";
 
 export const dynamic = "force-dynamic";
 
@@ -10,102 +20,80 @@ export const metadata = { title: "Diary" };
 export default async function DiaryPage({
   searchParams,
 }: {
-  searchParams: Promise<{ date?: string }>;
+  searchParams: Promise<{ date?: string; view?: string; book?: string }>;
 }) {
   const user = await requireUser();
   const params = await searchParams;
   const today = londonToday();
-  const selected = params.date && isIsoDate(params.date) ? params.date : today;
-  const weeks = monthMatrix(selected);
-  const week = weekDates(selected);
-  const jobs = await getDiaryJobs(user.businessId, weeks[0][0], weeks[weeks.length - 1][6]);
-  const counts = new Map<string, number>();
-  for (const job of jobs) {
-    counts.set(job.scheduledDate, (counts.get(job.scheduledDate) ?? 0) + 1);
-  }
-  const dayJobs = jobs.filter((job) => job.scheduledDate === selected);
+  const anchor = params.date && isIsoDate(params.date) ? params.date : today;
+  const view = diaryView(params.view);
+  const window = diaryFetchWindow(anchor, today);
+  const bookings = await listDiaryBoard(user.businessId, window.from, window.to);
+  const waiting = toBookJobs(bookings);
+  const selected = waiting.find((job) => job.id === params.book) ?? null;
+  const title = diaryTitle(view, anchor);
+  const bookId = selected?.id ?? null;
+  const accent = user.branding.accentColour;
+  const accentInk = user.branding.accentInk;
 
   return (
-    <div className="grid gap-5">
-      <div className="flex items-center justify-between gap-3">
-        <h1 className="font-display text-4xl">Diary</h1>
-        <Link href={`/jobs/new?date=${selected}`} className="btn btn-primary">
-          Book this day
-        </Link>
-      </div>
-
-      <div className="flex items-center justify-between gap-2">
-        <Link href={`/diary?date=${addDays(selected, -7)}`} className="btn btn-secondary">
-          Previous
-        </Link>
-        <p className="text-center font-bold">
-          {formatIsoDate(week[0])} – {formatIsoDate(week[6])}
-        </p>
-        <Link href={`/diary?date=${addDays(selected, 7)}`} className="btn btn-secondary">
-          Next
-        </Link>
-      </div>
-
-      <div className="grid grid-cols-7 gap-1">
-        {week.map((day) => {
-          const active = day === selected;
-          const count = counts.get(day) ?? 0;
-          return (
-            <Link
-              key={day}
-              href={`/diary?date=${day}`}
-              aria-current={active ? "date" : undefined}
-              className={`flex min-h-16 flex-col items-center justify-center rounded-2xl border-2 px-1 text-center ${
-                active ? "border-ink bg-amber" : "border-line bg-card"
-              }`}
-            >
-              <span className="text-xs font-bold uppercase">{formatWeekday(day)}</span>
-              <span className="text-lg font-bold">{Number(day.slice(8))}</span>
-              <span className="text-xs font-bold">{count > 0 ? count : ""}</span>
-            </Link>
-          );
-        })}
-      </div>
-
-      <section className="grid gap-3">
-        <h2 className="font-display text-3xl">{formatIsoDate(selected, "long")}</h2>
-        {dayJobs.length === 0 ? (
-          <p className="card text-stone">Nothing booked. Use “Book this day” to add a job.</p>
-        ) : (
-          dayJobs.map((job) => <JobCard key={job.id} job={job} />)
-        )}
-      </section>
-
-      <section className="card">
-        <h2 className="font-display text-2xl">{formatMonthTitle(selected)}</h2>
-        <div className="mt-3 grid grid-cols-7 gap-1 text-center text-sm font-bold text-stone">
-          {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((label) => (
-            <span key={label}>{label}</span>
-          ))}
+    <div
+      className="grid gap-4"
+      style={{ "--diary-accent": accent, "--diary-ink": accentInk } as CSSProperties}
+    >
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h1 className="font-display text-4xl leading-none">Diary</h1>
+          <p className="mt-1 text-sm font-semibold text-stone">Quote visits and jobs on site</p>
         </div>
-        <div className="mt-1 grid gap-1">
-          {weeks.map((row) => (
-            <div key={row[0]} className="grid grid-cols-7 gap-1">
-              {row.map((day) => {
-                const inMonth = day.slice(0, 7) === selected.slice(0, 7);
-                const count = counts.get(day) ?? 0;
-                return (
-                  <Link
-                    key={day}
-                    href={`/diary?date=${day}`}
-                    className={`flex min-h-11 flex-col items-center justify-center rounded-xl ${
-                      day === selected ? "bg-amber font-bold" : inMonth ? "bg-sand" : "text-stone"
-                    }`}
-                  >
-                    {Number(day.slice(8))}
-                    {count > 0 ? <span className="h-1.5 w-1.5 rounded-full bg-pine" /> : null}
-                  </Link>
-                );
-              })}
-            </div>
-          ))}
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="diary-toggle" role="group" aria-label="Diary view">
+            {(["month", "week", "list"] as const).map((item) => (
+              <Link
+                key={item}
+                href={diaryHref({ view: item, date: anchor, book: bookId })}
+                className={item === view ? "diary-chip diary-chip-on" : "diary-chip"}
+                style={item === view ? { background: accent, color: accentInk, borderColor: accent } : undefined}
+                aria-current={item === view ? "page" : undefined}
+              >
+                {item === "month" ? "Month" : item === "week" ? "Week" : "List"}
+              </Link>
+            ))}
+          </div>
+          <Link href={`/diary/print?scope=week&date=${anchor}`} className="diary-chip">
+            Print week
+          </Link>
         </div>
-      </section>
+      </div>
+
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-wrap items-center gap-2">
+          <Link href={diaryHref({ view, date: shiftDiaryAnchor(view, anchor, -1), book: bookId })} className="diary-arrow" aria-label="Previous">
+            ‹
+          </Link>
+          <Link href={diaryHref({ view, date: today, book: bookId })} className="diary-chip">
+            Today
+          </Link>
+          <Link href={diaryHref({ view, date: shiftDiaryAnchor(view, anchor, 1), book: bookId })} className="diary-arrow" aria-label="Next">
+            ›
+          </Link>
+          <p className="text-lg font-extrabold">{title}</p>
+        </div>
+        <DiaryLegend />
+      </div>
+
+      {selected ? <p className="text-lg font-extrabold">Tap a day to book {selected.customerName}.</p> : null}
+
+      {view === "month" ? (
+        <DiaryMonth anchor={anchor} today={today} bookings={bookings} bookJob={selected} view={view} />
+      ) : null}
+      {view === "week" ? (
+        <DiaryWeek anchor={anchor} today={today} bookings={bookings} bookJob={selected} view={view} />
+      ) : null}
+      {view === "list" ? <DiaryList anchor={anchor} bookings={bookings} bookJob={selected} view={view} /> : null}
+
+      <DiaryToBook jobs={waiting} selectedId={selected?.id ?? null} view={view} anchor={anchor} />
+      <DiaryUpcoming bookings={bookings} today={today} />
     </div>
   );
 }

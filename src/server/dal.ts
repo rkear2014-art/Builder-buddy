@@ -15,6 +15,8 @@ import { HERO_VISIT_COOKIE, pickRotatingHero } from "@/lib/heroes";
 import { isConfigured } from "@/lib/config";
 import type { JobStatus } from "@/lib/constants";
 import { addDays, isoToUtcDate, londonHour, londonToday, utcDateToIso, weekDates } from "@/lib/dates";
+import { MAX_SPAN_DAYS, normaliseBookingKind, shortJobSummary, type DiaryBooking } from "@/lib/diary";
+import { postcodeFromAddress } from "@/lib/place";
 import type { DeskJob, JobSummary, MaterialTemplateView, SavedItem, SessionUser } from "@/lib/desk";
 import { buildGlance, glanceChips, type GlanceJob, type GlancePage } from "@/lib/glance";
 import { formatDocumentNumber, quoteIsExpired } from "@/lib/documents";
@@ -86,6 +88,10 @@ function mapJob(job: JobWithRelations): DeskJob {
     internalNotes: job.internalNotes,
     scheduledDate: utcDateToIso(job.scheduledDate),
     timeSlot: job.timeSlot,
+    bookingKind: normaliseBookingKind(job.bookingKind),
+    spanDays: job.spanDays >= 1 ? job.spanDays : 1,
+    onDiary: job.onDiary,
+    assignedName: job.assignedName,
     showLinePrices: job.showLinePrices,
     depositPence: job.depositPence,
     shareActive: job.shareActive,
@@ -220,12 +226,12 @@ export async function getHome(businessId: string): Promise<{
   const prisma = getPrisma();
   const [todayJobs, upcoming, grouped, awaitingSignature] = await Promise.all([
     prisma.job.findMany({
-      where: { ...tenantWhere(businessId), scheduledDate: todayDate },
+      where: { ...tenantWhere(businessId), onDiary: true, scheduledDate: todayDate },
       include: { materials: { select: { bought: true } }, signOff: { select: { id: true } } },
       orderBy: { customerName: "asc" },
     }),
     prisma.job.findMany({
-      where: { ...tenantWhere(businessId), scheduledDate: { gt: todayDate, lte: upcomingEnd } },
+      where: { ...tenantWhere(businessId), onDiary: true, scheduledDate: { gt: todayDate, lte: upcomingEnd } },
       include: { materials: { select: { bought: true } }, signOff: { select: { id: true } } },
       orderBy: [{ scheduledDate: "asc" }, { customerName: "asc" }],
     }),
@@ -237,6 +243,7 @@ export async function getHome(businessId: string): Promise<{
     prisma.job.findMany({
       where: {
         ...tenantWhere(businessId),
+        onDiary: true,
         signOff: null,
         status: { in: ["BOOKED", "IN_PROGRESS"] },
         scheduledDate: { gte: todayDate },
@@ -317,6 +324,7 @@ export async function countChase(businessId: string): Promise<number> {
   return getPrisma().job.count({
     where: {
       ...tenantWhere(businessId),
+      onDiary: true,
       signOff: null,
       OR: [
         {
@@ -344,6 +352,7 @@ export async function getGlance(
     prisma.job.findMany({
       where: {
         ...tenantWhere(businessId),
+        onDiary: true,
         scheduledDate: { gte: isoToUtcDate(start), lte: isoToUtcDate(end) },
       },
       include: glanceInclude,
@@ -415,7 +424,7 @@ export async function getGlance(
     now,
     businessName: branding.name,
     enquiryCount,
-    jobs: [...byId.values()].map(mapGlanceJob),
+    jobs: [...byId.values()].filter((job) => job.onDiary).map(mapGlanceJob),
     invoices: glanceInvoices,
   });
   return {
@@ -451,12 +460,59 @@ export async function getDiaryJobs(businessId: string, fromIso: string, toIso: s
   const jobs = await getPrisma().job.findMany({
     where: {
       ...tenantWhere(businessId),
+      onDiary: true,
       scheduledDate: { gte: isoToUtcDate(fromIso), lte: isoToUtcDate(toIso) },
     },
     include: { materials: { select: { bought: true } }, signOff: { select: { id: true } } },
     orderBy: [{ scheduledDate: "asc" }, { customerName: "asc" }],
   });
   return jobs.map(mapSummary);
+}
+
+export async function listDiaryBoard(businessId: string, fromIso: string, toIso: string): Promise<DiaryBooking[]> {
+  const jobs = await getPrisma().job.findMany({
+    where: {
+      ...tenantWhere(businessId),
+      OR: [
+        {
+          onDiary: true,
+          scheduledDate: { gte: isoToUtcDate(fromIso), lte: isoToUtcDate(toIso) },
+        },
+        { onDiary: false, status: { in: ["BOOKED", "IN_PROGRESS"] } },
+      ],
+    },
+    select: {
+      id: true,
+      customerName: true,
+      address: true,
+      postcode: true,
+      description: true,
+      status: true,
+      scheduledDate: true,
+      bookingKind: true,
+      spanDays: true,
+      onDiary: true,
+      assignedName: true,
+      user: { select: { name: true } },
+    },
+    orderBy: [{ customerName: "asc" }],
+  });
+  return jobs.map((job) => {
+    const spanDays = job.spanDays >= 1 && job.spanDays <= MAX_SPAN_DAYS ? job.spanDays : 1;
+    const bookingKind = normaliseBookingKind(job.bookingKind);
+    return {
+      id: job.id,
+      customerName: job.customerName,
+      postcode: job.postcode.trim() || postcodeFromAddress(job.address),
+      summary: shortJobSummary(job.description, bookingKind),
+      status: job.status,
+      assignedName: job.assignedName.trim() || job.user.name,
+      bookingKind,
+      spanDays,
+      startDate: utcDateToIso(job.scheduledDate),
+      onDiary: job.onDiary,
+    };
+  });
 }
 
 export async function listCataloguePhotos(
