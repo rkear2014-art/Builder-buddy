@@ -24,10 +24,10 @@ export default async function DeskLayout({ children }: { children: React.ReactNo
         accentColour={user.branding.accentColour}
         accentInk={user.branding.accentInk}
       />
-      <main id="content" className="mx-auto w-full max-w-6xl px-3 py-4 pb-28 sm:pb-8">
+      <main id="content" className="mx-auto w-full max-w-6xl px-3 py-4 pb-44 sm:pb-8">
         {children}
       </main>
-      <DeskNav variant="tab" />
+      <DeskNav />
     </div>
   );
 }

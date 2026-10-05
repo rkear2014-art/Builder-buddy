@@ -44,6 +44,7 @@ export function GlanceBoard({ data }: { data: GlancePage }) {
   return (
     <div className="grid gap-4">
       <Hero data={data} />
+      <DeskShortcuts data={data} />
 
       <section className="grid gap-3">
         <div className="flex items-end justify-between gap-3">
@@ -129,6 +130,49 @@ function Hero({ data }: { data: GlancePage }) {
         ) : null}
       </div>
       <div className="relative z-10 h-1.5" style={{ background: accent }} />
+    </section>
+  );
+}
+
+function DeskShortcuts({ data }: { data: GlancePage }) {
+  const accent = data.accentColour;
+  const weekJobs = data.week.rows.slice(0, 4);
+  return (
+    <section className="grid gap-3" aria-label="Shortcuts">
+      <Link
+        href="/choose"
+        className="grid min-h-24 place-items-center rounded-3xl px-4 py-5 text-center shadow-sm"
+        style={{ background: accent, color: data.accentInk }}
+      >
+        <span className="font-display text-4xl leading-none">Choose a job</span>
+        <span className="mt-2 text-sm font-bold">Open the photo tiles for this week’s work</span>
+      </Link>
+      {weekJobs.length > 0 ? (
+        <ul className="grid gap-2 sm:grid-cols-2">
+          {weekJobs.map((job) => (
+            <li key={job.id}>
+              <Link
+                href={`/jobs/${job.id}/choose`}
+                className="flex min-h-14 w-full items-center justify-between gap-3 rounded-2xl border-2 border-line bg-white px-4 font-bold"
+              >
+                <span className="truncate">{job.customerName}</span>
+                <span className="shrink-0 text-stone">{job.when}</span>
+              </Link>
+            </li>
+          ))}
+        </ul>
+      ) : null}
+      <div className="grid grid-cols-3 gap-2">
+        <Link href="/quotes" className="btn btn-secondary">
+          Quotes
+        </Link>
+        <Link href="/invoices" className="btn btn-secondary">
+          Invoices
+        </Link>
+        <Link href="/settings" className="btn" style={{ background: accent, color: data.accentInk }}>
+          Business
+        </Link>
+      </div>
     </section>
   );
 }

@@ -66,7 +66,7 @@ export async function createJob(_state: ActionState, formData: FormData): Promis
     return created;
   });
   revalidateDesk(job.id);
-  redirect(`/jobs/${job.id}`);
+  redirect(`/jobs/${job.id}/choose`);
 }
 
 export async function updateJob(_state: ActionState, formData: FormData): Promise<ActionState> {
