@@ -85,7 +85,7 @@ describe("diary bookings", () => {
   });
 
   it("names the week, including a range that crosses a month", () => {
-    assert.equal(formatDiaryRange("2026-10-05", "2026-10-11"), "5 – 11 Oct 2026");
+    assert.equal(formatDiaryRange("2026-10-05", "2026-10-11"), "5 Oct – 11 Oct 2026");
     assert.equal(formatDiaryRange("2026-09-28", "2026-10-04"), "28 Sep – 4 Oct 2026");
     assert.equal(formatDiaryRange("2025-12-29", "2026-01-04"), "29 Dec 2025 – 4 Jan 2026");
     assert.equal(shiftDiaryAnchor("week", "2026-10-05", 1), "2026-10-12");

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import type { CSSProperties } from "react";
 import { formatIsoDate, isIsoDate, londonToday, weekDates } from "@/lib/dates";
 import { cardsForDate, diaryFetchWindow, formatDiaryRange } from "@/lib/diary";
 import { listDiaryBoard, requireUser } from "@/server/dal";
@@ -26,7 +27,10 @@ export default async function DiaryPrintPage({
   const heading = scope === "day" ? formatIsoDate(anchor, "long") : formatDiaryRange(week[0], week[6]);
 
   return (
-    <div className="diary-print grid gap-4">
+    <div
+      className="diary-print grid gap-4"
+      style={{ "--diary-accent": user.branding.accentColour, "--diary-ink": user.branding.accentInk } as CSSProperties}
+    >
       <div className="no-print flex flex-wrap gap-2">
         <Link href={`/diary?view=week&date=${anchor}`} className="btn btn-secondary">
           Back to diary

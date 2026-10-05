@@ -133,13 +133,21 @@ export function shiftDiaryAnchor(view: DiaryView, iso: string, direction: -1 | 1
   return addDays(iso, 7 * direction);
 }
 
+export function formatDiaryDay(iso: string): string {
+  if (!isIsoDate(iso)) return iso;
+  const [, month, day] = iso.split("-").map(Number);
+  return `${day} ${MONTHS[month - 1]}`;
+}
+
 export function formatDiaryRange(start: string, end: string): string {
   if (!isIsoDate(start) || !isIsoDate(end)) return `${start} – ${end}`;
   const [startYear, startMonth, startDay] = start.split("-").map(Number);
   const [endYear, endMonth, endDay] = end.split("-").map(Number);
   const startMonthName = MONTHS[startMonth - 1];
   const endMonthName = MONTHS[endMonth - 1];
-  if (startYear === endYear && startMonth === endMonth) return `${startDay} – ${endDay} ${endMonthName} ${endYear}`;
+  if (startYear === endYear && startMonth === endMonth) {
+    return `${startDay} ${startMonthName} – ${endDay} ${endMonthName} ${endYear}`;
+  }
   if (startYear === endYear) return `${startDay} ${startMonthName} – ${endDay} ${endMonthName} ${endYear}`;
   return `${startDay} ${startMonthName} ${startYear} – ${endDay} ${endMonthName} ${endYear}`;
 }

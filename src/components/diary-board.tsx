@@ -1,13 +1,11 @@
 import Link from "next/link";
 import { placeDiaryJob } from "@/server/actions/diary";
-import { STATUS_LABELS } from "@/lib/constants";
 import { formatIsoDate, formatMonthTitle, formatWeekday, monthMatrix, weekDates } from "@/lib/dates";
 import {
   BOOKING_KINDS,
-  bookingKindLabel,
   cardsForDate,
-  dayProgressLabel,
   diaryHref,
+  formatDiaryDay,
   formatDiaryRange,
   upcomingDays,
   type DiaryBooking,
@@ -17,10 +15,10 @@ import { DiaryCardView } from "@/components/diary-card";
 
 export function DiaryLegend() {
   return (
-    <ul className="flex flex-wrap justify-end gap-x-3 gap-y-1 text-sm font-bold" aria-label="Booking colours">
+    <ul className="flex flex-wrap justify-end gap-x-3 gap-y-1 text-sm font-semibold" aria-label="Booking colours">
       {BOOKING_KINDS.map((kind) => (
         <li key={kind.id} className="flex items-center gap-1.5">
-          <span className={`diary-swatch diary-swatch-${kind.id}`} aria-hidden="true" />
+          <span className={`diary-dot diary-dot-${kind.id}`} aria-hidden="true" />
           {kind.label}
         </li>
       ))}
@@ -40,31 +38,33 @@ export function DiaryToBook({
   anchor: string;
 }) {
   return (
-    <section className="card grid gap-3" aria-label="To book">
-      <div>
-        <h2 className="font-display text-2xl">To book</h2>
-        <p className="text-sm font-semibold text-stone">Won jobs with no day yet. Tap one, then tap a day.</p>
+    <section className="diary-panel" aria-label="To book">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <h2 className="text-xl font-extrabold">To book</h2>
+          <p className="text-sm text-stone">
+            {selectedId ? "Tap a day to put this job on the diary." : "Won jobs with no date booked. Tap one, then tap a day."}
+          </p>
+        </div>
+        <span className="diary-count">{jobs.length}</span>
       </div>
       {jobs.length === 0 ? (
-        <p>Nothing waiting. On Book in, tick “Won — date still to book”.</p>
+        <p className="mt-3 text-sm font-semibold text-stone">Nothing waiting. On Book in, tick “Won — date still to book”.</p>
       ) : (
-        <div className="grid gap-2 sm:grid-cols-2">
+        <div className="mt-3 grid gap-2">
           {jobs.map((job) => {
             const selected = job.id === selectedId;
             return (
               <Link
                 key={job.id}
                 href={diaryHref({ view, date: anchor, book: selected ? null : job.id })}
-                className={`flex min-h-16 flex-col justify-center rounded-2xl border-2 px-3 py-2 ${
-                  selected ? "border-ink bg-sand" : "border-line bg-white"
-                }`}
+                className={`diary-wait ${selected ? "diary-wait-on" : ""}`}
                 aria-current={selected ? "true" : undefined}
               >
-                <span className="font-extrabold">{job.customerName}</span>
-                <span className="text-sm font-semibold">
-                  {[job.postcode, bookingKindLabel(job.bookingKind), STATUS_LABELS[job.status]].filter(Boolean).join(" · ")}
+                <span className="block font-extrabold">{job.customerName}</span>
+                <span className="block text-sm text-stone">
+                  {[job.summary, job.postcode].filter(Boolean).join(" · ")}
                 </span>
-                <span className="line-clamp-2 text-sm text-stone">{job.summary}</span>
               </Link>
             );
           })}
@@ -90,7 +90,7 @@ function BookDayForm({
       <input type="hidden" name="jobId" value={jobId} />
       <input type="hidden" name="date" value={date} />
       <input type="hidden" name="view" value={view} />
-      <button type="submit" className="btn btn-primary w-full px-1 py-2 text-sm">
+      <button type="submit" className="diary-book">
         {label}
       </button>
     </form>
@@ -114,31 +114,33 @@ export function DiaryWeek({
 }) {
   const days = weekDates(anchor);
   return (
-    <div className="overflow-x-auto pb-1">
-      <div className="grid w-[70rem] grid-cols-7 gap-2">
+    <div className="diary-week">
       {days.map((day) => {
         const cards = cardsForDate(bookings, day);
         const todayColumn = day === today;
         return (
-          <section key={day} className={`grid content-start gap-1.5 p-1.5 ${todayColumn ? "diary-today" : ""}`}>
-            <div className="text-center">
-              <p className="text-xs font-extrabold uppercase">{formatWeekday(day)}</p>
-              <p className="text-2xl font-extrabold leading-none">{Number(day.slice(8))}</p>
-              {todayColumn ? <p className="text-xs font-extrabold">Today</p> : null}
+          <section key={day} className={`diary-col ${todayColumn ? "diary-col-today" : ""}`}>
+            <div className="diary-col-head">
+              <p className="diary-dow">{formatWeekday(day)}</p>
+              <div className="flex flex-wrap items-center gap-1">
+                {todayColumn ? <span className="diary-today-pill">{formatDiaryDay(day)}</span> : <span className="text-sm font-extrabold">{formatDiaryDay(day)}</span>}
+                {todayColumn ? <span className="diary-today-tag">Today</span> : null}
+              </div>
+              {bookJob ? <BookDayForm jobId={bookJob.id} date={day} view={view} label="Book" /> : null}
               {showDayPrint ? (
-                <Link href={`/diary/print?scope=day&date=${day}`} className="text-xs font-bold underline">
+                <Link href={`/diary/print?scope=day&date=${day}`} className="diary-print-link">
                   Print
                 </Link>
               ) : null}
             </div>
-            {bookJob ? <BookDayForm jobId={bookJob.id} date={day} view={view} label="Book" /> : null}
-            {cards.map((card) => (
-              <DiaryCardView key={`${card.id}-${day}`} card={card} compact />
-            ))}
+            <div className="grid gap-1.5">
+              {cards.map((card) => (
+                <DiaryCardView key={`${card.id}-${day}`} card={card} compact />
+              ))}
+            </div>
           </section>
         );
       })}
-      </div>
     </div>
   );
 }
@@ -170,13 +172,13 @@ export function DiaryMonth({
           {week.map((day) => {
             const cards = cardsForDate(bookings, day);
             const inMonth = day.startsWith(monthPrefix);
-            const className = `flex min-h-16 flex-col rounded-xl p-1 text-left ${day === today ? "diary-today" : inMonth ? "bg-card" : "text-stone"}`;
+            const className = `flex min-h-16 flex-col rounded-xl p-1 text-left ${day === today ? "diary-col-today" : inMonth ? "bg-card" : "text-stone"}`;
             const body = (
               <>
                 <span className="text-sm font-extrabold">{Number(day.slice(8))}</span>
                 {cards.slice(0, 2).map((card) => (
                   <span key={card.id} className="truncate text-[0.65rem] font-bold">
-                    <span className={`mr-1 inline-block h-2 w-2 rounded-sm diary-swatch diary-swatch-${card.bookingKind}`} />
+                    <span className={`diary-dot diary-dot-${card.bookingKind} mr-1`} />
                     {card.customerName.split(" ")[0]}
                   </span>
                 ))}
@@ -244,35 +246,18 @@ export function DiaryList({
 
 export function DiaryUpcoming({ bookings, today }: { bookings: DiaryBooking[]; today: string }) {
   const rows = upcomingDays(bookings, today).slice(0, 8);
+  const cards = rows.flatMap((row) => row.cards);
   return (
-    <section className="grid gap-3">
-      <h2 className="font-display text-3xl">Upcoming</h2>
-      {rows.length === 0 ? (
-        <p className="card">Nothing booked in the next three weeks.</p>
+    <section className="diary-panel">
+      <h2 className="text-xl font-extrabold">Upcoming</h2>
+      {cards.length === 0 ? (
+        <p className="mt-3 text-sm font-semibold text-stone">Nothing booked in the next three weeks.</p>
       ) : (
-        rows.map((row) => (
-          <div key={row.date} className="grid gap-2">
-            <h3 className="font-extrabold">{formatIsoDate(row.date, "long")}</h3>
-            {row.cards.map((card) => {
-              const progress = dayProgressLabel(card.dayNumber, card.spanDays);
-              return (
-                <Link key={`${card.id}-${row.date}`} href={`/jobs/${card.id}`} className={`diary-card diary-card-${card.bookingKind}`}>
-                  <span className="text-xs font-extrabold">
-                    {bookingKindLabel(card.bookingKind)}
-                    {progress ? ` · ${progress}` : ""}
-                  </span>
-                  <span className="block font-extrabold">
-                    {card.customerName}
-                    {card.postcode ? ` · ${card.postcode}` : ""}
-                  </span>
-                  <span className="block text-sm text-stone">{card.summary}</span>
-                  <span className="diary-pill">{STATUS_LABELS[card.status]}</span>
-                  <span className="block text-sm font-semibold">{card.assignedName}</span>
-                </Link>
-              );
-            })}
-          </div>
-        ))
+        <div className="mt-3 grid gap-2">
+          {cards.map((card) => (
+            <DiaryCardView key={`${card.id}-${card.date}`} card={card} />
+          ))}
+        </div>
       )}
     </section>
   );
