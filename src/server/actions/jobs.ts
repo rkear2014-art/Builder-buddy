@@ -56,10 +56,14 @@ export async function createJob(_state: ActionState, formData: FormData): Promis
       },
       select: { id: true },
     });
-    return created;
+    const section = await tx.jobSection.create({
+      data: { businessId: user.businessId, jobId: created.id, title: "", typeKey: "", sortOrder: 0 },
+      select: { id: true },
+    });
+    return { id: created.id, sectionId: section.id };
   });
   revalidateDesk(job.id);
-  redirect(`/jobs/${job.id}/choose`);
+  redirect(`/jobs/${job.id}/choose?section=${job.sectionId}`);
 }
 
 export async function updateJob(_state: ActionState, formData: FormData): Promise<ActionState> {

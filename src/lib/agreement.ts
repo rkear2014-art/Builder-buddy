@@ -2,6 +2,7 @@ import { z } from "zod";
 import { customerSubtotalPence } from "./customer-price";
 import { isInternalCrewName } from "./crew";
 import { customerLineTotalPence, materialsTotals, normaliseQuantity } from "./materials";
+import { publicSectionLines, unpricedSectionCount, type PricedSection } from "./quote-sections";
 
 export type AgreementSource = {
   businessName: string;
@@ -27,6 +28,8 @@ export type AgreementSource = {
     unitPricePence: number | null;
     costPricePence?: number | null;
   }>;
+  /** Present when the quote is loaded with its jobs. Omitted by older callers and signed copies. */
+  sections?: PricedSection[];
 };
 
 export type PublicMaterialLine = {
@@ -116,6 +119,17 @@ export function toPublicAgreement(job: AgreementSource): PublicAgreement {
   }));
   const totals = materialsTotals(visible);
   const fixedPricePence = job.fixedPricePence != null && job.fixedPricePence > 0 ? job.fixedPricePence : null;
+  const sections = job.sections ?? [];
+  const priced = sections.length > 0 ? publicSectionLines({ sections, fixedPricePence: job.fixedPricePence, totalOnly: job.totalOnly }) : null;
+  const shown = priced && priced.lines.length > 0
+    ? priced.lines.map((line) => ({
+        name: line.name.trim(),
+        quantity: normaliseQuantity(line.quantity),
+        unit: line.unit.trim(),
+        unitPricePence: line.unitPricePence,
+        lineTotalPence: line.lineTotalPence,
+      }))
+    : materials;
   return {
     businessName: job.businessName.trim(),
     customerName: job.customerName.trim(),
@@ -126,12 +140,20 @@ export function toPublicAgreement(job: AgreementSource): PublicAgreement {
     description: job.description.trim(),
     scheduledDate: job.scheduledDate,
     timeSlot: job.timeSlot,
-    materials,
-    totalPence: customerSubtotalPence({
-      materialsTotalPence: totals.totalPence,
-      fixedPricePence,
-    }),
-    unpricedCount: fixedPricePence != null || job.totalOnly === true ? 0 : totals.unpricedCount,
+    materials: shown,
+    totalPence: priced
+      ? priced.totalPence
+      : customerSubtotalPence({
+          materialsTotalPence: totals.totalPence,
+          fixedPricePence,
+        }),
+    unpricedCount: priced
+      ? priced.itemised
+        ? unpricedSectionCount(sections)
+        : 0
+      : fixedPricePence != null || job.totalOnly === true
+        ? 0
+        : totals.unpricedCount,
     showLinePrices: job.showLinePrices !== false,
     depositPence: job.depositPence != null && job.depositPence > 0 ? job.depositPence : null,
     vatRegistered: job.vatRegistered === true,

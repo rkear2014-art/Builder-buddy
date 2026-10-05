@@ -13,6 +13,7 @@ import {
 } from "@/lib/trade-starters";
 import { requireUser } from "@/server/dal";
 import { getPrisma, isUniqueConstraint } from "@/server/prisma";
+import { sectionForWrite } from "@/server/quote-section";
 import { noteQuoteMade } from "@/server/quote-progress";
 import { revalidateDesk } from "@/server/revalidate";
 
@@ -32,8 +33,15 @@ export async function applyStarterToJob(formData: FormData): Promise<void> {
     },
   });
   if (!job || !starter || starter.trade !== job.trade) return;
+  const section = await sectionForWrite(user.businessId, job.id, String(formData.get("sectionId") ?? ""));
   let sortOrder = (job.materials[0]?.sortOrder ?? -1) + 1;
   await getPrisma().$transaction(async (tx) => {
+    if (!section.title.trim()) {
+      await tx.jobSection.update({
+        where: { id: section.id },
+        data: { title: starter.name.slice(0, 80), typeKey: starter.id },
+      });
+    }
     if (!job.description.trim() && starter.description) {
       await tx.job.update({ where: { id: job.id }, data: { description: starter.description } });
     }
@@ -42,6 +50,7 @@ export async function applyStarterToJob(formData: FormData): Promise<void> {
         data: {
           businessId: user.businessId,
           jobId: job.id,
+          sectionId: section.id,
           name: item.name,
           quantity: item.quantity,
           unit: item.unit,
@@ -55,7 +64,7 @@ export async function applyStarterToJob(formData: FormData): Promise<void> {
   });
   await noteQuoteMade(job.id);
   revalidateDesk(job.id, job.shareToken);
-  redirect(`/jobs/${job.id}#materials`);
+  redirect(`/jobs/${job.id}#quote-jobs`);
 }
 
 export async function saveStarterTemplate(formData: FormData): Promise<void> {

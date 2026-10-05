@@ -26,8 +26,8 @@ function areaBit(label: string, squareMetres: number, afterOpenings: boolean): s
 }
 
 /** One room from the calculator: size, then wall and ceiling area after openings. */
-export function quoteRoomLine(room: RoomInput): QuoteRoomLine | null {
-  const name = room.name.trim() || "Room";
+export function quoteRoomLine(room: RoomInput, fallback = "Room"): QuoteRoomLine | null {
+  const name = room.name.trim() || fallback;
   const measured = roomAreas(room);
   const afterOpenings = measured.deductionsM2 > 0;
   const size =
@@ -110,13 +110,18 @@ export function customerQuoteSections(input: {
   show: boolean;
   /** A whole-job price keeps the money as one total, so the material list stays off. */
   wholeJob?: boolean;
+  /** Rendering quotes say Walls. Indoor plastering stays Rooms. */
+  areasLabel?: "Rooms" | "Walls";
   rooms: RoomInput[];
   materials: QuoteMaterialInput[];
-}): { rooms: QuoteRoomLine[]; materials: string[] } {
-  if (!input.show) return { rooms: [], materials: [] };
+}): { areasLabel: "Rooms" | "Walls"; rooms: QuoteRoomLine[]; materials: string[] } {
+  const areasLabel = input.areasLabel === "Walls" ? "Walls" : "Rooms";
+  const fallback = areasLabel === "Walls" ? "Wall" : "Room";
+  if (!input.show) return { areasLabel, rooms: [], materials: [] };
   return {
+    areasLabel,
     rooms: input.rooms.flatMap((room) => {
-      const line = quoteRoomLine(room);
+      const line = quoteRoomLine(room, fallback);
       return line ? [line] : [];
     }),
     materials: input.wholeJob
@@ -129,12 +134,16 @@ export function customerQuoteSections(input: {
 }
 
 /** Plain text for the quote email. Empty when both sections are hidden. */
-export function quoteBreakdownText(sections: { rooms: QuoteRoomLine[]; materials: string[] }): string {
+export function quoteBreakdownText(sections: {
+  areasLabel?: "Rooms" | "Walls";
+  rooms: QuoteRoomLine[];
+  materials: string[];
+}): string {
   const blocks: string[] = [];
   if (sections.rooms.length > 0) {
     blocks.push(
       [
-        "Rooms",
+        sections.areasLabel === "Walls" ? "Walls" : "Rooms",
         ...sections.rooms.map((room) => [room.name, room.size, room.areas].filter(Boolean).join("\n")),
       ].join("\n"),
     );
@@ -143,4 +152,24 @@ export function quoteBreakdownText(sections: { rooms: QuoteRoomLine[]; materials
     blocks.push(["Materials", ...sections.materials].join("\n"));
   }
   return blocks.join("\n\n");
+}
+
+/** Plain text for a quote that has more than one job. */
+export function quoteJobsBreakdownText(
+  jobs: Array<{
+    title: string;
+    areasLabel?: "Rooms" | "Walls";
+    rooms: QuoteRoomLine[];
+    materials: string[];
+    priceLabel?: string;
+  }>,
+): string {
+  return jobs
+    .map((job) => {
+      const body = quoteBreakdownText(job);
+      const price = job.priceLabel ? `Price\n${job.priceLabel}` : "";
+      return [job.title.trim() || "Job", body, price].filter(Boolean).join("\n\n");
+    })
+    .filter(Boolean)
+    .join("\n\n");
 }

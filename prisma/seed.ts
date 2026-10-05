@@ -44,6 +44,16 @@ const renderPatch: Line[] = [
   { name: "Render stop bead", quantity: "2", unit: "length", unitPricePence: 215, costPricePence: 140 },
 ];
 
+function agreementLines(lines: Line[]) {
+  return lines.map((item) => ({
+    name: item.name,
+    quantity: item.quantity,
+    unit: item.unit,
+    unitPricePence: item.unitPricePence,
+    costPricePence: item.costPricePence,
+  }));
+}
+
 async function main() {
   if (!process.env.DATABASE_URL || !process.env.AUTH_SECRET || process.env.AUTH_SECRET.length < 32) {
     throw new Error("Set DATABASE_URL and AUTH_SECRET (32+ characters) before seeding.");
@@ -114,6 +124,29 @@ async function main() {
     });
   }
 
+  async function seedSection(jobId: string, title: string, lines: Line[], typeKey = "") {
+    const section = await prisma.jobSection.create({
+      data: { businessId, jobId, title, typeKey, sortOrder: 0 },
+    });
+    if (lines.length > 0) {
+      await prisma.jobMaterial.createMany({
+        data: lines.map((item, index) => ({
+          businessId,
+          jobId,
+          sectionId: section.id,
+          name: item.name,
+          quantity: item.quantity,
+          unit: item.unit,
+          unitPricePence: item.unitPricePence,
+          costPricePence: item.costPricePence,
+          bought: Boolean(item.bought),
+          sortOrder: index,
+        })),
+      });
+    }
+    return section;
+  }
+
   const today = londonToday();
   let nextSeedQuote = 1;
   const signature = sampleSignatureDataUrl();
@@ -136,16 +169,14 @@ async function main() {
       shareToken: createShareToken(),
       quoteNumber: nextSeedQuote++,
       validUntil: isoToUtcDate(addDays(today, 30)),
-      materials: {
-        create: plasterRoom.map((item, index) => ({
-          ...item,
-          businessId,
-          bought: index < 2,
-          sortOrder: index,
-        })),
-      },
     },
   });
+  await seedSection(
+    patel.id,
+    "Skim lounge and hall",
+    plasterRoom.map((item, index) => ({ ...item, bought: index < 2 })),
+    "plaster-skim",
+  );
 
   const chidi = await prisma.job.create({
     data: {
@@ -166,16 +197,15 @@ async function main() {
       shareToken: createShareToken(),
       quoteNumber: nextSeedQuote++,
       validUntil: isoToUtcDate(addDays(today, 30)),
-      materials: {
-        create: skimQuote.map((item, index) => ({ ...item, businessId, bought: false, sortOrder: index })),
-      },
     },
   });
+  const chidiSection = await seedSection(chidi.id, "Skim lounge, hall and dining room", skimQuote, "plaster-skim");
   await prisma.roomMeasure.createMany({
     data: [
       {
         businessId,
         jobId: chidi.id,
+        sectionId: chidiSection.id,
         name: "Lounge",
         mode: "room",
         lengthM: 5.4,
@@ -190,6 +220,7 @@ async function main() {
       {
         businessId,
         jobId: chidi.id,
+        sectionId: chidiSection.id,
         name: "Hall",
         mode: "room",
         lengthM: 4.2,
@@ -204,6 +235,7 @@ async function main() {
       {
         businessId,
         jobId: chidi.id,
+        sectionId: chidiSection.id,
         name: "Dining room",
         mode: "room",
         lengthM: 3.6,
@@ -237,12 +269,14 @@ async function main() {
       shareToken: createShareToken(),
       quoteNumber: nextSeedQuote++,
       validUntil: isoToUtcDate(addDays(today, 30)),
-      materials: {
-        create: plasterRoom.map((item, index) => ({ ...item, businessId, bought: true, sortOrder: index })),
-      },
     },
-    include: { materials: { orderBy: { sortOrder: "asc" } } },
   });
+  await seedSection(
+    brooks.id,
+    "Skim kitchen",
+    plasterRoom.map((item) => ({ ...item, bought: true })),
+    "plaster-skim",
+  );
   const brooksLocked = lockAgreement(
     {
       businessName: "Hart & Co",
@@ -255,13 +289,7 @@ async function main() {
       internalNotes: brooks.internalNotes,
       scheduledDate: today,
       timeSlot: brooks.timeSlot,
-      materials: brooks.materials.map((material) => ({
-        name: material.name,
-        quantity: material.quantity.toString(),
-        unit: material.unit,
-        unitPricePence: material.unitPricePence,
-        costPricePence: material.costPricePence,
-      })),
+      materials: agreementLines(plasterRoom),
     },
     { signerName: "Helen Brooks", signedAt: new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString() },
   );
@@ -295,12 +323,14 @@ async function main() {
       shareToken: createShareToken(),
       quoteNumber: nextSeedQuote++,
       validUntil: isoToUtcDate(addDays(today, 30)),
-      materials: {
-        create: repairs.map((item, index) => ({ ...item, businessId, bought: true, sortOrder: index })),
-      },
     },
-    include: { materials: { orderBy: { sortOrder: "asc" } } },
   });
+  await seedSection(
+    singh.id,
+    "Plaster repairs",
+    repairs.map((item) => ({ ...item, bought: true })),
+    "plaster-repair",
+  );
   const singhLocked = lockAgreement(
     {
       businessName: "Hart & Co",
@@ -312,13 +342,7 @@ async function main() {
       description: singhOriginal,
       scheduledDate: addDays(today, -5),
       timeSlot: singh.timeSlot,
-      materials: singh.materials.map((material) => ({
-        name: material.name,
-        quantity: material.quantity.toString(),
-        unit: material.unit,
-        unitPricePence: material.unitPricePence,
-        costPricePence: material.costPricePence,
-      })),
+      materials: agreementLines(repairs),
     },
     { signerName: "Dave Singh", signedAt: new Date(Date.now() - 6 * 24 * 60 * 60 * 1000).toISOString() },
   );
@@ -333,7 +357,7 @@ async function main() {
     },
   });
 
-  await prisma.job.create({
+  const priya = await prisma.job.create({
     data: {
       businessId,
       userId: user.id,
@@ -353,8 +377,9 @@ async function main() {
       validUntil: isoToUtcDate(addDays(today, 30)),
     },
   });
+  await seedSection(priya.id, "Skim hallway and stairs", [], "plaster-skim");
 
-  await prisma.job.create({
+  const ellis = await prisma.job.create({
     data: {
       businessId,
       userId: user.id,
@@ -372,11 +397,9 @@ async function main() {
       shareToken: createShareToken(),
       quoteNumber: nextSeedQuote++,
       validUntil: isoToUtcDate(addDays(today, 30)),
-      materials: {
-        create: renderPatch.map((item, index) => ({ ...item, businessId, bought: false, sortOrder: index })),
-      },
     },
   });
+  await seedSection(ellis.id, "Rendering", renderPatch, "plaster-render");
 
   await prisma.business.update({
     where: { id: businessId },

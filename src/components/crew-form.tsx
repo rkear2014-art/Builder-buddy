@@ -9,6 +9,7 @@ import { SubmitButton } from "@/components/submit-button";
 
 export function CrewForm({
   jobId,
+  sectionId = "",
   initialDays,
   initialRoles,
   totalM2,
@@ -17,6 +18,7 @@ export function CrewForm({
   nested = false,
 }: {
   jobId: string;
+  sectionId?: string;
   initialDays: string;
   initialRoles: CrewDraftRole[];
   totalM2: number;
@@ -34,6 +36,7 @@ export function CrewForm({
   return (
     <InlineForm action={saveJobCrew} className={nested ? "grid gap-4" : "card grid gap-4"}>
       <input type="hidden" name="jobId" value={jobId} />
+      <input type="hidden" name="sectionId" value={sectionId} />
       <CrewEditor days={days} roles={roles} totalM2={totalM2} accent={accent} accentInk={accentInk} onDays={setDays} onRole={onRole} />
       <CrewHiddenFields days={days} roles={roles} />
       <SubmitButton variant={nested ? "secondary" : "primary"}>Save crew</SubmitButton>

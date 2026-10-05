@@ -13,6 +13,43 @@ export type DeskMaterial = {
   bought: boolean;
 };
 
+export type DeskRoom = {
+  name: string;
+  mode: string;
+  lengthM: number;
+  widthM: number;
+  heightM: number;
+  includeWalls: boolean;
+  includeCeiling: boolean;
+  directAreaM2: number;
+  doorCount: number;
+  doorAreaM2: number;
+  windowCount: number;
+  windowAreaM2: number;
+  externalCorners: number;
+  stopBeadM: number;
+};
+
+export type DeskCrew = {
+  role: string;
+  count: number;
+  basis: string;
+  ratePence: number | null;
+};
+
+/** One piece of work on a quote. A quote always has at least one after it is saved. */
+export type DeskSection = {
+  id: string;
+  sortOrder: number;
+  title: string;
+  typeKey: string;
+  fixedPricePence: number | null;
+  dayCount: string | null;
+  materials: DeskMaterial[];
+  rooms: DeskRoom[];
+  crew: DeskCrew[];
+};
+
 export type DeskSignOff = {
   signerName: string;
   signedAt: string;
@@ -55,6 +92,7 @@ export type DeskJob = {
   totalOnly: boolean;
   fixedPricePence: number | null;
   materials: DeskMaterial[];
+  sections: DeskSection[];
   signOff: DeskSignOff | null;
 };
 

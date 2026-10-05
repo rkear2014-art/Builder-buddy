@@ -22,8 +22,10 @@ import {
   type MeasurePlan,
 } from "@/lib/measure-plan";
 import {
+  ROOM_NAME_OPTIONS,
   ROOM_NAME_OTHER,
   ROOM_NAME_OTHER_LABEL,
+  WALL_NAME_OPTIONS,
   applyRoomNamePick,
   roomPickerOptions,
   roomPickerValue,
@@ -82,7 +84,8 @@ function blankRoom(name: string, mode: MeasureMode, includeWalls: boolean, inclu
   };
 }
 
-function nextName(count: number): string {
+function nextName(count: number, place: "room" | "wall"): string {
+  if (place === "wall") return WALL_NAME_OPTIONS[count] ?? "Front elevation";
   if (count === 0) return "Living room";
   return `Bedroom ${count}`;
 }
@@ -99,19 +102,30 @@ function withoutDraftId(room: DraftRoom): RoomInput {
   return saved;
 }
 
-function RoomNamePicker({ name, onChange }: { name: string; onChange: (name: string) => void }) {
+function RoomNamePicker({
+  name,
+  place,
+  onChange,
+}: {
+  name: string;
+  place: "room" | "wall";
+  onChange: (name: string) => void;
+}) {
+  const presets = place === "wall" ? WALL_NAME_OPTIONS : ROOM_NAME_OPTIONS;
+  const label = place === "wall" ? "Wall" : "Room";
   const [typing, setTyping] = useState(false);
-  const options = roomPickerOptions(typing ? "" : name);
+  const options = roomPickerOptions(typing ? "" : name, presets);
   const selected = typing ? ROOM_NAME_OTHER : roomPickerValue(name);
 
   return (
     <div className="grid min-w-0 flex-1 gap-3">
       <label className="field">
-        Room
+        {label}
         <select
+          aria-label={label}
           value={options.includes(selected) ? selected : ROOM_NAME_OTHER}
           onChange={(event) => {
-            const next = applyRoomNamePick(name, event.target.value);
+            const next = applyRoomNamePick(name, event.target.value, presets);
             setTyping(next.typing);
             onChange(next.name);
           }}
@@ -125,13 +139,13 @@ function RoomNamePicker({ name, onChange }: { name: string; onChange: (name: str
       </label>
       {typing || selected === ROOM_NAME_OTHER ? (
         <label className="field">
-          Room name
+          {label} name
           <input
             value={name}
             maxLength={40}
             autoComplete="off"
             autoCapitalize="words"
-            placeholder="Type the room name"
+            placeholder={place === "wall" ? "Type the wall name" : "Type the room name"}
             onChange={(event) => onChange(event.target.value)}
           />
         </label>
@@ -158,6 +172,8 @@ export function MeasureForm({
   initialIncluded,
   vatRegistered,
   vatRatePercent,
+  place = "room",
+  sectionId = "",
 }: {
   jobId: string;
   typeKey: string;
@@ -176,12 +192,14 @@ export function MeasureForm({
   initialIncluded: string[] | null;
   vatRegistered: boolean;
   vatRatePercent: number;
+  place?: "room" | "wall";
+  sectionId?: string;
 }) {
   const [rooms, setRooms] = useState<DraftRoom[]>(() => {
     const source =
       initialRooms.length > 0
         ? initialRooms
-        : [blankRoom("Living room", defaults.mode, defaults.includeWalls, defaults.includeCeiling)];
+        : [blankRoom(nextName(0, place), defaults.mode, defaults.includeWalls, defaults.includeCeiling)];
     return source.map(withDraft);
   });
   const [wastage, setWastage] = useState(String(wastagePercent || DEFAULT_WASTAGE_PERCENT));
@@ -256,10 +274,10 @@ export function MeasureForm({
         return (
           <section key={room.draftId} className="card grid gap-3">
             <div className="flex flex-wrap items-end justify-between gap-3">
-              <RoomNamePicker name={room.name} onChange={(name) => update(index, { name })} />
+              <RoomNamePicker name={room.name} place={place} onChange={(name) => update(index, { name })} />
               {rooms.length > 1 ? (
                 <button type="button" className="btn btn-secondary" onClick={() => setRooms((current) => current.filter((_, roomIndex) => roomIndex !== index))}>
-                  Remove room
+                  {place === "wall" ? "Remove wall" : "Remove room"}
                 </button>
               ) : null}
             </div>
@@ -335,12 +353,14 @@ export function MeasureForm({
                 </label>
                 <label className="field">
                   External corners
-                  <span>Angle bead is for external corners only. A plain room has none. Each door or window reveal adds two on top of this number. Using {externalCornerCount(room)}.</span>
+                  <span>
+                    Angle bead is for external corners only. {place === "wall" ? "A plain wall has none." : "A plain room has none."} Each door or window reveal adds two on top of this number. Using {externalCornerCount(room)}.
+                  </span>
                   <input inputMode="numeric" value={room.externalCorners || ""} placeholder="0" onChange={(event) => update(index, { externalCorners: Number(event.target.value) || 0 })} />
                 </label>
                 <label className="field">
                   Stop bead (m)
-                  <span>Leave this at 0 for a plain room. It is not the length of the walls.</span>
+                  <span>{place === "wall" ? "Leave this at 0 for a plain wall." : "Leave this at 0 for a plain room."} It is not the length of the walls.</span>
                   <input inputMode="decimal" value={room.stopBeadM || ""} placeholder="0" onChange={(event) => update(index, { stopBeadM: Number(event.target.value) || 0 })} />
                 </label>
               </div>
@@ -357,11 +377,11 @@ export function MeasureForm({
         onClick={() =>
           setRooms((current) => [
             ...current,
-            withDraft(blankRoom(nextName(current.length), defaults.mode, defaults.includeWalls, defaults.includeCeiling)),
+            withDraft(blankRoom(nextName(current.length, place), defaults.mode, defaults.includeWalls, defaults.includeCeiling)),
           ])
         }
       >
-        Add a room
+        {place === "wall" ? "Add a wall" : "Add a room"}
       </button>
 
       <section className="card grid gap-3">
@@ -396,7 +416,7 @@ export function MeasureForm({
         <ul className="grid gap-1 text-stone">
           {rooms.map((room, index) => (
             <li key={`total-${index}`}>
-              {room.name || "Room"} · {formatM2(quote.rooms[index]?.netM2 ?? 0)}
+              {room.name || (place === "wall" ? "Wall" : "Room")} · {formatM2(quote.rooms[index]?.netM2 ?? 0)}
             </li>
           ))}
         </ul>
@@ -452,6 +472,7 @@ export function MeasureForm({
         ) : null}
         <InlineForm action={saveMeasuredQuote} className="grid gap-3">
           <input type="hidden" name="jobId" value={jobId} />
+          <input type="hidden" name="sectionId" value={sectionId} />
           <input type="hidden" name="typeKey" value={typeKey} />
           <input type="hidden" name="typeName" value={typeName} />
           <input type="hidden" name="rooms" value={JSON.stringify(saved)} />

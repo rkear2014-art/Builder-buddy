@@ -3,25 +3,23 @@ import { notFound } from "next/navigation";
 import type { CSSProperties, ReactNode } from "react";
 import { agreementChanges, parseLockedAgreement, toPublicAgreement } from "@/lib/agreement";
 import { slotLabel } from "@/lib/constants";
-import { customerSubtotalPence, hidesMaterialLines, poundsFieldValue, scopeLine } from "@/lib/customer-price";
+import { hidesMaterialLines, poundsFieldValue, scopeLine } from "@/lib/customer-price";
 import { quoteMessage, whatsAppHref } from "@/lib/customer-message";
 import { formatDocumentNumber, quoteIsExpired } from "@/lib/documents";
 import { formatIsoDate, formatLondonDateTime, londonToday } from "@/lib/dates";
 import { bookingKindLabel } from "@/lib/diary";
 import { jobNextStep, openJobSection } from "@/lib/job-next";
-import { costTotals, materialsTotals } from "@/lib/materials";
+import { costTotals } from "@/lib/materials";
+import { quoteSectionsSubtotal, unpricedSectionCount } from "@/lib/quote-sections";
 import { formatPence } from "@/lib/money";
 import { depositFromPercent, paymentNote, percentFromDeposit, pricesIncludeVatLine, quoteMoney } from "@/lib/quote";
 import { raiseInvoice, saveQuoteValidity } from "@/server/actions/customer-finish";
 import { saveCustomerPrice, savePaymentTerms, saveQuoteVat, setShowLinePrices } from "@/server/actions/job-desk";
 import { deleteJob, revokeShareLink, rotateShareLink, saveJobAsTemplate, updateJob } from "@/server/actions/jobs";
-import { deleteJobMaterial, toggleMaterialBought } from "@/server/actions/materials";
 import { brandedEmailReady } from "@/server/email";
-import { isInternalCrewName, startingCrew } from "@/lib/crew";
-import { formatM2, roomAreas, type MeasureMode } from "@/lib/measure";
-import { CrewForm } from "@/components/crew-form";
 import { JobStatusRow } from "@/components/job-status-row";
-import { getJob, getLibrary, listCrewRates, listJobCrew, listJobInvoices, listRoomMeasures, requireUser } from "@/server/dal";
+import { QuoteJobs } from "@/components/quote-jobs";
+import { getJob, getLibrary, listCrewRates, listJobInvoices, listRoomMeasures, requireUser } from "@/server/dal";
 import { requestOrigin } from "@/server/origin";
 import { InlineForm } from "@/components/inline-form";
 import { JobForm } from "@/components/job-form";
@@ -49,27 +47,23 @@ export default async function JobPage({ params }: { params: Promise<{ id: string
   if (!job) notFound();
   const library = await getLibrary(user.businessId);
   const invoices = await listJobInvoices(user.businessId, job.id);
-  const measured = await listRoomMeasures(user.businessId, job.id);
-  const [crewRates, jobCrew] = await Promise.all([listCrewRates(user.businessId), listJobCrew(user.businessId, job.id)]);
-  const crewArea = (measured?.rooms ?? []).reduce(
-    (sum, room) => sum + roomAreas({ ...room, mode: (["room", "elevation", "floor", "direct"].includes(room.mode) ? room.mode : "room") as MeasureMode }).netM2,
-    0,
-  );
-  const crewStart = startingCrew({
-    defaults: crewRates,
-    saved: jobCrew.length > 0 ? jobCrew : null,
-    legacyDayRatePence: jobCrew.length > 0 ? null : measured?.dayRatePence,
-    legacyDays: measured?.dayCount,
-  });
+  const [measured, crewRates] = await Promise.all([
+    listRoomMeasures(user.businessId, job.id),
+    listCrewRates(user.businessId),
+  ]);
   const origin = await requestOrigin();
   const shareUrl = origin ? `${origin}/sign/${job.shareToken}` : `/sign/${job.shareToken}`;
   const locked = job.signOff ? parseLockedAgreement(job.signOff.snapshot) : null;
   const changes = locked ? agreementChanges(locked, toPublicAgreement(job)) : [];
-  const customerTotal = materialsTotals(job.materials.filter((material) => !isInternalCrewName(material.name)));
-  const customerSubtotal = customerSubtotalPence({
-    materialsTotalPence: customerTotal.totalPence,
-    fixedPricePence: job.fixedPricePence,
-  });
+  const pricedSections = job.sections.map((section) => ({
+    title: section.title,
+    typeKey: section.typeKey,
+    fixedPricePence: section.fixedPricePence,
+    materials: section.materials,
+  }));
+  const materialsSum = quoteSectionsSubtotal({ sections: pricedSections });
+  const customerSubtotal = quoteSectionsSubtotal({ sections: pricedSections, fixedPricePence: job.fixedPricePence });
+  const unpricedCount = unpricedSectionCount(pricedSections);
   const price = quoteMoney({
     subtotalPence: customerSubtotal,
     vatRegistered: job.vatRegistered,
@@ -160,6 +154,16 @@ export default async function JobPage({ params }: { params: Promise<{ id: string
       {step.id === "done" ? <p className="rounded-2xl border border-line bg-white px-4 py-4 text-xl font-extrabold">Job finished</p> : null}
       {step.id === "lost" ? <p className="rounded-2xl border border-line bg-white px-4 py-4 text-xl font-extrabold">This quote is lost</p> : null}
 
+      <QuoteJobs
+        jobId={job.id}
+        sections={job.sections}
+        accent={accent}
+        accentInk={accentInk}
+        crewRates={crewRates}
+        legacyDayRatePence={measured?.dayRatePence ?? null}
+        legacyDays={measured?.dayCount ?? null}
+      />
+
       <Fold title="1. Price" open={open === "price"}>
         <p className="font-display text-4xl leading-none">{formatPence(price.totalPence)}</p>
         {price.vatPence != null ? (
@@ -193,7 +197,7 @@ export default async function JobPage({ params }: { params: Promise<{ id: string
           </label>
           <label className="field">
             Price the whole job
-            <span>Before VAT. Leave blank to charge {formatPence(customerTotal.totalPence)} from the materials and labour.</span>
+            <span>Before VAT. Leave blank to charge {formatPence(materialsSum)} from the jobs on this quote.</span>
             <input
               name="fixedPrice"
               inputMode="decimal"
@@ -219,42 +223,11 @@ export default async function JobPage({ params }: { params: Promise<{ id: string
           </label>
           <SubmitButton variant="secondary">Save VAT</SubmitButton>
         </InlineForm>
-        {step.id === "materials" ? null : (
-          <Link href={`/jobs/${job.id}/choose`} className="btn btn-secondary w-full">
-            Add materials
-          </Link>
-        )}
-        {customerTotal.unpricedCount > 0 ? (
+        {unpricedCount > 0 ? (
           <p className="text-stone">
-            {customerTotal.unpricedCount} {customerTotal.unpricedCount === 1 ? "item has" : "items have"} no price yet.
+            {unpricedCount} {unpricedCount === 1 ? "item has" : "items have"} no price yet.
           </p>
         ) : null}
-        {job.materials.length === 0 ? <p className="text-stone">No materials yet.</p> : null}
-        <ul className="grid gap-3">
-          {job.materials.map((material) => (
-            <li key={material.id} className="grid gap-3 border-b border-line pb-3 sm:grid-cols-[9rem_1fr_auto] sm:items-center">
-              <form action={toggleMaterialBought}>
-                <input type="hidden" name="materialId" value={material.id} />
-                <button className={`btn w-full ${material.bought ? "btn-pine" : "btn-secondary"}`} type="submit">
-                  {material.bought ? "Bought" : "To buy"}
-                </button>
-              </form>
-              <div>
-                <p className="text-lg font-bold">{material.name}</p>
-                <p>
-                  {material.quantity} {material.unit}
-                  {material.unitPricePence == null ? "" : ` · ${formatPence(material.unitPricePence)}`}
-                </p>
-              </div>
-              <form action={deleteJobMaterial}>
-                <input type="hidden" name="materialId" value={material.id} />
-                <button className="btn btn-secondary w-full" type="submit">
-                  Remove
-                </button>
-              </form>
-            </li>
-          ))}
-        </ul>
         <div className="private-panel rounded-2xl p-4">
           <h3 className="font-bold">Your costs</h3>
           <p className="text-sm text-stone">Hidden from the customer.</p>
@@ -297,40 +270,6 @@ export default async function JobPage({ params }: { params: Promise<{ id: string
             <SubmitButton variant="secondary">Save payment</SubmitButton>
           </InlineForm>
         </div>
-        {measured && measured.rooms.length > 0 ? (
-          <div className="grid gap-2 border-t border-line pt-4">
-            <div className="flex items-end justify-between gap-2">
-              <h3 className="font-display text-2xl">Rooms</h3>
-              <Link
-                href={
-                  measured.measureTypeKey.startsWith("template:")
-                    ? `/jobs/${job.id}/measure?template=${measured.measureTypeKey.slice("template:".length)}`
-                    : `/jobs/${job.id}/measure?starter=${measured.measureTypeKey}`
-                }
-                className="font-bold underline"
-                style={{ color: accent }}
-              >
-                Change sizes
-              </Link>
-            </div>
-            <ul className="grid gap-1">
-              {measured.rooms.map((room, index) => (
-                <li key={`${room.name}-${index}`}>
-                  {room.name} · {formatM2(roomAreas({ ...room, mode: room.mode as MeasureMode }).netM2)}
-                </li>
-              ))}
-            </ul>
-          </div>
-        ) : null}
-        <CrewForm
-          jobId={job.id}
-          initialDays={crewStart.days}
-          initialRoles={crewStart.roles}
-          totalM2={crewArea}
-          accent={accent}
-          accentInk={accentInk}
-          nested
-        />
         {job.materials.length > 0 ? (
           <InlineForm action={saveJobAsTemplate} className="grid gap-3 border-t border-line pt-4">
             <h3 className="font-display text-xl">Save as a template</h3>

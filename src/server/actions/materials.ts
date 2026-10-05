@@ -5,6 +5,7 @@ import type { ActionState } from "@/lib/form-state";
 import { tenantWhere } from "@/lib/tenancy";
 import { parseMaterialForm } from "@/lib/validators";
 import { requireUser } from "@/server/dal";
+import { sectionForWrite } from "@/server/quote-section";
 import { getPrisma } from "@/server/prisma";
 import { noteQuoteMade } from "@/server/quote-progress";
 import { revalidateDesk } from "@/server/revalidate";
@@ -27,11 +28,13 @@ export async function addJobMaterial(_state: ActionState, formData: FormData): P
   if (!parsed.ok) return { error: parsed.error };
   const job = await ownedJob(user.businessId, jobId);
   if (!job) return { error: "That job could not be found." };
+  const section = await sectionForWrite(user.businessId, job.id, String(formData.get("sectionId") ?? ""));
   const sortOrder = (job.materials[0]?.sortOrder ?? -1) + 1;
   await getPrisma().jobMaterial.create({
     data: {
       businessId: user.businessId,
       jobId: job.id,
+      sectionId: section.id,
       name: parsed.data.name,
       quantity: parsed.data.quantity,
       unit: parsed.data.unit,
@@ -42,7 +45,7 @@ export async function addJobMaterial(_state: ActionState, formData: FormData): P
   });
   await noteQuoteMade(job.id);
   revalidateDesk(job.id, job.shareToken);
-  redirect(`/jobs/${job.id}#materials`);
+  redirect(`/jobs/${job.id}#quote-jobs`);
 }
 
 export async function addSavedMaterialToJob(formData: FormData): Promise<void> {
@@ -54,11 +57,13 @@ export async function addSavedMaterialToJob(formData: FormData): Promise<void> {
     where: { id: savedId, ...tenantWhere(user.businessId) },
   });
   if (!job || !saved) return;
+  const section = await sectionForWrite(user.businessId, job.id, String(formData.get("sectionId") ?? ""));
   const sortOrder = (job.materials[0]?.sortOrder ?? -1) + 1;
   await getPrisma().jobMaterial.create({
     data: {
       businessId: user.businessId,
       jobId: job.id,
+      sectionId: section.id,
       name: saved.name,
       quantity: "1",
       unit: saved.unit,
@@ -81,6 +86,13 @@ export async function applyTemplate(formData: FormData): Promise<void> {
     include: { items: { orderBy: { sortOrder: "asc" } } },
   });
   if (!job || !template || template.items.length === 0) return;
+  const section = await sectionForWrite(user.businessId, job.id, String(formData.get("sectionId") ?? ""));
+  if (!section.title.trim()) {
+    await getPrisma().jobSection.update({
+      where: { id: section.id },
+      data: { title: template.name.slice(0, 80), typeKey: `template:${template.id}` },
+    });
+  }
   let sortOrder = (job.materials[0]?.sortOrder ?? -1) + 1;
   await getPrisma().$transaction(async (tx) => {
     for (const item of template.items) {
@@ -88,6 +100,7 @@ export async function applyTemplate(formData: FormData): Promise<void> {
         data: {
           businessId: user.businessId,
           jobId: job.id,
+          sectionId: section.id,
           name: item.name,
           quantity: item.quantity,
           unit: item.unit,
@@ -101,7 +114,7 @@ export async function applyTemplate(formData: FormData): Promise<void> {
   });
   await noteQuoteMade(job.id);
   revalidateDesk(job.id, job.shareToken);
-  redirect(`/jobs/${job.id}#materials`);
+  redirect(`/jobs/${job.id}#quote-jobs`);
 }
 
 export async function toggleMaterialBought(formData: FormData): Promise<void> {

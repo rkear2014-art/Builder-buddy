@@ -70,7 +70,7 @@ describe("customer quote rooms and materials", () => {
       rooms: [room()],
       materials: [{ name: "Multi-finish plaster 25kg", quantity: "6", unit: "bag" }],
     });
-    assert.deepEqual(hidden, { rooms: [], materials: [] });
+    assert.deepEqual(hidden, { areasLabel: "Rooms", rooms: [], materials: [] });
     assert.equal(quoteBreakdownText(hidden), "");
   });
 

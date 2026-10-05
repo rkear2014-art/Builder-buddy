@@ -22,9 +22,9 @@ export async function writeCrewDefaults(businessId: string, formData: FormData):
   return true;
 }
 
-export async function measuredAreaM2(businessId: string, jobId: string): Promise<number> {
+export async function measuredAreaM2(businessId: string, jobId: string, sectionId?: string): Promise<number> {
   const rooms = await getPrisma().roomMeasure.findMany({
-    where: { jobId, ...tenantWhere(businessId) },
+    where: { jobId, ...tenantWhere(businessId), ...(sectionId ? { sectionId } : {}) },
   });
   return rooms.reduce((sum, room) => {
     const mode = MODES.has(room.mode as MeasureMode) ? (room.mode as MeasureMode) : "room";

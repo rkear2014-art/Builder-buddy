@@ -14,10 +14,12 @@ import {
 } from "@/lib/measure-plan";
 import { parsePoundsToPence } from "@/lib/money";
 import { tenantWhere } from "@/lib/tenancy";
+import { isExteriorMeasure } from "@/lib/room-names";
 import { findStarterTemplate, isRetiredTemplateName, PLASTERING_STARTER_TEMPLATES } from "@/lib/trade-starters";
 import { writeCrewDefaults } from "@/server/crew-store";
 import { requireUser } from "@/server/dal";
 import { getPrisma } from "@/server/prisma";
+import { sectionForWrite } from "@/server/quote-section";
 import { noteQuoteMade } from "@/server/quote-progress";
 import { revalidateDesk } from "@/server/revalidate";
 
@@ -31,13 +33,14 @@ export async function saveMeasuredQuote(_state: ActionState, formData: FormData)
   const jobId = String(formData.get("jobId") ?? "");
   const typeKey = String(formData.get("typeKey") ?? "");
   const typeName = String(formData.get("typeName") ?? "").trim().slice(0, 80);
+  const place = isExteriorMeasure(typeKey, typeName) ? "wall" : "room";
   let rooms: RoomInput[];
   try {
     const checked = parseRoomInputs(JSON.parse(String(formData.get("rooms") ?? "")));
-    if (!checked) return { error: "Check the room sizes and try again." };
+    if (!checked) return { error: place === "wall" ? "Check the wall sizes and try again." : "Check the room sizes and try again." };
     rooms = checked;
   } catch {
-    return { error: "Check the room sizes and try again." };
+    return { error: place === "wall" ? "Check the wall sizes and try again." : "Check the room sizes and try again." };
   }
   const wastage = parseWastagePercent(String(formData.get("wastagePercent") ?? ""));
   if (!wastage.ok) return { error: wastage.error };
@@ -89,11 +92,26 @@ export async function saveMeasuredQuote(_state: ActionState, formData: FormData)
   });
   const lines = quote.lines.filter((line) => line.quantity && (included == null || included.includes(line.name)));
   const crewPrice = formData.has("crewDays") ? priceCrew({ ...crew.crew, totalM2: quote.totalM2 }) : null;
-  if (lines.length === 0) return { error: "Enter a room size before adding this to the quote." };
+  if (lines.length === 0) {
+    return { error: place === "wall" ? "Enter a wall size before adding this to the quote." : "Enter a room size before adding this to the quote." };
+  }
+
+  const section = await sectionForWrite(user.businessId, job.id, String(formData.get("sectionId") ?? ""), typeKey);
+  const selection = serialiseMeasureSelection(choices, included ?? []);
+  const savedDays = dayCount == null ? null : dayCount.toFixed(2);
 
   await getPrisma().$transaction(async (tx) => {
-    await tx.roomMeasure.deleteMany({ where: { jobId: job.id, ...tenantWhere(user.businessId) } });
-    await tx.jobMaterial.deleteMany({ where: { jobId: job.id, ...tenantWhere(user.businessId), fromMeasure: true } });
+    await tx.roomMeasure.deleteMany({ where: { sectionId: section.id, ...tenantWhere(user.businessId) } });
+    await tx.jobMaterial.deleteMany({ where: { sectionId: section.id, ...tenantWhere(user.businessId), fromMeasure: true } });
+    await tx.jobSection.update({
+      where: { id: section.id },
+      data: {
+        typeKey,
+        title: section.title.trim() ? undefined : (typeName || prepared.name).slice(0, 80),
+        dayCount: savedDays,
+        measureSelection: selection,
+      },
+    });
     await tx.job.update({
       where: { id: job.id },
       data: {
@@ -101,18 +119,19 @@ export async function saveMeasuredQuote(_state: ActionState, formData: FormData)
         measureTypeKey: typeKey,
         measureTypeName: typeName || prepared.name,
         dayRatePence: formData.has("crewDays") ? null : dayRate.pence,
-        dayCount: dayCount == null ? null : dayCount.toFixed(2),
-        measureSelection: serialiseMeasureSelection(choices, included ?? []),
+        dayCount: savedDays,
+        measureSelection: selection,
         description: job.description.trim() ? undefined : prepared.description,
       },
     });
     if (formData.has("crewDays")) {
       for (const role of crew.crew.roles) {
         await tx.jobCrew.upsert({
-          where: { jobId_role: { jobId: job.id, role: role.role } },
+          where: { sectionId_role: { sectionId: section.id, role: role.role } },
           create: {
             businessId: user.businessId,
             jobId: job.id,
+            sectionId: section.id,
             role: role.role,
             count: role.count,
             basis: role.basis,
@@ -126,6 +145,7 @@ export async function saveMeasuredQuote(_state: ActionState, formData: FormData)
       data: rooms.map((room, index) => ({
         businessId: user.businessId,
         jobId: job.id,
+        sectionId: section.id,
         name: room.name,
         mode: room.mode,
         lengthM: decimal(room.lengthM),
@@ -154,6 +174,7 @@ export async function saveMeasuredQuote(_state: ActionState, formData: FormData)
         data: {
           businessId: user.businessId,
           jobId: job.id,
+          sectionId: section.id,
           name: line.name,
           quantity: line.quantity ?? "1",
           unit: line.unit,
@@ -168,7 +189,7 @@ export async function saveMeasuredQuote(_state: ActionState, formData: FormData)
   });
   await noteQuoteMade(job.id);
   revalidateDesk(job.id, job.shareToken);
-  redirect(`/jobs/${job.id}#materials`);
+  redirect(`/jobs/${job.id}#quote-jobs`);
 }
 
 async function materialsForMeasure(businessId: string, trade: string, typeKey: string) {

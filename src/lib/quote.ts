@@ -35,6 +35,19 @@ export type QuoteChrome = {
   rooms?: Array<{ name: string; size: string; areas: string }>;
   /** Material names and quantities only. Empty hides the Materials section. */
   materials?: string[];
+  /** Rendering quotes say Walls. Indoor plastering stays Rooms. */
+  areasLabel?: "Rooms" | "Walls";
+  /**
+   * More than one job on the quote. Each block has its own rooms or walls,
+   * material quantities, and price. Empty keeps the single Rooms section.
+   */
+  jobs?: Array<{
+    title: string;
+    areasLabel: "Rooms" | "Walls";
+    rooms: Array<{ name: string; size: string; areas: string }>;
+    materials: string[];
+    subtotalPence: number | null;
+  }>;
   /** Terms printed at the bottom of the customer quote. */
   terms: string;
 };

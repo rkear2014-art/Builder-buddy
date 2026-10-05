@@ -5,6 +5,7 @@ import { isCoverageBasis, starterCoverage } from "@/lib/coverage";
 import { startingCrew } from "@/lib/crew";
 import { measureDefaults, type MeasureMode, type RoomInput } from "@/lib/measure";
 import { extraMeasureLines, measurePlanFor, normaliseChoices, parseMeasureSelection } from "@/lib/measure-plan";
+import { isExteriorMeasure } from "@/lib/room-names";
 import { findStarterTemplate, isRetiredTemplateName, PLASTERING_STARTER_TEMPLATES } from "@/lib/trade-starters";
 import { MeasureForm } from "@/components/measure-form";
 import { getBusinessWastage, getJob, getLibrary, listCrewRates, listJobCrew, listLabourRates, listRoomMeasures, requireUser } from "@/server/dal";
@@ -16,30 +17,38 @@ export default async function MeasurePage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ starter?: string; template?: string }>;
+  searchParams: Promise<{ starter?: string; template?: string; section?: string }>;
 }) {
   const { id } = await params;
   const query = await searchParams;
   const user = await requireUser();
   const job = await getJob(user.businessId, id);
   if (!job) notFound();
+  const starter = query.starter ? findStarterTemplate(query.starter) : null;
+  const typeKeyGuess = query.starter ? query.starter : query.template ? `template:${query.template}` : "";
+  const sectionId =
+    query.section ||
+    job.sections.find((section) => section.typeKey === typeKeyGuess)?.id ||
+    job.sections.find((section) => !section.typeKey)?.id ||
+    "";
   const [library, rates, crewRates, jobCrew, wastageDefault, saved] = await Promise.all([
     getLibrary(user.businessId),
     listLabourRates(user.businessId),
     listCrewRates(user.businessId),
-    listJobCrew(user.businessId, job.id),
+    listJobCrew(user.businessId, job.id, sectionId || undefined),
     getBusinessWastage(user.businessId),
-    listRoomMeasures(user.businessId, job.id),
+    listRoomMeasures(user.businessId, job.id, sectionId || undefined),
   ]);
-  const starter = query.starter ? findStarterTemplate(query.starter) : null;
   const template = query.template ? library.templates.find((item) => item.id === query.template) : null;
   if (starter?.retired || (template && isRetiredTemplateName(template.name))) notFound();
   if (!starter && !template) notFound();
   if (starter && starter.trade !== job.trade) notFound();
   if (template && template.trade !== job.trade) notFound();
+  if (query.section && !saved) notFound();
 
   const typeKey = starter ? starter.id : `template:${template?.id}`;
   const typeName = starter?.name ?? template?.name ?? "";
+  const place = isExteriorMeasure(typeKey, typeName) ? "wall" : "room";
   const matched = PLASTERING_STARTER_TEMPLATES.find((item) => item.name.toLowerCase() === typeName.toLowerCase());
   const plan = measurePlanFor(starter?.id ?? matched?.id ?? "");
   const savedByName = new Map(library.savedItems.map((item) => [item.name.trim().toLowerCase(), item]));
@@ -94,9 +103,9 @@ export default async function MeasurePage({
   const rate = rates.find((item) => item.jobTypeKey === typeKey)?.labourPerM2Pence ?? null;
   const crew = startingCrew({
     defaults: crewRates,
-    saved: sameJob ? jobCrew : jobCrew.length > 0 ? jobCrew : null,
+    saved: sameJob ? jobCrew : null,
     legacyDayRatePence: sameJob ? saved?.dayRatePence : null,
-    legacyDays: saved?.dayCount,
+    legacyDays: sameJob ? saved?.dayCount : null,
     jobTypeLabourPerM2Pence: rate,
   });
   const accent = user.branding.accentColour;
@@ -104,13 +113,13 @@ export default async function MeasurePage({
   return (
     <div className="mx-auto grid max-w-3xl gap-4" style={{ "--job-accent": accent } as CSSProperties}>
       <p>
-        <Link href={`/jobs/${job.id}/choose`} className="font-bold underline" style={{ color: accent }}>
+        <Link href={`/jobs/${job.id}/choose${sectionId ? `?section=${sectionId}` : ""}`} className="font-bold underline" style={{ color: accent }}>
           ← Choose a job
         </Link>
       </p>
       <header>
         <p className="text-sm font-extrabold tracking-wide" style={{ color: accent }}>
-          MEASURE THE ROOM
+          {place === "wall" ? "MEASURE THE WALL" : "MEASURE THE ROOM"}
         </p>
         <h1 className="font-display text-4xl leading-tight">{typeName}</h1>
         <p className="mt-1 text-stone">{job.customerName}. Sizes are in metres. Coverage figures are starting guidance until you change them in Library.</p>
@@ -133,6 +142,8 @@ export default async function MeasurePage({
         initialIncluded={initialIncluded}
         vatRegistered={job.vatRegistered}
         vatRatePercent={job.vatRatePercent}
+        place={place}
+        sectionId={sectionId}
       />
     </div>
   );

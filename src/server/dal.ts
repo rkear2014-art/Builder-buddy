@@ -17,7 +17,7 @@ import type { JobStatus } from "@/lib/constants";
 import { addDays, isoToUtcDate, londonHour, londonToday, utcDateToIso, weekDates } from "@/lib/dates";
 import { DIARY_OPEN_STATUSES, MAX_SPAN_DAYS, normaliseBookingKind, shortJobSummary, type DiaryBooking } from "@/lib/diary";
 import { postcodeFromAddress } from "@/lib/place";
-import type { DeskJob, JobSummary, MaterialTemplateView, SavedItem, SessionUser } from "@/lib/desk";
+import type { DeskJob, DeskRoom, JobSummary, MaterialTemplateView, SavedItem, SessionUser } from "@/lib/desk";
 import { buildGlance, glanceChips, type GlanceJob, type GlancePage } from "@/lib/glance";
 import { formatDocumentNumber, quoteIsExpired } from "@/lib/documents";
 import { balancePence, invoiceGlance, invoiceStanding, invoiceTotals, type InvoiceStanding, type PaymentMethod } from "@/lib/invoice";
@@ -25,9 +25,10 @@ import { chargeVat, parseQuoteChips, quoteMoney, type QuoteChrome } from "@/lib/
 import { resolveTermsText } from "@/lib/terms";
 import { parseLockedAgreement } from "@/lib/agreement";
 import { customerQuoteSections, roomInputFromStored } from "@/lib/quote-breakdown";
+import { areasLabelFor, quoteSectionsSubtotal, sectionSubtotalPence, sectionTitle } from "@/lib/quote-sections";
 import { trustBadges } from "@/lib/trust";
-import { customerSubtotalPence, hidesMaterialLines } from "@/lib/customer-price";
-import { materialsTotals, quantityFromStored } from "@/lib/materials";
+import { hidesMaterialLines } from "@/lib/customer-price";
+import { quantityFromStored } from "@/lib/materials";
 import { presentShare, type SharePresentation } from "@/lib/share";
 import { tenantWhere } from "@/lib/tenancy";
 import { SESSION_COOKIE, decryptSession } from "@/lib/session-token";
@@ -68,10 +69,58 @@ const businessBrandingSelect = {
 const jobInclude = {
   materials: { orderBy: { sortOrder: "asc" as const } },
   rooms: { orderBy: { sortOrder: "asc" as const } },
+  sections: {
+    orderBy: { sortOrder: "asc" as const },
+    include: {
+      materials: { orderBy: { sortOrder: "asc" as const } },
+      rooms: { orderBy: { sortOrder: "asc" as const } },
+      crew: true,
+    },
+  },
   signOff: true,
   user: { select: { name: true } },
   business: { select: businessBrandingSelect },
 };
+
+function storedNumber(value: { toString(): string } | number | null | undefined, fallback: number): number {
+  if (value == null) return fallback;
+  const parsed = Number(typeof value === "number" ? value : value.toString());
+  return Number.isFinite(parsed) ? parsed : fallback;
+}
+
+function mapStoredRoom(room: {
+  name: string;
+  mode: string;
+  lengthM: { toString(): string } | null;
+  widthM: { toString(): string } | null;
+  heightM: { toString(): string } | null;
+  includeWalls: boolean;
+  includeCeiling: boolean;
+  directAreaM2: { toString(): string } | null;
+  doorCount: number;
+  doorAreaM2: { toString(): string };
+  windowCount: number;
+  windowAreaM2: { toString(): string };
+  externalCorners: number;
+  stopBeadM: { toString(): string } | null;
+}): DeskRoom {
+  return {
+    name: room.name,
+    mode: room.mode,
+    lengthM: storedNumber(room.lengthM, 0),
+    widthM: storedNumber(room.widthM, 0),
+    heightM: storedNumber(room.heightM, 2.4),
+    includeWalls: room.includeWalls,
+    includeCeiling: room.includeCeiling,
+    directAreaM2: storedNumber(room.directAreaM2, 0),
+    doorCount: room.doorCount,
+    doorAreaM2: storedNumber(room.doorAreaM2, 1.9),
+    windowCount: room.windowCount,
+    windowAreaM2: storedNumber(room.windowAreaM2, 1.5),
+    externalCorners: room.externalCorners,
+    stopBeadM: storedNumber(room.stopBeadM, 0),
+  };
+}
 
 type JobWithRelations = NonNullable<Awaited<ReturnType<typeof findJobRow>>>;
 
@@ -125,6 +174,30 @@ function mapJob(job: JobWithRelations): DeskJob {
       unitPricePence: material.unitPricePence,
       costPricePence: material.costPricePence,
       bought: material.bought,
+    })),
+    sections: job.sections.map((section) => ({
+      id: section.id,
+      sortOrder: section.sortOrder,
+      title: section.title,
+      typeKey: section.typeKey,
+      fixedPricePence: section.fixedPricePence,
+      dayCount: section.dayCount == null ? null : section.dayCount.toString(),
+      materials: section.materials.map((material) => ({
+        id: material.id,
+        name: material.name,
+        quantity: quantityFromStored(material.quantity.toString()),
+        unit: material.unit,
+        unitPricePence: material.unitPricePence,
+        costPricePence: material.costPricePence,
+        bought: material.bought,
+      })),
+      rooms: section.rooms.map(mapStoredRoom),
+      crew: section.crew.map((member) => ({
+        role: member.role,
+        count: member.count,
+        basis: member.basis,
+        ratePence: member.ratePence,
+      })),
     })),
     signOff: job.signOff
       ? {
@@ -286,7 +359,15 @@ export async function getHome(businessId: string): Promise<{
 }
 
 const glanceInclude = {
-  materials: { select: { quantity: true, unitPricePence: true } },
+  materials: { select: { name: true, quantity: true, unit: true, unitPricePence: true } },
+  sections: {
+    select: {
+      title: true,
+      typeKey: true,
+      fixedPricePence: true,
+      materials: { select: { name: true, quantity: true, unit: true, unitPricePence: true } },
+    },
+  },
   signOff: { select: { id: true } },
   user: { select: { name: true } },
 } as const;
@@ -312,18 +393,44 @@ function mapGlanceJob(
     fixedPricePence: number | null;
     user: { name: string };
     signOff: { id: string } | null;
-    materials: Array<{ quantity: { toString(): string }; unitPricePence: number | null }>;
+    materials: Array<{ name: string; quantity: { toString(): string }; unit: string; unitPricePence: number | null }>;
+    sections: Array<{
+      title: string;
+      typeKey: string;
+      fixedPricePence: number | null;
+      materials: Array<{ name: string; quantity: { toString(): string }; unit: string; unitPricePence: number | null }>;
+    }>;
   },
   vat: { vatRegistered: boolean; vatRatePercent: number },
 ): GlanceJob {
-  const materialsTotalPence = materialsTotals(
-    job.materials.map((material) => ({
-      quantity: quantityFromStored(material.quantity.toString()),
-      unitPricePence: material.unitPricePence,
-    })),
-  ).totalPence;
-  const subtotalPence = customerSubtotalPence({
-    materialsTotalPence,
+  const pricedSections =
+    job.sections.length > 0
+      ? job.sections.map((section) => ({
+          title: section.title,
+          typeKey: section.typeKey,
+          fixedPricePence: section.fixedPricePence,
+          materials: section.materials.map((material) => ({
+            name: material.name,
+            quantity: quantityFromStored(material.quantity.toString()),
+            unit: material.unit,
+            unitPricePence: material.unitPricePence,
+          })),
+        }))
+      : [
+          {
+            title: "",
+            typeKey: "",
+            fixedPricePence: null,
+            materials: job.materials.map((material) => ({
+              name: material.name,
+              quantity: quantityFromStored(material.quantity.toString()),
+              unit: material.unit,
+              unitPricePence: material.unitPricePence,
+            })),
+          },
+        ];
+  const subtotalPence = quoteSectionsSubtotal({
+    sections: pricedSections,
     fixedPricePence: job.fixedPricePence,
   });
   return {
@@ -740,6 +847,17 @@ export const getShareView = cache(async (token: string): Promise<ShareView> => {
         vatRegistered: mapped.vatRegistered,
         vatRatePercent: mapped.vatRatePercent,
         materials: mapped.materials,
+        sections: mapped.sections.map((section) => ({
+          title: section.title,
+          typeKey: section.typeKey,
+          fixedPricePence: section.fixedPricePence,
+          materials: section.materials.map((line) => ({
+            name: line.name,
+            quantity: line.quantity,
+            unit: line.unit,
+            unitPricePence: line.unitPricePence,
+          })),
+        })),
       },
       signOff: mapped.signOff
         ? { snapshot: mapped.signOff.snapshot, signatureDataUrl: mapped.signOff.signatureDataUrl }
@@ -760,16 +878,7 @@ export const getShareView = cache(async (token: string): Promise<ShareView> => {
         const src = customerHeroSrc(token, photo.id, photo.updatedAt.toISOString());
         return src ? [{ id: photo.id, caption: photo.caption, src }] : [];
       }),
-      ...customerQuoteSections({
-        show: job.business.showQuoteRooms !== false,
-        wholeJob: hidesMaterialLines({ totalOnly: mapped.totalOnly, fixedPricePence: mapped.fixedPricePence }),
-        rooms: job.rooms.map(roomInputFromStored),
-        materials: mapped.materials.map((line) => ({
-          name: line.name,
-          quantity: line.quantity,
-          unit: line.unit,
-        })),
-      }),
+      ...quoteScopeForCustomer(mapped, job.business.showQuoteRooms !== false),
       terms:
         job.signOff?.termsText.trim() ||
         parseLockedAgreement(job.signOff?.snapshot)?.termsText?.trim() ||
@@ -987,10 +1096,64 @@ export async function listCrewRates(businessId: string): Promise<Array<{ role: s
   });
 }
 
-export async function listJobCrew(businessId: string, jobId: string): Promise<Array<{ role: string; count: number; basis: string; ratePence: number | null }>> {
+export async function listJobCrew(
+  businessId: string,
+  jobId: string,
+  sectionId?: string,
+): Promise<Array<{ role: string; count: number; basis: string; ratePence: number | null }>> {
   return getPrisma().jobCrew.findMany({
-    where: { jobId, ...tenantWhere(businessId) },
+    where: { jobId, ...tenantWhere(businessId), ...(sectionId ? { sectionId } : {}) },
     select: { role: true, count: true, basis: true, ratePence: true },
+  });
+}
+
+function quoteScopeForCustomer(
+  job: DeskJob,
+  show: boolean,
+): Pick<QuoteChrome, "rooms" | "materials" | "areasLabel" | "jobs"> {
+  const wholeJob = hidesMaterialLines({ totalOnly: job.totalOnly, fixedPricePence: job.fixedPricePence });
+  const blocks = job.sections.map((section) => {
+    const areasLabel = areasLabelFor(section.typeKey, section.title);
+    const scope = customerQuoteSections({
+      show,
+      wholeJob,
+      areasLabel,
+      rooms: section.rooms.map((room) => roomInputFromStored(room)),
+      materials: section.materials.map((line) => ({
+        name: line.name,
+        quantity: line.quantity,
+        unit: line.unit,
+      })),
+    });
+    return {
+      title: sectionTitle(section.title),
+      areasLabel,
+      rooms: scope.rooms,
+      materials: scope.materials,
+      subtotalPence: wholeJob
+        ? null
+        : sectionSubtotalPence({
+            fixedPricePence: section.fixedPricePence,
+            materials: section.materials,
+          }),
+    };
+  });
+  if (blocks.length > 1) {
+    return { jobs: blocks, rooms: [], materials: [], areasLabel: "Rooms" };
+  }
+  const only = blocks[0];
+  if (only) {
+    return { areasLabel: only.areasLabel, rooms: only.rooms, materials: only.materials };
+  }
+  return customerQuoteSections({
+    show,
+    wholeJob,
+    rooms: [],
+    materials: job.materials.map((line) => ({
+      name: line.name,
+      quantity: line.quantity,
+      unit: line.unit,
+    })),
   });
 }
 
@@ -1002,7 +1165,7 @@ export async function getBusinessWastage(businessId: string): Promise<number> {
   return business?.wastagePercent ?? 10;
 }
 
-export async function listRoomMeasures(businessId: string, jobId: string) {
+export async function listRoomMeasures(businessId: string, jobId: string, sectionId?: string) {
   const job = await getPrisma().job.findFirst({
     where: { id: jobId, ...tenantWhere(businessId) },
     select: {
@@ -1012,33 +1175,30 @@ export async function listRoomMeasures(businessId: string, jobId: string) {
       dayRatePence: true,
       dayCount: true,
       measureSelection: true,
-      rooms: { orderBy: { sortOrder: "asc" } },
+      sections: {
+        orderBy: { sortOrder: "asc" },
+        include: { rooms: { orderBy: { sortOrder: "asc" } } },
+      },
     },
   });
   if (!job) return null;
+  const section = sectionId ? (job.sections.find((item) => item.id === sectionId) ?? null) : (job.sections[0] ?? null);
+  if (sectionId && !section) return null;
   return {
+    sectionId: section?.id ?? "",
     wastagePercent: job.wastagePercent,
-    measureTypeKey: job.measureTypeKey,
-    measureTypeName: job.measureTypeName,
+    measureTypeKey: section ? section.typeKey : job.measureTypeKey,
+    measureTypeName: section ? section.title : job.measureTypeName,
     dayRatePence: job.dayRatePence,
-    dayCount: job.dayCount == null ? null : job.dayCount.toString(),
-    measureSelection: job.measureSelection,
-    rooms: job.rooms.map((room) => ({
-      name: room.name,
-      mode: room.mode,
-      lengthM: room.lengthM == null ? 0 : Number(room.lengthM),
-      widthM: room.widthM == null ? 0 : Number(room.widthM),
-      heightM: room.heightM == null ? 2.4 : Number(room.heightM),
-      includeWalls: room.includeWalls,
-      includeCeiling: room.includeCeiling,
-      directAreaM2: room.directAreaM2 == null ? 0 : Number(room.directAreaM2),
-      doorCount: room.doorCount,
-      doorAreaM2: Number(room.doorAreaM2),
-      windowCount: room.windowCount,
-      windowAreaM2: Number(room.windowAreaM2),
-      externalCorners: room.externalCorners,
-      stopBeadM: room.stopBeadM == null ? 0 : Number(room.stopBeadM),
-    })),
+    dayCount: section
+      ? section.dayCount == null
+        ? null
+        : section.dayCount.toString()
+      : job.dayCount == null
+        ? null
+        : job.dayCount.toString(),
+    measureSelection: section ? section.measureSelection : job.measureSelection,
+    rooms: (section?.rooms ?? []).map(mapStoredRoom),
   };
 }
 
