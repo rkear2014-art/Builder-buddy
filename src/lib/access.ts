@@ -14,6 +14,9 @@ export function isWellFormedShareToken(token: string): boolean {
   return /^[A-Za-z0-9_-]{43}$/.test(token);
 }
 
+/** Decorative sign-in photo. Public so the login page can show it before a session exists. */
+export const SIGN_IN_PHOTO_PATH = "/work/site-photo.webp";
+
 export function normalisePath(pathname: string): string {
   if (pathname.length > 1 && pathname.endsWith("/")) {
     return pathname.slice(0, -1);
@@ -43,6 +46,7 @@ export function decideAccess(input: {
     pathname === "/manifest.webmanifest" ||
     pathname === "/sw.js" ||
     pathname === "/offline.html" ||
+    pathname === SIGN_IN_PHOTO_PATH ||
     pathname.startsWith("/icons/")
   ) {
     return { type: "next" };

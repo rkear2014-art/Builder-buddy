@@ -1,6 +1,7 @@
 import type { CSSProperties } from "react";
 import Link from "next/link";
 import { DEFAULT_ACCENT, accentInk } from "@/lib/accent";
+import { SIGN_IN_PHOTO_PATH } from "@/lib/access";
 import { redirect } from "next/navigation";
 import { databaseFailureMessage } from "@/lib/database";
 import { isConfigured } from "@/lib/config";
@@ -37,7 +38,7 @@ export default async function LoginPage() {
   return (
     <main className="signin" style={{ "--brand": DEFAULT_ACCENT, "--brand-ink": accentInk(DEFAULT_ACCENT) } as CSSProperties}>
       {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src="/work/site-photo.webp" alt="" className="signin-photo" />
+      <img src={SIGN_IN_PHOTO_PATH} alt="" className="signin-photo" />
       <div className="signin-shade" aria-hidden="true" />
       <div className="signin-panel">
         <p className="font-bold text-stone">For the tradesperson</p>
