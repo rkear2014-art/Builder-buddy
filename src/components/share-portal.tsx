@@ -48,7 +48,7 @@ export function SharePortal({
 
   return (
     <div className="flex flex-wrap gap-2">
-      <button type="button" className="btn btn-primary" onClick={() => void share()}>
+      <button type="button" className="btn btn-secondary" onClick={() => void share()}>
         {shared ? "Shared" : copied && typeof navigator.share !== "function" ? "Copied" : "Share link…"}
       </button>
       <a className="btn btn-secondary" href={smsHref(phone, message)}>
