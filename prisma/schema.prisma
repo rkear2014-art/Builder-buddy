@@ -47,8 +47,9 @@ model Business {
   website       String             @default("")
   tagline       String             @default("")
   accent        String             @default("")
-  vatRegistered Boolean            @default(false)
+  vatRegistered Boolean            @default(true)
   vatRatePercent Int               @default(20)
+  vatNumber     String             @default("")
   quoteLetter   String             @default("")
   quoteChips    String             @default("")
   invoiceDueDays Int               @default(14)
@@ -182,6 +183,8 @@ model Job {
   spanDays      Int          @default(1)
   onDiary       Boolean      @default(true)
   assignedName  String       @default("")
+  /// Turns VAT off for this quote even when the business is VAT registered.
+  omitVat       Boolean      @default(false)
   status        JobStatus
   shareToken    String       @unique
   createdAt     DateTime     @default(now())
@@ -228,7 +231,7 @@ model Invoice {
   issueDate     DateTime      @db.Date
   dueDate       DateTime      @db.Date
   depositPence  Int?
-  vatRegistered Boolean       @default(false)
+  vatRegistered Boolean       @default(true)
   vatRatePercent Int          @default(20)
   shareToken    String        @unique
   createdAt     DateTime      @default(now())

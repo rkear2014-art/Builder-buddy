@@ -21,7 +21,7 @@ import type { DeskJob, JobSummary, MaterialTemplateView, SavedItem, SessionUser 
 import { buildGlance, glanceChips, type GlanceJob, type GlancePage } from "@/lib/glance";
 import { formatDocumentNumber, quoteIsExpired } from "@/lib/documents";
 import { balancePence, invoiceGlance, invoiceStanding, invoiceTotals, type InvoiceStanding, type PaymentMethod } from "@/lib/invoice";
-import { parseQuoteChips, type QuoteChrome } from "@/lib/quote";
+import { chargeVat, parseQuoteChips, quoteMoney, type QuoteChrome } from "@/lib/quote";
 import { trustBadges } from "@/lib/trust";
 import { materialsTotals, quantityFromStored } from "@/lib/materials";
 import { presentShare, type SharePresentation } from "@/lib/share";
@@ -43,6 +43,7 @@ const businessBrandingSelect = {
   markUpdatedAt: true,
   vatRegistered: true,
   vatRatePercent: true,
+  vatNumber: true,
   quoteLetter: true,
   quoteChips: true,
   invoiceDueDays: true,
@@ -101,8 +102,10 @@ function mapJob(job: JobWithRelations): DeskJob {
     firstViewedAt: job.firstViewedAt?.toISOString() ?? null,
     lastViewedAt: job.lastViewedAt?.toISOString() ?? null,
     showPhotos: job.showPhotos,
-    vatRegistered: job.business.vatRegistered,
+    vatRegistered: chargeVat({ vatRegistered: job.business.vatRegistered, omitVat: job.omitVat }),
     vatRatePercent: job.business.vatRatePercent,
+    omitVat: job.omitVat,
+    vatNumber: job.business.vatNumber,
     materials: job.materials.map((material) => ({
       id: material.id,
       name: material.name,
@@ -282,20 +285,30 @@ function monthEndIso(today: string): string {
   return new Date(Date.UTC(year, month, 0)).toISOString().slice(0, 10);
 }
 
-function mapGlanceJob(job: {
-  id: string;
-  customerName: string;
-  address: string;
-  trade: string;
-  status: JobStatus;
-  scheduledDate: Date;
-  timeSlot: string;
-  createdAt: Date;
-  updatedAt: Date;
-  user: { name: string };
-  signOff: { id: string } | null;
-  materials: Array<{ quantity: { toString(): string }; unitPricePence: number | null }>;
-}): GlanceJob {
+function mapGlanceJob(
+  job: {
+    id: string;
+    customerName: string;
+    address: string;
+    trade: string;
+    status: JobStatus;
+    scheduledDate: Date;
+    timeSlot: string;
+    createdAt: Date;
+    updatedAt: Date;
+    omitVat: boolean;
+    user: { name: string };
+    signOff: { id: string } | null;
+    materials: Array<{ quantity: { toString(): string }; unitPricePence: number | null }>;
+  },
+  vat: { vatRegistered: boolean; vatRatePercent: number },
+): GlanceJob {
+  const subtotalPence = materialsTotals(
+    job.materials.map((material) => ({
+      quantity: quantityFromStored(material.quantity.toString()),
+      unitPricePence: material.unitPricePence,
+    })),
+  ).totalPence;
   return {
     id: job.id,
     customerName: job.customerName,
@@ -308,12 +321,12 @@ function mapGlanceJob(job: {
     updatedAt: job.updatedAt.toISOString(),
     assigneeName: job.user.name,
     signed: Boolean(job.signOff),
-    totalPence: materialsTotals(
-      job.materials.map((material) => ({
-        quantity: quantityFromStored(material.quantity.toString()),
-        unitPricePence: material.unitPricePence,
-      })),
-    ).totalPence,
+    totalPence: quoteMoney({
+      subtotalPence,
+      vatRegistered: chargeVat({ vatRegistered: vat.vatRegistered, omitVat: job.omitVat }),
+      vatRatePercent: vat.vatRatePercent,
+      depositPence: null,
+    }).totalPence,
   };
 }
 
@@ -424,7 +437,7 @@ export async function getGlance(
     now,
     businessName: branding.name,
     enquiryCount,
-    jobs: [...byId.values()].filter((job) => job.onDiary).map(mapGlanceJob),
+    jobs: [...byId.values()].filter((job) => job.onDiary).map((job) => mapGlanceJob(job, branding)),
     invoices: glanceInvoices,
   });
   return {
@@ -729,6 +742,7 @@ export type InvoiceDetail = {
   duePence: number;
   paidPence: number;
   balancePence: number;
+  vatOn: boolean;
   bankAccountName: string;
   bankSortCode: string;
   bankAccountNumber: string;
@@ -807,6 +821,7 @@ function mapInvoice(invoice: {
     duePence: totals.duePence,
     paidPence,
     balancePence: balancePence(totals.duePence, paidPence),
+    vatOn: invoice.vatRegistered,
     bankAccountName: invoice.business.bankAccountName ?? "",
     bankSortCode: invoice.business.bankSortCode ?? "",
     bankAccountNumber: invoice.business.bankAccountNumber ?? "",

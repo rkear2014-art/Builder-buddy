@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import type { CrewDraftRole, CrewRoleId } from "@/lib/crew";
 import { formatPence, parsePoundsToPence } from "@/lib/money";
+import { pricesIncludeVatLine, quoteMoney } from "@/lib/vat";
 import {
   DEFAULT_CEILING_HEIGHT_M,
   DEFAULT_DOOR_M2,
@@ -31,6 +32,29 @@ const MODES: Array<{ id: MeasureMode; label: string }> = [
   { id: "floor", label: "Floor" },
   { id: "direct", label: "Type m²" },
 ];
+
+function MeasurePrice({
+  subtotalPence,
+  vatRegistered,
+  vatRatePercent,
+}: {
+  subtotalPence: number;
+  vatRegistered: boolean;
+  vatRatePercent: number;
+}) {
+  const money = quoteMoney({ subtotalPence, vatRegistered, vatRatePercent, depositPence: null });
+  if (money.vatPence == null) return <p className="font-display text-4xl">{formatPence(money.totalPence)}</p>;
+  return (
+    <div className="grid gap-1">
+      <p>Subtotal {formatPence(money.subtotalPence)}</p>
+      <p>
+        VAT ({vatRatePercent}%) {formatPence(money.vatPence)}
+      </p>
+      <p className="font-display text-4xl">Total {formatPence(money.totalPence)}</p>
+      <p className="text-sm font-bold">{pricesIncludeVatLine(vatRatePercent)}</p>
+    </div>
+  );
+}
 
 function blankRoom(name: string, mode: MeasureMode, includeWalls: boolean, includeCeiling: boolean): RoomInput {
   return {
@@ -72,6 +96,8 @@ export function MeasureForm({
   plan,
   initialChoices,
   initialIncluded,
+  vatRegistered,
+  vatRatePercent,
 }: {
   jobId: string;
   typeKey: string;
@@ -88,6 +114,8 @@ export function MeasureForm({
   plan: MeasurePlan;
   initialChoices: Record<string, string>;
   initialIncluded: string[] | null;
+  vatRegistered: boolean;
+  vatRatePercent: number;
 }) {
   const [rooms, setRooms] = useState<RoomInput[]>(
     initialRooms.length > 0 ? initialRooms : [blankRoom("Living room", defaults.mode, defaults.includeWalls, defaults.includeCeiling)],
@@ -349,7 +377,7 @@ export function MeasureForm({
             );
           })}
         </ul>
-        <p className="font-display text-4xl">{formatPence(quote.totalPence)}</p>
+        <MeasurePrice subtotalPence={quote.totalPence} vatRegistered={vatRegistered} vatRatePercent={vatRatePercent} />
         {quote.unpricedCount > 0 ? (
           <p className="font-bold text-clay">
             {quote.unpricedCount} {quote.unpricedCount === 1 ? "material has" : "materials have"} no price. The total leaves those out.

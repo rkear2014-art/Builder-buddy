@@ -354,19 +354,6 @@ summary.btn::-webkit-details-marker {
   font-weight: 800;
 }
 
-.job-progress {
-  height: 0.45rem;
-  overflow: hidden;
-  border-radius: 999px;
-  background: #e6e8ec;
-}
-
-.job-progress > span {
-  display: block;
-  height: 100%;
-  background: var(--job-accent, #dd1f29);
-}
-
 .job-choice {
   display: flex;
   min-height: 7.5rem;

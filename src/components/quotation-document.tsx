@@ -8,6 +8,7 @@ import {
   addressLines,
   coverChips,
   paymentNote,
+  pricesIncludeVatLine,
   quoteFooter,
   quoteLetterText,
   quoteMoney,
@@ -35,6 +36,7 @@ export function QuotationDocument({
   const businessPhone = branding?.phone.trim() ?? "";
   const businessEmail = branding?.email.trim() ?? "";
   const businessAddress = branding?.address.trim() ?? "";
+  const vatNumber = branding?.vatNumber.trim() ?? "";
   const website = branding?.website ?? "";
   const money = quoteMoney({
     subtotalPence: agreement.totalPence,
@@ -125,6 +127,7 @@ export function QuotationDocument({
             {addressLines(businessAddress).map((line) => (
               <p key={line}>{line}</p>
             ))}
+            {vatNumber ? <p className="mt-2">VAT number {vatNumber}</p> : null}
           </address>
           {logoSrc ? (
             // eslint-disable-next-line @next/next/no-img-element
@@ -196,6 +199,8 @@ export function QuotationDocument({
           <PriceRow label="Deposit" amount={money.depositPence == null ? "None" : formatPence(money.depositPence)} />
         </div>
         <p className="mt-3 text-sm text-stone">{paymentNote(money.depositPence)}</p>
+        {money.vatPence != null ? <p className="mt-2 text-sm font-bold">{pricesIncludeVatLine(agreement.vatRatePercent)}</p> : null}
+        {vatNumber ? <p className="mt-1 text-sm text-stone">VAT number {vatNumber}</p> : null}
         {agreement.unpricedCount > 0 ? (
           <p className="mt-2 text-sm text-stone">
             This total covers priced items only. {agreement.unpricedCount}{" "}
@@ -232,6 +237,7 @@ export function QuotationDocument({
             ))}
             {businessPhone ? <p className="mt-2">{businessPhone}</p> : null}
             {businessEmail ? <p>{businessEmail}</p> : null}
+            {vatNumber ? <p>VAT number {vatNumber}</p> : null}
           </div>
           <div className="rounded-2xl border border-line p-4">
             <p className="quote-label">Customer</p>
@@ -251,6 +257,7 @@ export function QuotationDocument({
             <Detail label={money.vatPence != null ? "Total (inc VAT)" : "Total"} value={formatPence(money.totalPence)} />
           </div>
           <p className="mt-3 text-sm text-stone">{paymentNote(money.depositPence)}</p>
+          {money.vatPence != null ? <p className="mt-2 text-sm font-bold">{pricesIncludeVatLine(agreement.vatRatePercent)}</p> : null}
         </div>
         <h3 className="mt-6 font-display text-2xl">Description of works</h3>
         <p className="mt-2 whitespace-pre-wrap">{agreement.description}</p>

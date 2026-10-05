@@ -2,9 +2,9 @@
 
 import { redirect } from "next/navigation";
 import type { ActionState } from "@/lib/form-state";
+import { isInternalCrewName } from "@/lib/crew";
 import { materialsTotals } from "@/lib/materials";
-import { depositFromPercent } from "@/lib/quote";
-import { surveyForTrade, toggleSurveyStored } from "@/lib/survey";
+import { chargeVat, depositFromPercent, quoteMoney } from "@/lib/quote";
 import { tenantWhere } from "@/lib/tenancy";
 import { requireUser } from "@/server/dal";
 import { getPrisma } from "@/server/prisma";
@@ -23,23 +23,6 @@ export async function setShowLinePrices(formData: FormData): Promise<void> {
   revalidateDesk(existing.id, existing.shareToken);
 }
 
-export async function setSurveyTick(formData: FormData): Promise<void> {
-  const user = await requireUser();
-  const jobId = String(formData.get("jobId") ?? "");
-  const key = String(formData.get("key") ?? "");
-  const on = String(formData.get("done") ?? "") === "yes";
-  const existing = await getPrisma().job.findFirst({
-    where: { id: jobId, ...tenantWhere(user.businessId) },
-    select: { id: true, trade: true, surveyDone: true, shareToken: true },
-  });
-  if (!existing) return;
-  const allowed = surveyForTrade(existing.trade).map((item) => item.key);
-  const surveyDone = toggleSurveyStored(existing.surveyDone, key, on, allowed);
-  if (surveyDone === existing.surveyDone) return;
-  await getPrisma().job.update({ where: { id: existing.id }, data: { surveyDone } });
-  revalidateDesk(existing.id, existing.shareToken);
-}
-
 export async function savePaymentTerms(_state: ActionState, formData: FormData): Promise<ActionState> {
   const user = await requireUser();
   const jobId = String(formData.get("jobId") ?? "");
@@ -49,20 +32,30 @@ export async function savePaymentTerms(_state: ActionState, formData: FormData):
     select: {
       id: true,
       shareToken: true,
-      materials: { select: { quantity: true, unitPricePence: true } },
+      omitVat: true,
+      business: { select: { vatRegistered: true, vatRatePercent: true } },
+      materials: { select: { name: true, quantity: true, unitPricePence: true } },
     },
   });
   if (!existing) return { error: "That job could not be found." };
   let depositPence: number | null = null;
   if (mode === "deposit") {
     const percent = Number(String(formData.get("depositPercent") ?? "").trim());
-    const total = materialsTotals(
-      existing.materials.map((line) => ({
-        quantity: line.quantity.toString(),
-        unitPricePence: line.unitPricePence,
-      })),
+    const subtotal = materialsTotals(
+      existing.materials
+        .filter((line) => !isInternalCrewName(line.name))
+        .map((line) => ({
+          quantity: line.quantity.toString(),
+          unitPricePence: line.unitPricePence,
+        })),
     );
-    depositPence = depositFromPercent(total.totalPence, percent);
+    const price = quoteMoney({
+      subtotalPence: subtotal.totalPence,
+      vatRegistered: chargeVat({ vatRegistered: existing.business.vatRegistered, omitVat: existing.omitVat }),
+      vatRatePercent: existing.business.vatRatePercent,
+      depositPence: null,
+    });
+    depositPence = depositFromPercent(price.totalPence, percent);
     if (depositPence == null) {
       return { error: "Add prices to the items first, then choose a deposit from 1 to 90 percent." };
     }
@@ -72,4 +65,18 @@ export async function savePaymentTerms(_state: ActionState, formData: FormData):
   await getPrisma().job.update({ where: { id: existing.id }, data: { depositPence } });
   revalidateDesk(existing.id, existing.shareToken);
   redirect(`/jobs/${existing.id}#payment`);
+}
+
+export async function saveQuoteVat(_state: ActionState, formData: FormData): Promise<ActionState> {
+  const user = await requireUser();
+  const jobId = String(formData.get("jobId") ?? "");
+  const omitVat = formData.getAll("omitVat").map(String).includes("yes");
+  const existing = await getPrisma().job.findFirst({
+    where: { id: jobId, ...tenantWhere(user.businessId) },
+    select: { id: true, shareToken: true },
+  });
+  if (!existing) return { error: "That job could not be found." };
+  await getPrisma().job.update({ where: { id: existing.id }, data: { omitVat } });
+  revalidateDesk(existing.id, existing.shareToken);
+  redirect(`/jobs/${existing.id}#materials`);
 }

@@ -1,18 +1,21 @@
 import { websiteHref, websiteLabel } from "./branding";
 import { formatPence } from "./money";
+import { normaliseVatNumber } from "./vat";
+
+export {
+  chargeVat,
+  normaliseVatNumber,
+  pricesIncludeVatLine,
+  quoteKeepsIssuedVat,
+  quoteMoney,
+} from "./vat";
+export type { QuoteMoney } from "./vat";
 
 export const DEFAULT_QUOTE_LETTER = `Thank you for asking us to quote for this work.
 
 Please read the price and the description of the work. Sign at the end if you would like us to go ahead.
 
 If you have a question, please get in touch.`;
-
-export type QuoteMoney = {
-  subtotalPence: number;
-  vatPence: number | null;
-  totalPence: number;
-  depositPence: number | null;
-};
 
 export type QuotePhoto = {
   id: string;
@@ -32,25 +35,6 @@ export type QuoteChrome = {
 
 export function quoteReference(jobId: string): string {
   return jobId.replace(/[^A-Za-z0-9]/g, "").toUpperCase().slice(-8);
-}
-
-export function quoteMoney(input: {
-  subtotalPence: number;
-  vatRegistered: boolean;
-  vatRatePercent: number;
-  depositPence: number | null;
-}): QuoteMoney {
-  const subtotalPence = Math.max(0, Math.round(input.subtotalPence));
-  const rate = Number.isInteger(input.vatRatePercent) ? Math.min(30, Math.max(0, input.vatRatePercent)) : 20;
-  const vatPence = input.vatRegistered ? Math.round((subtotalPence * rate) / 100) : null;
-  const deposit = input.depositPence;
-  const depositPence = deposit != null && deposit > 0 ? deposit : null;
-  return {
-    subtotalPence,
-    vatPence,
-    totalPence: subtotalPence + (vatPence ?? 0),
-    depositPence,
-  };
 }
 
 export function quoteLetterText(stored: string): string {
@@ -130,6 +114,7 @@ export function stripTitle(captions: string[]): string {
 export type QuoteSettingsInput = {
   vatRegistered: boolean;
   vatRatePercent: number;
+  vatNumber: string;
   quoteLetter: string;
   quoteChips: string;
 };
@@ -142,6 +127,8 @@ export function parseQuoteSettings(formData: FormData): { ok: true; data: QuoteS
   if (!Number.isInteger(rate) || rate < 0 || rate > 30) {
     return { ok: false, error: "Enter a VAT rate from 0 to 30." };
   }
+  const vatNumber = normaliseVatNumber(String(formData.get("vatNumber") ?? ""));
+  if (!vatNumber.ok) return vatNumber;
   const quoteLetter = String(formData.get("quoteLetter") ?? "").replace(/\r\n/g, "\n").trim();
   if (quoteLetter.length > 2000) {
     return { ok: false, error: "Shorten the letter to 2000 characters." };
@@ -157,6 +144,7 @@ export function parseQuoteSettings(formData: FormData): { ok: true; data: QuoteS
     data: {
       vatRegistered,
       vatRatePercent: rate,
+      vatNumber: vatNumber.vatNumber,
       quoteLetter,
       quoteChips: parseQuoteChips(rawChips).join("\n"),
     },

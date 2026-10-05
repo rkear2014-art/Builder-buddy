@@ -7,6 +7,10 @@ import {
   parseQuoteSettings,
   quoteFooter,
   quoteLetterText,
+  chargeVat,
+  normaliseVatNumber,
+  pricesIncludeVatLine,
+  quoteKeepsIssuedVat,
   quoteMoney,
   quoteReference,
   stripTitle,
@@ -47,6 +51,14 @@ describe("quotation money and wording", () => {
     assert.equal(rounded.vatPence, 67);
     assert.equal(rounded.totalPence, 400);
     assert.equal(rounded.depositPence, 15000);
+    assert.equal(pricesIncludeVatLine(20), "Prices include VAT at 20%");
+    assert.equal(chargeVat({ vatRegistered: true, omitVat: true }), false);
+    assert.equal(chargeVat({ vatRegistered: true }), true);
+    assert.equal(quoteKeepsIssuedVat({ viewed: true, signed: false }), true);
+    assert.equal(quoteKeepsIssuedVat({ viewed: false, signed: false }), false);
+    assert.deepEqual(normaliseVatNumber("gb 123 4567 89"), { ok: true, vatNumber: "GB123456789" });
+    assert.equal(normaliseVatNumber("").ok, true);
+    assert.equal(normaliseVatNumber("hello").ok, false);
   });
 
   it("uses the standard letter when the business has not written one", () => {

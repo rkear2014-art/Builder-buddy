@@ -334,14 +334,20 @@ function QuoteSection({ user, owner }: { user: SessionUser; owner: boolean }) {
       {owner ? (
         <InlineForm action={saveQuoteSettings} className="grid gap-3">
           <input type="hidden" name="vatRegistered" value="no" />
-          <label className="flex items-center gap-3 font-bold">
-            <input type="checkbox" name="vatRegistered" value="yes" defaultChecked={branding.vatRegistered} />
+          <label className="flex items-center gap-3 text-lg font-bold">
+            <input type="checkbox" name="vatRegistered" value="yes" defaultChecked={branding.vatRegistered} className="h-7 w-7" />
             VAT registered
           </label>
+          <p className="text-sm text-stone">On for new quotes and draft invoices. Turn it off if this business is not VAT registered. The standard UK rate is 20%.</p>
           <label className="field">
             VAT rate
-            <span>Percent. Used only when VAT registered is ticked. Leave it at 20 for the standard rate.</span>
-            <input name="vatRatePercent" inputMode="numeric" defaultValue={String(branding.vatRatePercent)} />
+            <span>Percent. Used when VAT registered is ticked.</span>
+            <input name="vatRatePercent" inputMode="numeric" defaultValue={String(branding.vatRatePercent)} className="text-2xl" />
+          </label>
+          <label className="field">
+            VAT number
+            <span>Shown on quotes and invoices. Leave blank to leave it off. For example GB123456789.</span>
+            <input name="vatNumber" defaultValue={branding.vatNumber} autoComplete="off" placeholder="GB123456789" className="text-2xl" />
           </label>
           <label className="field">
             Badges

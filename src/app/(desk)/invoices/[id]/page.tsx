@@ -9,7 +9,8 @@ import { deskLogoSrc } from "@/lib/branding";
 import { parseQuoteChips } from "@/lib/quote";
 import { trustBadges } from "@/lib/trust";
 import { londonToday } from "@/lib/dates";
-import { markInvoiceSent, recordPayment, saveInvoiceDates } from "@/server/actions/customer-finish";
+import { invoiceVatIsLocked } from "@/lib/invoice";
+import { markInvoiceSent, recordPayment, saveInvoiceDates, saveInvoiceVat } from "@/server/actions/customer-finish";
 import { brandedEmailReady } from "@/server/email";
 import { getInvoice, requireUser } from "@/server/dal";
 import { requestOrigin } from "@/server/origin";
@@ -77,6 +78,30 @@ export default async function InvoicePage({
           </form>
         ) : null}
       </div>
+
+      <section className="card grid gap-3">
+        <h2 className="font-display text-2xl">VAT</h2>
+        {invoiceVatIsLocked(invoice.standing === "Draft" ? "DRAFT" : "SENT", invoice.paidPence) ? (
+          <p className="text-stone">This invoice has been sent or paid, so the VAT on it stays as it was.</p>
+        ) : (
+          <InlineForm action={saveInvoiceVat} className="grid gap-3">
+            <input type="hidden" name="invoiceId" value={invoice.id} />
+            <input type="hidden" name="omitVat" value="no" />
+            <label className="flex items-start gap-3 text-lg font-bold">
+              <input type="checkbox" name="omitVat" value="yes" defaultChecked={!invoice.vatOn} className="mt-1 h-7 w-7" />
+              <span>
+                No VAT on this invoice
+                <span className="mt-1 block text-sm font-semibold text-stone">
+                  {invoice.vatOn
+                    ? `The balance includes VAT at ${invoice.vatRatePercent}%. Tick this to leave it off while the invoice is still a draft.`
+                    : "VAT is off this draft. Untick it to add the rate from the Business page."}
+                </span>
+              </span>
+            </label>
+            <SubmitButton variant="secondary">Save VAT</SubmitButton>
+          </InlineForm>
+        )}
+      </section>
 
       <section className="card grid gap-3">
         <h2 className="font-display text-2xl">Dates</h2>

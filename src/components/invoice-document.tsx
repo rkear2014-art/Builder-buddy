@@ -3,7 +3,7 @@ import type { CustomerLetterhead } from "@/lib/branding";
 import { formatIsoDate } from "@/lib/dates";
 import { PAYMENT_METHOD_LABELS, type InvoiceStanding } from "@/lib/invoice";
 import { formatPence } from "@/lib/money";
-import { addressLines, quoteFooter } from "@/lib/quote";
+import { addressLines, pricesIncludeVatLine, quoteFooter } from "@/lib/quote";
 
 export type InvoiceDocumentModel = {
   reference: string;
@@ -39,6 +39,7 @@ export function InvoiceDocument({
   const branding = letterhead?.branding;
   const accent = branding?.accentColour ?? "#dd1f29";
   const businessName = branding?.name || "Invoice";
+  const vatNumber = branding?.vatNumber.trim() ?? "";
   const logoSrc = letterhead?.logoSrc ?? null;
 
   return (
@@ -55,6 +56,7 @@ export function InvoiceDocument({
             <p className="mt-3 text-sm font-extrabold tracking-wide" style={{ color: accent }}>
               {businessName.toUpperCase()}
             </p>
+            {vatNumber ? <p className="mt-1 text-sm font-bold">VAT number {vatNumber}</p> : null}
           </div>
           <div className="text-right">
             <h1 className="font-display text-4xl leading-none">Invoice</h1>
@@ -132,6 +134,7 @@ export function InvoiceDocument({
             <span className="font-extrabold">Balance due</span>
             <span className="font-display text-3xl leading-none">{formatPence(invoice.balancePence)}</span>
           </p>
+          {invoice.vatPence != null ? <p className="mt-3 text-sm font-bold">{pricesIncludeVatLine(invoice.vatRatePercent)}</p> : null}
         </div>
 
         {invoice.payments.length > 0 ? (

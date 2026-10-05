@@ -5,6 +5,7 @@ import { isWellFormedShareToken } from "@/lib/access";
 import { keepExistingSignOff, lockAgreement, parseLockedAgreement } from "@/lib/agreement";
 import { isConfigured } from "@/lib/config";
 import { quoteIsExpired } from "@/lib/documents";
+import { chargeVat } from "@/lib/quote";
 import { londonToday, utcDateToIso } from "@/lib/dates";
 import type { ActionState } from "@/lib/form-state";
 import { acceptedSignature } from "@/lib/signature";
@@ -52,7 +53,7 @@ export async function signAgreement(_state: ActionState, formData: FormData): Pr
       timeSlot: job.timeSlot,
       showLinePrices: job.showLinePrices,
       depositPence: job.depositPence,
-      vatRegistered: job.business.vatRegistered,
+      vatRegistered: chargeVat({ vatRegistered: job.business.vatRegistered, omitVat: job.omitVat }),
       vatRatePercent: job.business.vatRatePercent,
       materials: job.materials.map((material) => ({
         name: material.name,

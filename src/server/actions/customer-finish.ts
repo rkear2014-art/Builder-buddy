@@ -8,7 +8,8 @@ import { canEditBusiness } from "@/lib/branding";
 import { isInternalCrewName } from "@/lib/crew";
 import { addDays, isIsoDate, isoToUtcDate, londonToday } from "@/lib/dates";
 import type { ActionState } from "@/lib/form-state";
-import { invoiceTotals, statusAfterPayment, PAYMENT_METHODS, type PaymentMethod } from "@/lib/invoice";
+import { invoiceTotals, invoiceVatIsLocked, statusAfterPayment, PAYMENT_METHODS, type PaymentMethod } from "@/lib/invoice";
+import { chargeVat } from "@/lib/quote";
 import { parsePoundsToPence } from "@/lib/money";
 import { isPhotoStage, MAX_JOB_PHOTOS } from "@/lib/photos";
 import { trustBadges } from "@/lib/trust";
@@ -84,7 +85,7 @@ export async function raiseInvoice(_state: ActionState, formData: FormData): Pro
         issueDate: isoToUtcDate(today),
         dueDate: isoToUtcDate(addDays(today, dueDays(job.business.invoiceDueDays))),
         depositPence: deposit,
-        vatRegistered: job.business.vatRegistered,
+        vatRegistered: chargeVat({ vatRegistered: job.business.vatRegistered, omitVat: job.omitVat }),
         vatRatePercent: job.business.vatRatePercent,
         shareToken: createShareToken(),
         lines: {
@@ -119,6 +120,29 @@ export async function saveInvoiceDates(_state: ActionState, formData: FormData):
   await getPrisma().invoice.update({
     where: { id: invoice.id },
     data: { issueDate: isoToUtcDate(issueDate), dueDate: isoToUtcDate(dueDate) },
+  });
+  revalidateDesk();
+  redirect(`/invoices/${invoice.id}`);
+}
+
+export async function saveInvoiceVat(_state: ActionState, formData: FormData): Promise<ActionState> {
+  const user = await requireUser();
+  const invoiceId = String(formData.get("invoiceId") ?? "");
+  const omit = formData.getAll("omitVat").map(String).includes("yes");
+  const invoice = await getPrisma().invoice.findFirst({
+    where: { id: invoiceId, ...tenantWhere(user.businessId) },
+    include: { payments: { select: { amountPence: true } }, business: { select: { vatRatePercent: true } } },
+  });
+  if (!invoice) return { error: "That invoice could not be found." };
+  const paid = invoice.payments.reduce((sum, payment) => sum + payment.amountPence, 0);
+  if (invoiceVatIsLocked(invoice.status, paid)) {
+    return { error: "This invoice has already been sent or paid, so the VAT stays as it was." };
+  }
+  await getPrisma().invoice.update({
+    where: { id: invoice.id },
+    data: omit
+      ? { vatRegistered: false }
+      : { vatRegistered: true, vatRatePercent: invoice.business.vatRatePercent },
   });
   revalidateDesk();
   redirect(`/invoices/${invoice.id}`);
