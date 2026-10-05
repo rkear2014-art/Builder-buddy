@@ -158,6 +158,23 @@ describe("sign-off locking", () => {
     assert.deepEqual(agreementChanges(locked, current), ["VAT", "Deposit", "Item prices"]);
   });
 
+  it("freezes the terms wording with the signature and still reads an older copy", () => {
+    const terms = "AK Plastering – Terms and Conditions\n\n1. Quotes. Valid for 30 days.";
+    const locked = lockAgreement(plasterJob(), { signerName: "Anita Patel", signedAt, termsText: terms });
+    assert.equal(locked.termsText, terms);
+    assert.equal(locked.termsAgreedAt, signedAt);
+    assert.equal(parseLockedAgreement(locked)?.termsText, terms);
+
+    const older = lockAgreement(plasterJob(), { signerName: "Anita Patel", signedAt });
+    const stored: Record<string, unknown> = { ...older };
+    delete stored.termsText;
+    delete stored.termsAgreedAt;
+    const parsed = parseLockedAgreement(stored);
+    assert.ok(parsed);
+    assert.equal(parsed.termsText, undefined);
+    assert.equal(parsed.description, "Skim the lounge and hall.");
+  });
+
   it("uses a whole-job price and hides the materials total", () => {
     const agreed = toPublicAgreement({ ...plasterJob(), totalOnly: true, fixedPricePence: 80000 });
     assert.equal(agreed.totalPence, 80000);

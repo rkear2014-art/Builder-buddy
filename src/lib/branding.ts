@@ -37,6 +37,7 @@ export type BusinessBranding = BusinessProfile & {
   accreditations: string;
   totalOnlyDefault: boolean;
   showQuoteRooms: boolean;
+  terms: string;
 };
 
 export type BrandingRow = BusinessProfile & {
@@ -62,6 +63,7 @@ export type BrandingRow = BusinessProfile & {
   accreditations?: string;
   totalOnlyDefault?: boolean;
   showQuoteRooms?: boolean;
+  terms?: string;
 };
 
 type FormParse<T> = { ok: true; data: T } | { ok: false; error: string };
@@ -181,6 +183,7 @@ export function toBranding(row: BrandingRow): BusinessBranding {
     accreditations: row.accreditations ?? "",
     totalOnlyDefault: row.totalOnlyDefault === true,
     showQuoteRooms: row.showQuoteRooms !== false,
+    terms: row.terms ?? "",
     hasLogo: Boolean(row.logoMime),
     logoUpdatedAt: row.logoMime ? logoUpdatedAt : null,
     hasMark: Boolean(row.markMime),

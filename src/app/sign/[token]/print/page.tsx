@@ -29,7 +29,11 @@ export default async function PrintAgreementPage({ params }: { params: Promise<{
         signatureDataUrl={share.kind === "signed" ? share.signatureDataUrl : null}
         signed={
           share.kind === "signed"
-            ? { signerName: share.agreement.signerName, signedAt: share.agreement.signedAt }
+            ? {
+                signerName: share.agreement.signerName,
+                signedAt: share.agreement.signedAt,
+                termsAgreedAt: share.agreement.termsAgreedAt,
+              }
             : null
         }
       />

@@ -61,6 +61,8 @@ model Business {
   vatNumber     String             @default("")
   quoteLetter   String             @default("")
   quoteChips    String             @default("")
+  /// Customer terms. Blank uses the standard wording, with this business's name, address and phone.
+  terms         String             @default("") @db.Text
   invoiceDueDays Int               @default(14)
   quoteValidDays Int               @default(30)
   /// New jobs copy this. Later changes do not rewrite jobs already saved.
@@ -317,6 +319,11 @@ model SignOff {
   signerName    String
   signatureData String   @db.Text
   signedAt      DateTime
+  /// True when this signature included agreement to the terms.
+  termsAgreed   Boolean  @default(false)
+  /// The terms wording the customer agreed to. Empty on older signatures.
+  termsText     String   @default("") @db.Text
+  termsAgreedAt DateTime?
   snapshot      Json
 
   @@index([businessId])

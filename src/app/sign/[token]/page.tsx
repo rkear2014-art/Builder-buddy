@@ -48,7 +48,11 @@ export default async function SignPage({ params }: { params: Promise<{ token: st
             signatureDataUrl={share.kind === "signed" ? share.signatureDataUrl : null}
             signed={
               share.kind === "signed"
-                ? { signerName: share.agreement.signerName, signedAt: share.agreement.signedAt }
+                ? {
+                    signerName: share.agreement.signerName,
+                    signedAt: share.agreement.signedAt,
+                    termsAgreedAt: share.agreement.termsAgreedAt,
+                  }
                 : null
             }
           />
@@ -65,7 +69,7 @@ export default async function SignPage({ params }: { params: Promise<{ token: st
           ) : null}
           {share.kind === "pending" && !quote.expired ? (
             <div className="card mt-4">
-              <SignForm token={token} />
+              <SignForm token={token} terms={quote.terms} />
             </div>
           ) : null}
         </>

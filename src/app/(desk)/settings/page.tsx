@@ -1,4 +1,5 @@
 import { canEditBusiness, deskHeroSrc, deskLogoSrc } from "@/lib/branding";
+import { defaultTermsText } from "@/lib/terms";
 import type { SessionUser } from "@/lib/desk";
 import {
   removeBusinessLogo,
@@ -6,6 +7,7 @@ import {
   saveAccent,
   saveOwnerName,
   saveQuoteSettings,
+  saveTerms,
   uploadBusinessLogo,
   uploadHeroPhoto,
   useLogoAccent,
@@ -60,6 +62,8 @@ function savedMessage(saved: string | undefined, added: string | undefined): str
       return "Accent colour saved.";
     case "quote":
       return "Quotation details saved.";
+    case "terms":
+      return "Terms and conditions saved.";
     case "extras":
       return "Payment terms, bank details, and trust badges saved.";
     case "test-email":
@@ -127,6 +131,7 @@ export default async function SettingsPage({
       <AccentSection user={user} owner={owner} />
       <ProfileSection user={user} owner={owner} />
       <QuoteSection user={user} owner={owner} />
+      <TermsSection user={user} owner={owner} />
       <ExtrasSection user={user} owner={owner} />
       <MeasureSection owner={owner} wastage={wastage} labourRates={labourRates} crewRates={crewRates} />
     </div>
@@ -428,6 +433,35 @@ function QuoteSection({ user, owner }: { user: SessionUser; owner: boolean }) {
         </InlineForm>
       ) : (
         <p className="font-bold">Only the owner can change the quotation.</p>
+      )}
+    </section>
+  );
+}
+
+function TermsSection({ user, owner }: { user: SessionUser; owner: boolean }) {
+  const branding = user.branding;
+  const shown = branding.terms.trim() ? branding.terms : defaultTermsText(branding);
+  return (
+    <section className="card grid gap-4">
+      <h2 className="font-display text-2xl">Terms and conditions</h2>
+      <p className="text-stone">
+        Printed at the bottom of every customer quote. Leave the box matching the standard wording, or clear it, and the
+        footer keeps this business&apos;s saved name, address and phone.
+      </p>
+      {owner ? (
+        <InlineForm action={saveTerms} className="grid gap-3">
+          <label className="field">
+            Terms and conditions
+            <span>Numbered paragraphs stay as you type them. **double asterisks** make bold text.</span>
+            <textarea name="terms" defaultValue={shown} className="terms-box" />
+          </label>
+          <SubmitButton>Save terms</SubmitButton>
+        </InlineForm>
+      ) : (
+        <>
+          <p className="whitespace-pre-wrap">{shown}</p>
+          <p className="font-bold">Only the owner can change these.</p>
+        </>
       )}
     </section>
   );
