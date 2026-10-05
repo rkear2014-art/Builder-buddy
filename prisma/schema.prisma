@@ -393,7 +393,7 @@ model CrewRate {
   @@index([businessId])
 }
 
-/// People on one job. Labourer and subcontractor amounts stay off the customer quote.
+/// People on one job. Their pay is added together on the Labour line.
 model JobCrew {
   id         String   @id @default(cuid())
   businessId String
