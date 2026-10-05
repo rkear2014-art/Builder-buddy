@@ -86,6 +86,11 @@ export function decideAccess(input: {
     return input.hasValidSession ? { type: "redirect", to: "/" } : { type: "next" };
   }
 
+  // Vercel cron has no session. The route itself rejects a missing or wrong CRON_SECRET.
+  if (pathname === "/api/cron/invoice-reminders") {
+    return { type: "next" };
+  }
+
   if (!input.hasValidSession) {
     return { type: "redirect", to: "/login" };
   }

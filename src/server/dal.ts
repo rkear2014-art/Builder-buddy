@@ -21,6 +21,7 @@ import type { DeskJob, DeskRoom, JobSummary, MaterialTemplateView, SavedItem, Se
 import { buildGlance, glanceChips, type GlanceJob, type GlancePage } from "@/lib/glance";
 import { formatDocumentNumber, quoteIsExpired } from "@/lib/documents";
 import { balancePence, invoiceGlance, invoiceStanding, invoiceTotals, type InvoiceStanding, type PaymentMethod } from "@/lib/invoice";
+import { reminderHistoryLabel } from "@/lib/invoice-reminders";
 import { chargeVat, parseQuoteChips, quoteMoney, type QuoteChrome } from "@/lib/quote";
 import { resolveTermsText } from "@/lib/terms";
 import { parseLockedAgreement } from "@/lib/agreement";
@@ -64,6 +65,10 @@ const businessBrandingSelect = {
   totalOnlyDefault: true,
   showQuoteRooms: true,
   terms: true,
+  remindersOn: true,
+  reminderDay1: true,
+  reminderDay2: true,
+  reminderDay3: true,
 } as const;
 
 const jobInclude = {
@@ -943,11 +948,14 @@ export type InvoiceDetail = {
   bankSortCode: string;
   bankAccountNumber: string;
   businessName: string;
+  remindersPaused: boolean;
+  reminders: Array<{ step: number; channel: string; sentAt: string; label: string }>;
 };
 
 const invoiceInclude = {
   lines: { orderBy: { sortOrder: "asc" as const } },
   payments: { orderBy: { paidOn: "asc" as const } },
+  reminders: { orderBy: { step: "asc" as const } },
   job: { select: { customerName: true, address: true, phone: true, email: true, quoteNumber: true, description: true } },
   business: { select: businessBrandingSelect },
 };
@@ -964,8 +972,10 @@ function mapInvoice(invoice: {
   vatRegistered: boolean;
   vatRatePercent: number;
   totalOnly: boolean;
+  remindersPaused: boolean;
   lines: Array<{ id: string; name: string; quantity: { toString(): string }; unit: string; unitPricePence: number | null }>;
   payments: Array<{ id: string; amountPence: number; paidOn: Date; method: PaymentMethod }>;
+  reminders: Array<{ step: number; channel: string; sentAt: Date }>;
   job: { customerName: string; address: string; phone: string; email: string; description: string };
   business: { name: string; bankAccountName?: string; bankSortCode?: string; bankAccountNumber?: string };
 }): InvoiceDetail {
@@ -1025,6 +1035,13 @@ function mapInvoice(invoice: {
     bankSortCode: invoice.business.bankSortCode ?? "",
     bankAccountNumber: invoice.business.bankAccountNumber ?? "",
     businessName: invoice.business.name,
+    remindersPaused: invoice.remindersPaused,
+    reminders: invoice.reminders.map((reminder) => ({
+      step: reminder.step,
+      channel: reminder.channel,
+      sentAt: reminder.sentAt.toISOString(),
+      label: reminderHistoryLabel(reminder.step, reminder.sentAt),
+    })),
   };
 }
 

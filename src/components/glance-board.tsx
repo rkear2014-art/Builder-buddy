@@ -4,10 +4,12 @@ import Link from "next/link";
 import { useEffect, useSyncExternalStore } from "react";
 import type { JobStatus } from "@/lib/constants";
 import type { GlanceCard, GlanceListRow, GlancePage } from "@/lib/glance";
+import type { DueReminderView } from "@/lib/invoice-reminders";
 import { HERO_VISIT_COOKIE } from "@/lib/heroes";
 import { initials } from "@/lib/place";
 import { formatPence } from "@/lib/money";
 import { EmptyState } from "@/components/empty-state";
+import { SendReminder } from "@/components/send-reminder";
 import { StatusBadge } from "@/components/status-badge";
 
 const HIDE_EMPTY_KEY = "builder-buddy-hide-empty";
@@ -44,7 +46,7 @@ const BAR: Record<JobStatus, string> = {
   COMPLETE: "#1d4a36",
 };
 
-export function GlanceBoard({ data }: { data: GlancePage }) {
+export function GlanceBoard({ data, reminders = [] }: { data: GlancePage; reminders?: DueReminderView[] }) {
   const hideEmpty = useSyncExternalStore(subscribeHideEmpty, readHideEmpty, () => false);
   const accent = data.accentColour;
   const cards = hideEmpty ? data.cards.filter((card) => !cardIsEmpty(card)) : data.cards;
@@ -53,6 +55,7 @@ export function GlanceBoard({ data }: { data: GlancePage }) {
     <div className="grid gap-1.5">
       <Hero data={data} />
       <DeskShortcuts data={data} />
+      {reminders.length > 0 ? <InvoiceChase reminders={reminders} accent={accent} /> : null}
 
       <section className="grid gap-1.5">
         <div className="flex items-center justify-between gap-3">
@@ -69,7 +72,7 @@ export function GlanceBoard({ data }: { data: GlancePage }) {
         </div>
         <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-3">
           {cards.map((card) => (
-            <GlanceCardView key={card.id} card={card} accent={accent} />
+            <GlanceCardView key={card.id} card={card} accent={accent} chaseAnchor={reminders.length === 0} />
           ))}
         </div>
       </section>
@@ -250,9 +253,49 @@ function Segment({
   );
 }
 
-function GlanceCardView({ card, accent }: { card: GlanceCard; accent: string }) {
+function InvoiceChase({ reminders, accent }: { reminders: DueReminderView[]; accent: string }) {
   return (
-    <article id={card.id === "chase" ? "to-chase" : undefined} className="soft-card flex flex-col px-2 py-1.5">
+    <section id="to-chase" className="rounded-3xl border border-[#8d3428] bg-[#fdf6f4] p-4" aria-label="To chase">
+      <h2 className="font-display text-3xl text-[#8d3428]">To chase</h2>
+      <p className="mt-1 text-sm text-stone">
+        These invoices are overdue. Tap WhatsApp, text, or email to send the reminder. Each one is recorded once.
+      </p>
+      <ul className="mt-3 grid gap-3">
+        {reminders.map((reminder, index) => (
+          <li key={`${reminder.invoiceId}-${reminder.step}`} className="grid gap-3 rounded-2xl bg-white p-3">
+            <div className="flex flex-wrap items-end justify-between gap-2">
+              <div>
+                <p className="text-lg font-extrabold">{reminder.customerName}</p>
+                <p className="text-sm font-bold text-stone">
+                  {reminder.reference} · {reminder.amountLabel} · due {reminder.dueLabel}
+                </p>
+              </div>
+              <p className="text-sm font-extrabold text-[#8d3428]">
+                Reminder {reminder.step} · {reminder.daysOverdue} days overdue
+              </p>
+            </div>
+            <SendReminder
+              invoiceId={reminder.invoiceId}
+              step={reminder.step}
+              phone={reminder.phone}
+              email={reminder.email}
+              message={reminder.message}
+              subject={reminder.subject}
+              previewId={index === 0 ? "reminder-preview" : undefined}
+            />
+            <Link href={reminder.invoiceHref} className="text-sm font-extrabold" style={{ color: accent }}>
+              Open invoice
+            </Link>
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
+function GlanceCardView({ card, accent, chaseAnchor }: { card: GlanceCard; accent: string; chaseAnchor: boolean }) {
+  return (
+    <article id={card.id === "chase" && chaseAnchor ? "to-chase" : undefined} className="soft-card flex flex-col px-2 py-1.5">
       <div className="flex items-start justify-between gap-2">
         <CardIcon id={card.id} accent={accent} />
         <p className="text-right text-[0.58rem] font-extrabold tracking-wide text-stone">{card.meta}</p>

@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { isWellFormedShareToken } from "./access";
 import { accentInk, resolveAccent } from "./accent";
+import { reminderScheduleOf } from "./invoice-reminders";
 import { tenantWhere } from "./tenancy";
 
 export type BusinessProfile = {
@@ -38,6 +39,8 @@ export type BusinessBranding = BusinessProfile & {
   totalOnlyDefault: boolean;
   showQuoteRooms: boolean;
   terms: string;
+  remindersOn: boolean;
+  reminderDays: [number, number, number];
 };
 
 export type BrandingRow = BusinessProfile & {
@@ -64,6 +67,10 @@ export type BrandingRow = BusinessProfile & {
   totalOnlyDefault?: boolean;
   showQuoteRooms?: boolean;
   terms?: string;
+  remindersOn?: boolean;
+  reminderDay1?: number;
+  reminderDay2?: number;
+  reminderDay3?: number;
 };
 
 type FormParse<T> = { ok: true; data: T } | { ok: false; error: string };
@@ -184,6 +191,8 @@ export function toBranding(row: BrandingRow): BusinessBranding {
     totalOnlyDefault: row.totalOnlyDefault === true,
     showQuoteRooms: row.showQuoteRooms !== false,
     terms: row.terms ?? "",
+    remindersOn: row.remindersOn !== false,
+    reminderDays: reminderScheduleOf(row.reminderDay1, row.reminderDay2, row.reminderDay3),
     hasLogo: Boolean(row.logoMime),
     logoUpdatedAt: row.logoMime ? logoUpdatedAt : null,
     hasMark: Boolean(row.markMime),

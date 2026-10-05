@@ -15,6 +15,7 @@ import {
   useSampleLogo,
 } from "@/server/actions/branding";
 import { saveBusinessExtras, sendTestEmail } from "@/server/actions/customer-finish";
+import { saveReminderSettings } from "@/server/actions/reminders";
 import { brandedEmailReady } from "@/server/email";
 import { BusinessProfileForm } from "@/components/business-profile-form";
 import { InlineForm } from "@/components/inline-form";
@@ -66,6 +67,8 @@ function savedMessage(saved: string | undefined, added: string | undefined): str
       return "Terms and conditions saved.";
     case "extras":
       return "Payment terms, bank details, and trust badges saved.";
+    case "reminders":
+      return "Payment reminders saved.";
     case "test-email":
       return "Test email sent to the business email.";
     default:
@@ -125,6 +128,7 @@ export default async function SettingsPage({
         </p>
       ) : null}
 
+      <ReminderSection user={user} owner={owner} emailReady={brandedEmailReady()} />
       <OwnerNameSection user={user} owner={owner} />
       <LogoSection user={user} owner={owner} />
       <HeroSection user={user} owner={owner} photos={photos} />
@@ -135,6 +139,62 @@ export default async function SettingsPage({
       <ExtrasSection user={user} owner={owner} />
       <MeasureSection owner={owner} wastage={wastage} labourRates={labourRates} crewRates={crewRates} />
     </div>
+  );
+}
+
+function ReminderSection({ user, owner, emailReady }: { user: SessionUser; owner: boolean; emailReady: boolean }) {
+  const [first, second, third] = user.branding.reminderDays;
+  return (
+    <section id="reminders" className="card grid gap-4">
+      <h2 className="font-display text-2xl">Payment reminders</h2>
+      <p className="text-stone">
+        When an issued invoice is still unpaid, a reminder goes out 3, 7, and 14 days after the due date. Change the
+        days here, or turn reminders off.
+      </p>
+      {owner ? (
+        <InlineForm action={saveReminderSettings} className="grid gap-3">
+          <input type="hidden" name="remindersOn" value="no" />
+          <label className="flex items-start gap-3 text-lg font-bold">
+            <input
+              type="checkbox"
+              name="remindersOn"
+              value="yes"
+              defaultChecked={user.branding.remindersOn}
+              className="mt-1 h-7 w-7"
+            />
+            <span>
+              Reminders on
+              <span className="mt-1 block text-sm font-semibold text-stone">
+                {emailReady
+                  ? "Branded email is set up, so each reminder is sent for you once. A customer with no email address still appears in To chase."
+                  : "Branded email is not set up, so due reminders appear in To chase. Tap WhatsApp, text, or email there. Nothing is sent until you tap."}
+              </span>
+            </span>
+          </label>
+          <label className="field">
+            First reminder
+            <span>Days after the due date.</span>
+            <input name="reminderDay1" inputMode="numeric" defaultValue={String(first)} />
+          </label>
+          <label className="field">
+            Second reminder
+            <span>Days after the due date.</span>
+            <input name="reminderDay2" inputMode="numeric" defaultValue={String(second)} />
+          </label>
+          <label className="field">
+            Third reminder
+            <span>Days after the due date. After this, reminders stop.</span>
+            <input name="reminderDay3" inputMode="numeric" defaultValue={String(third)} />
+          </label>
+          <SubmitButton>Save reminders</SubmitButton>
+        </InlineForm>
+      ) : (
+        <p className="font-bold">
+          Reminders are {user.branding.remindersOn ? "on" : "off"} at {first}, {second}, and {third} days. Only the
+          owner can change these.
+        </p>
+      )}
+    </section>
   );
 }
 

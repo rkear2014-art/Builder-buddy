@@ -79,6 +79,11 @@ model Business {
   coverAmount   String             @default("")
   guarantee     String             @default("")
   accreditations String            @default("")
+  /// Overdue invoice reminders. Days are how long after the due date each one goes out.
+  remindersOn   Boolean            @default(true)
+  reminderDay1  Int                @default(3)
+  reminderDay2  Int                @default(7)
+  reminderDay3  Int                @default(14)
   wastagePercent Int              @default(10)
   logoBytes     Bytes?
   logoMime      String?
@@ -98,6 +103,7 @@ model Business {
   invoices   Invoice[]
   payments   Payment[]
   jobPhotos  JobPhoto[]
+  invoiceReminders InvoiceReminder[]
   labourRates LabourRate[]
   crewRates  CrewRate[]
   jobCrew    JobCrew[]
@@ -262,14 +268,33 @@ model Invoice {
   /// One line for the work, with no material quantities or unit prices.
   totalOnly     Boolean       @default(false)
   shareToken    String        @unique
+  /// Stops further reminders on this invoice. Marking it paid stops them as well.
+  remindersPaused Boolean     @default(false)
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
   lines         InvoiceLine[]
   payments      Payment[]
+  reminders     InvoiceReminder[]
 
   @@unique([businessId, number])
   @@index([businessId, issueDate])
   @@index([jobId])
+}
+
+/// One row per reminder step. The unique step stops the same reminder being sent twice.
+model InvoiceReminder {
+  id         String   @id @default(cuid())
+  businessId String
+  business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  invoiceId  String
+  invoice    Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  step       Int
+  /// EMAIL, WHATSAPP, TEXT, or MAIL.
+  channel    String
+  sentAt     DateTime @default(now())
+
+  @@unique([invoiceId, step])
+  @@index([businessId])
 }
 
 model InvoiceLine {

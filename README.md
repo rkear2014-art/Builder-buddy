@@ -131,6 +131,14 @@ Leave `RESEND_API_KEY` unset and the app keeps opening your own email app instea
 4. Set `RESEND_FROM_EMAIL` to an address on that domain, such as `quotes@plastererinredditch.co.uk`.
 5. On **Business**, use **Send test email**. It goes to the business email.
 
+### Unpaid invoice reminders
+
+Issued invoices that are still unpaid get a reminder 3, 7, and 14 days after the due date. Change those days, or turn reminders off, on **Business**. Each invoice has **Pause reminders**. Marking an invoice paid stops further reminders. The history on the invoice reads like “Reminder 1 sent 8 Oct”.
+
+When `RESEND_API_KEY` and `RESEND_FROM_EMAIL` are set, a daily Vercel cron sends each reminder by email once. Set `CRON_SECRET` on Vercel as well. The cron calls `/api/cron/invoice-reminders` at 08:00 UTC and refuses any other caller. The customer needs an email address on the job, and the business needs an email address so the reply comes back to you.
+
+Leave the Resend keys unset and nothing fails. The same reminders show under **To chase**, with WhatsApp, text, and email buttons that open your own apps. Tapping one records that the reminder was sent.
+
 The build command applies the migrations and then checks that this app can read `SetupLock`, before it builds the site: `prisma generate && prisma migrate deploy && tsx scripts/check-database.ts && next build`
 
 Leave `SHOW_DEMO_LOGIN` unset in production, and change or remove the demo password before real customer details go in.
