@@ -2,7 +2,6 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { slotLabel } from "@/lib/constants";
 import { formatIsoDate } from "@/lib/dates";
-import { surveyForTrade, surveyKeys } from "@/lib/survey";
 import { PHOTO_STAGE_LABELS } from "@/lib/photos";
 import { formatM2, roomAreas, type MeasureMode } from "@/lib/measure";
 import { getJob, listJobPhotos, listRoomMeasures, requireUser } from "@/server/dal";
@@ -24,8 +23,6 @@ export default async function JobSheetPage({ params }: { params: Promise<{ id: s
   if (!job) notFound();
   const photos = await listJobPhotos(user.businessId, job.id);
   const measured = await listRoomMeasures(user.businessId, job.id);
-  const ticked = new Set(surveyKeys(job.surveyDone));
-  const done = surveyForTrade(job.trade).filter((item) => ticked.has(item.key));
 
   return (
     <main className="mx-auto max-w-3xl bg-white px-4 py-6">
@@ -82,16 +79,6 @@ export default async function JobSheetPage({ params }: { params: Promise<{ id: s
             ))}
           </ol>
         </section>
-        {done.length > 0 ? (
-          <section>
-            <h2 className="font-display text-2xl">Survey</h2>
-            <ul className="mt-2 grid gap-1">
-              {done.map((item) => (
-                <li key={item.key}>Done · {item.label}</li>
-              ))}
-            </ul>
-          </section>
-        ) : null}
         {photos.length > 0 ? (
           <section>
             <h2 className="font-display text-2xl">Before and after</h2>

@@ -12,9 +12,8 @@ import { quoteStatusLabel } from "@/lib/job-desk";
 import { costTotals, materialsTotals } from "@/lib/materials";
 import { formatPence } from "@/lib/money";
 import { depositFromPercent, paymentNote, percentFromDeposit, pricesIncludeVatLine, quoteMoney } from "@/lib/quote";
-import { surveyForTrade, surveyIntro, surveyKeys, surveyProgress } from "@/lib/survey";
 import { raiseInvoice, saveQuoteValidity } from "@/server/actions/customer-finish";
-import { savePaymentTerms, saveQuoteVat, setShowLinePrices, setSurveyTick } from "@/server/actions/job-desk";
+import { savePaymentTerms, saveQuoteVat, setShowLinePrices } from "@/server/actions/job-desk";
 import {
   deleteJob,
   revokeShareLink,
@@ -86,9 +85,6 @@ export default async function JobPage({ params }: { params: Promise<{ id: string
   const accent = user.branding.accentColour;
   const accentInk = user.branding.accentInk;
   const quoteStatus = quoteStatusLabel(job.status, job.showLinePrices);
-  const survey = surveyForTrade(job.trade);
-  const progress = surveyProgress(job.trade, job.surveyDone);
-  const ticked = new Set(surveyKeys(job.surveyDone));
   const itemCount = job.materials.length;
   const depositPercent = percentFromDeposit(price.totalPence, job.depositPence);
   const tradeBit = visibleTradeLabel(job.trade);
@@ -196,41 +192,6 @@ export default async function JobPage({ params }: { params: Promise<{ id: string
             <SubmitButton variant="secondary">Save date</SubmitButton>
           </InlineForm>
         )}
-      </section>
-
-      <section className="card grid gap-3">
-        <p className="text-xs font-extrabold tracking-wide" style={{ color: accent }}>
-          SURVEY CHECKLIST
-        </p>
-        <p className="font-display text-3xl leading-none">
-          {progress.done}/{progress.total} done
-        </p>
-        <div className="job-progress" aria-hidden="true">
-          <span style={{ width: progress.total === 0 ? "0%" : `${(progress.done / progress.total) * 100}%` }} />
-        </div>
-        <p className="text-stone">{surveyIntro(job.trade)}</p>
-        <details className="grid gap-3" open={progress.done > 0 ? true : undefined}>
-          <summary className="btn w-full cursor-pointer" style={{ background: accent, color: accentInk }}>
-            {progress.done === 0 ? "Start survey checklist" : "Survey checklist"}
-          </summary>
-          <ul className="mt-3 grid gap-2">
-            {survey.map((item) => {
-              const done = ticked.has(item.key);
-              return (
-                <li key={item.key}>
-                  <form action={setSurveyTick}>
-                    <input type="hidden" name="jobId" value={job.id} />
-                    <input type="hidden" name="key" value={item.key} />
-                    <input type="hidden" name="done" value={done ? "no" : "yes"} />
-                    <button className={`btn w-full justify-start ${done ? "btn-pine" : "btn-secondary"}`} type="submit">
-                      {done ? "Done" : "To do"} · {item.label}
-                    </button>
-                  </form>
-                </li>
-              );
-            })}
-          </ul>
-        </details>
       </section>
 
       <section className="card grid gap-4">

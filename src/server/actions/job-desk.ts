@@ -5,7 +5,6 @@ import type { ActionState } from "@/lib/form-state";
 import { isInternalCrewName } from "@/lib/crew";
 import { materialsTotals } from "@/lib/materials";
 import { chargeVat, depositFromPercent, quoteMoney } from "@/lib/quote";
-import { surveyForTrade, toggleSurveyStored } from "@/lib/survey";
 import { tenantWhere } from "@/lib/tenancy";
 import { requireUser } from "@/server/dal";
 import { getPrisma } from "@/server/prisma";
@@ -21,23 +20,6 @@ export async function setShowLinePrices(formData: FormData): Promise<void> {
   });
   if (!existing) return;
   await getPrisma().job.update({ where: { id: existing.id }, data: { showLinePrices } });
-  revalidateDesk(existing.id, existing.shareToken);
-}
-
-export async function setSurveyTick(formData: FormData): Promise<void> {
-  const user = await requireUser();
-  const jobId = String(formData.get("jobId") ?? "");
-  const key = String(formData.get("key") ?? "");
-  const on = String(formData.get("done") ?? "") === "yes";
-  const existing = await getPrisma().job.findFirst({
-    where: { id: jobId, ...tenantWhere(user.businessId) },
-    select: { id: true, trade: true, surveyDone: true, shareToken: true },
-  });
-  if (!existing) return;
-  const allowed = surveyForTrade(existing.trade).map((item) => item.key);
-  const surveyDone = toggleSurveyStored(existing.surveyDone, key, on, allowed);
-  if (surveyDone === existing.surveyDone) return;
-  await getPrisma().job.update({ where: { id: existing.id }, data: { surveyDone } });
   revalidateDesk(existing.id, existing.shareToken);
 }
 
