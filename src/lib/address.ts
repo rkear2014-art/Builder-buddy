@@ -26,20 +26,67 @@ export function combineSiteAddress(parts: SiteAddress): string {
   return [street, tail].filter(Boolean).join(", ");
 }
 
+/**
+ * Unitary councils whose postcodes.io admin_county is null.
+ * The value is the ceremonial county, never the region name.
+ */
+const CEREMONIAL_BY_DISTRICT: Record<string, string> = {
+  bristol: "Bristol",
+  birmingham: "West Midlands",
+  coventry: "West Midlands",
+  dudley: "West Midlands",
+  sandwell: "West Midlands",
+  solihull: "West Midlands",
+  walsall: "West Midlands",
+  wolverhampton: "West Midlands",
+};
+
+export function cleanPlaceName(value: string): string {
+  let name = value.trim();
+  if (!name) return "";
+  name = name.replace(/,?\s*unparished area$/i, "").trim();
+  name = name.replace(/,?\s*city of$/i, "").trim();
+  name = name.replace(/^city of\s+/i, "").trim();
+  name = name.replace(/^london borough of\s+/i, "").trim();
+  name = name.replace(/^royal borough of\s+/i, "").trim();
+  name = name.replace(/\s+district$/i, "").trim();
+  name = name.replace(/\s+borough$/i, "").trim();
+  return name.replace(/,\s*$/, "").trim();
+}
+
+/** Parish names the post town when it names a place. A bare "unparished area" does not. */
+export function townFromPostcodesIo(row: { parish?: unknown; admin_ward?: unknown; admin_district?: unknown }): string {
+  const parish = text(row.parish);
+  const parishLower = parish.toLowerCase();
+  if (parish && parishLower !== "unparished area" && parishLower !== "unparished") {
+    const named = cleanPlaceName(parish);
+    if (named && named.toLowerCase() !== "unparished area") return named;
+  }
+  const district = cleanPlaceName(text(row.admin_district));
+  if (district) return district;
+  return cleanPlaceName(text(row.admin_ward));
+}
+
+/** admin_county when set. Otherwise a ceremonial county, then the district. Never the region. */
+export function countyFromPostcodesIo(row: { admin_county?: unknown; admin_district?: unknown }): string {
+  const given = cleanPlaceName(text(row.admin_county));
+  if (given) return given;
+  const district = cleanPlaceName(text(row.admin_district));
+  return CEREMONIAL_BY_DISTRICT[district.toLowerCase()] ?? district;
+}
+
 export function readPostcodesIo(body: unknown): AddressLookup | null {
   if (!body || typeof body !== "object") return null;
   const result = (body as { result?: unknown }).result;
   if (!result || typeof result !== "object") return null;
   const row = result as Record<string, unknown>;
   if (typeof row.postcode !== "string") return null;
-  const town = text(row.admin_district);
-  const county = text(row.admin_county) || text(row.region);
   return {
     postcode: row.postcode,
     addressLine1: "",
     addressLine2: "",
-    town,
-    county: county === town ? "" : county,
+    town: townFromPostcodesIo(row),
+    county: countyFromPostcodesIo(row),
     premises: [],
   };
 }
