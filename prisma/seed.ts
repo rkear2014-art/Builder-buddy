@@ -27,9 +27,9 @@ const plasterRoom: Line[] = [
 ];
 
 const skimQuote: Line[] = [
-  { name: "Thistle MultiFinish plaster", quantity: "4", unit: "bag", unitPricePence: 940, costPricePence: 710 },
-  { name: "PVA bonding agent", quantity: "1", unit: "litre", unitPricePence: 600, costPricePence: 420 },
-  { name: "Scrim tape", quantity: "2", unit: "roll", unitPricePence: 450, costPricePence: 280 },
+  { name: "Multi-finish plaster 25kg", quantity: "6", unit: "bag", unitPricePence: 940, costPricePence: 710 },
+  { name: "Plasterboard 2400x1200 12.5mm", quantity: "10", unit: "sheet", unitPricePence: 850, costPricePence: 620 },
+  { name: "Angle bead", quantity: "8", unit: "length", unitPricePence: 215, costPricePence: 140 },
 ];
 
 const repairs: Line[] = [
@@ -147,7 +147,7 @@ async function main() {
     },
   });
 
-  await prisma.job.create({
+  const chidi = await prisma.job.create({
     data: {
       businessId,
       userId: user.id,
@@ -156,7 +156,8 @@ async function main() {
       phone: "07700 900124",
       email: "chidi.okonkwo@example.com",
       trade: "Plasterer",
-      description: "Quote to skim the lounge and hall after the ceiling leak.",
+      description: "Skim the lounge, hall and dining room. Board the lounge ceiling and bead the external corners.",
+      showLinePrices: false,
       internalNotes: "Wants the price before he commits. Call after 6pm.",
       scheduledDate: isoToUtcDate(addDays(today, 5)),
       timeSlot: "afternoon",
@@ -169,6 +170,52 @@ async function main() {
         create: skimQuote.map((item, index) => ({ ...item, businessId, bought: false, sortOrder: index })),
       },
     },
+  });
+  await prisma.roomMeasure.createMany({
+    data: [
+      {
+        businessId,
+        jobId: chidi.id,
+        name: "Lounge",
+        mode: "room",
+        lengthM: 5.4,
+        widthM: 3.8,
+        heightM: 2.4,
+        includeWalls: true,
+        includeCeiling: true,
+        doorCount: 1,
+        windowCount: 1,
+        sortOrder: 0,
+      },
+      {
+        businessId,
+        jobId: chidi.id,
+        name: "Hall",
+        mode: "room",
+        lengthM: 4.2,
+        widthM: 1.6,
+        heightM: 2.4,
+        includeWalls: true,
+        includeCeiling: true,
+        doorCount: 2,
+        windowCount: 0,
+        sortOrder: 1,
+      },
+      {
+        businessId,
+        jobId: chidi.id,
+        name: "Dining room",
+        mode: "room",
+        lengthM: 3.6,
+        widthM: 3.2,
+        heightM: 2.4,
+        includeWalls: true,
+        includeCeiling: true,
+        doorCount: 1,
+        windowCount: 1,
+        sortOrder: 2,
+      },
+    ],
   });
 
   const brooksDescription = "Skim the kitchen walls and make good the window board.";

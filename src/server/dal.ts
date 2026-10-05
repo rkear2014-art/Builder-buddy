@@ -22,8 +22,9 @@ import { buildGlance, glanceChips, type GlanceJob, type GlancePage } from "@/lib
 import { formatDocumentNumber, quoteIsExpired } from "@/lib/documents";
 import { balancePence, invoiceGlance, invoiceStanding, invoiceTotals, type InvoiceStanding, type PaymentMethod } from "@/lib/invoice";
 import { chargeVat, parseQuoteChips, quoteMoney, type QuoteChrome } from "@/lib/quote";
+import { customerQuoteSections, roomInputFromStored } from "@/lib/quote-breakdown";
 import { trustBadges } from "@/lib/trust";
-import { customerSubtotalPence } from "@/lib/customer-price";
+import { customerSubtotalPence, hidesMaterialLines } from "@/lib/customer-price";
 import { materialsTotals, quantityFromStored } from "@/lib/materials";
 import { presentShare, type SharePresentation } from "@/lib/share";
 import { tenantWhere } from "@/lib/tenancy";
@@ -58,10 +59,12 @@ const businessBrandingSelect = {
   accreditations: true,
   reviewUrl: true,
   totalOnlyDefault: true,
+  showQuoteRooms: true,
 } as const;
 
 const jobInclude = {
   materials: { orderBy: { sortOrder: "asc" as const } },
+  rooms: { orderBy: { sortOrder: "asc" as const } },
   signOff: true,
   user: { select: { name: true } },
   business: { select: businessBrandingSelect },
@@ -753,6 +756,16 @@ export const getShareView = cache(async (token: string): Promise<ShareView> => {
       photos: photos.flatMap((photo) => {
         const src = customerHeroSrc(token, photo.id, photo.updatedAt.toISOString());
         return src ? [{ id: photo.id, caption: photo.caption, src }] : [];
+      }),
+      ...customerQuoteSections({
+        show: job.business.showQuoteRooms !== false,
+        wholeJob: hidesMaterialLines({ totalOnly: mapped.totalOnly, fixedPricePence: mapped.fixedPricePence }),
+        rooms: job.rooms.map(roomInputFromStored),
+        materials: mapped.materials.map((line) => ({
+          name: line.name,
+          quantity: line.quantity,
+          unit: line.unit,
+        })),
       }),
     },
     photos: [],

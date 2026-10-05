@@ -109,6 +109,11 @@ describe("quotation money and wording", () => {
     if (!parsed.ok) return;
     assert.equal(parsed.data.vatRegistered, false);
     assert.equal(parsed.data.vatRatePercent, 20);
+    assert.equal(parsed.data.showQuoteRooms, false);
+    form.set("showQuoteRooms", "yes");
+    const withRooms = parseQuoteSettings(form);
+    assert.equal(withRooms.ok, true);
+    if (withRooms.ok) assert.equal(withRooms.data.showQuoteRooms, true);
 
     form.append("vatRegistered", "yes");
     const registered = parseQuoteSettings(form);

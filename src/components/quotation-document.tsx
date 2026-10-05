@@ -162,6 +162,49 @@ export function QuotationDocument({
         {businessPhone ? <p>Phone: {businessPhone}</p> : null}
       </section>
 
+      {(quote.rooms?.length ?? 0) > 0 || (quote.materials?.length ?? 0) > 0 ? (
+        <section id="quote-scope" className="quote-sheet letterhead-sheet px-4 py-6 sm:px-5">
+          {(quote.rooms?.length ?? 0) > 0 ? (
+            <div>
+              <div className="flex items-start justify-between gap-3">
+                <h2 className="font-display text-3xl leading-none sm:text-4xl">Rooms</h2>
+                {logoSrc ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={logoSrc} alt="" className="h-10 w-auto max-w-28 object-contain" />
+                ) : null}
+              </div>
+              <ul className="mt-4 grid gap-3">
+                {quote.rooms?.map((room, index) => (
+                  <li key={`${room.name}-${index}`} className="rounded-2xl border border-line px-4 py-3">
+                    <p className="font-bold">{room.name}</p>
+                    {room.size ? <p className="mt-1">{room.size}</p> : null}
+                    {room.areas ? <p className="mt-1 text-sm text-stone">{room.areas}</p> : null}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
+          {(quote.materials?.length ?? 0) > 0 ? (
+            <div className={(quote.rooms?.length ?? 0) > 0 ? "mt-6" : ""}>
+              <div className="flex items-start justify-between gap-3">
+                <h2 className="font-display text-3xl leading-none sm:text-4xl">Materials</h2>
+                {(quote.rooms?.length ?? 0) === 0 && logoSrc ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={logoSrc} alt="" className="h-10 w-auto max-w-28 object-contain" />
+                ) : null}
+              </div>
+              <ul className="mt-4 grid gap-2">
+                {quote.materials?.map((line) => (
+                  <li key={line} className="border-b border-line py-2 font-bold break-words">
+                    {line}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
+        </section>
+      ) : null}
+
       <section id="quote-price" className="quote-sheet letterhead-sheet px-5 py-6">
         <div className="flex items-start justify-between gap-4">
           <h2 className="font-display text-4xl leading-none">Price Summary</h2>
