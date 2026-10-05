@@ -29,7 +29,7 @@ export function QuotationDocument({
   signed?: { signerName: string; signedAt: string } | null;
 }) {
   const branding = letterhead?.branding;
-  const accent = branding?.accentColour ?? "#395571";
+  const accent = branding?.accentColour ?? "#dd1f29";
   const logoSrc = letterhead?.logoSrc ?? null;
   const businessName = branding?.name || agreement.businessName;
   const businessPhone = branding?.phone.trim() ?? "";

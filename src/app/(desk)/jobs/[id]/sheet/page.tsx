@@ -4,7 +4,8 @@ import { slotLabel } from "@/lib/constants";
 import { formatIsoDate } from "@/lib/dates";
 import { surveyForTrade, surveyKeys } from "@/lib/survey";
 import { PHOTO_STAGE_LABELS } from "@/lib/photos";
-import { getJob, listJobPhotos, requireUser } from "@/server/dal";
+import { formatM2, roomAreas, type MeasureMode } from "@/lib/measure";
+import { getJob, listJobPhotos, listRoomMeasures, requireUser } from "@/server/dal";
 import { PrintButton } from "@/components/print-button";
 
 export const dynamic = "force-dynamic";
@@ -22,6 +23,7 @@ export default async function JobSheetPage({ params }: { params: Promise<{ id: s
   const job = await getJob(user.businessId, id);
   if (!job) notFound();
   const photos = await listJobPhotos(user.businessId, job.id);
+  const measured = await listRoomMeasures(user.businessId, job.id);
   const ticked = new Set(surveyKeys(job.surveyDone));
   const done = surveyForTrade(job.trade).filter((item) => ticked.has(item.key));
 
@@ -51,6 +53,23 @@ export default async function JobSheetPage({ params }: { params: Promise<{ id: s
           <h2 className="font-display text-2xl">The work</h2>
           <p className="mt-2 whitespace-pre-wrap">{job.description}</p>
         </section>
+        {measured && measured.rooms.length > 0 ? (
+          <section>
+            <h2 className="font-display text-2xl">Rooms</h2>
+            {measured.measureTypeName ? <p className="mt-2">{measured.measureTypeName}</p> : null}
+            <ul className="mt-2 grid gap-1">
+              {measured.rooms.map((room, index) => {
+                const areas = roomAreas({ ...room, mode: room.mode as MeasureMode });
+                return (
+                  <li key={`${room.name}-${index}`}>
+                    {room.name} · {formatM2(areas.netM2)}
+                    {room.mode === "room" ? ` · walls ${formatM2(areas.wallM2)} · ceiling ${formatM2(areas.ceilingM2)}` : ""}
+                  </li>
+                );
+              })}
+            </ul>
+          </section>
+        ) : null}
         <section>
           <h2 className="font-display text-2xl">Materials</h2>
           {job.materials.length === 0 ? <p className="mt-2 text-stone">No materials listed.</p> : null}

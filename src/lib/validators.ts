@@ -10,6 +10,7 @@ import {
 import { isIsoDate } from "./dates";
 import { isValidQuantity, normaliseQuantity } from "./materials";
 import { parsePoundsToPence } from "./money";
+import { combineSiteAddress, normaliseUkPostcode } from "./address";
 import { passwordProblem } from "./password";
 
 export type JobInput = {
@@ -97,6 +98,64 @@ export function parseJobForm(formData: FormData): FormParse<JobInput> {
       status: data.status,
       showLinePrices,
       depositPence,
+    },
+  };
+}
+
+export type BookingInput = JobInput & {
+  postcode: string;
+  addressLine1: string;
+  addressLine2: string;
+  town: string;
+  county: string;
+};
+
+export function parseBookingForm(formData: FormData): FormParse<BookingInput> {
+  const customerName = field(formData, "customerName");
+  const addressLine1 = field(formData, "addressLine1");
+  const addressLine2 = field(formData, "addressLine2");
+  const town = field(formData, "town");
+  const county = field(formData, "county");
+  const postcode = normaliseUkPostcode(field(formData, "postcode"));
+  const phone = field(formData, "phone");
+  const email = field(formData, "email");
+  const scheduledDate = field(formData, "scheduledDate");
+  const timeSlot = field(formData, "timeSlot");
+  const trade = field(formData, "trade") || singleEnabledTrade() || "";
+  if (customerName.length < 2 || customerName.length > 120) return { ok: false, error: "Enter the customer's name." };
+  if (addressLine1.length < 3 || addressLine1.length > 160) return { ok: false, error: "Enter the house number and street." };
+  if (addressLine2.length > 160) return { ok: false, error: "Shorten address line 2." };
+  if (town.length > 80 || county.length > 80) return { ok: false, error: "Shorten the town or county." };
+  if (!postcode) return { ok: false, error: "Enter a UK postcode, such as BS7 8NS." };
+  if (phone.length < 8 || phone.length > 30 || !/^[0-9+() -]+$/.test(phone)) {
+    return { ok: false, error: "Enter a phone number." };
+  }
+  if (email && !z.email().safeParse(email).success) return { ok: false, error: "Enter a valid email address, or leave it blank." };
+  if (!isTrade(trade)) return { ok: false, error: "Choose a trade." };
+  if (!isIsoDate(scheduledDate)) return { ok: false, error: "Choose a date." };
+  if (!isTimeSlot(timeSlot)) return { ok: false, error: "Choose a time slot." };
+  const address = combineSiteAddress({ postcode, addressLine1, addressLine2, town, county });
+  if (address.length < 5 || address.length > 400) return { ok: false, error: "Enter the address, including the postcode." };
+  return {
+    ok: true,
+    data: {
+      customerName,
+      address,
+      phone,
+      email: email.toLowerCase(),
+      trade,
+      description: "",
+      internalNotes: field(formData, "internalNotes").slice(0, 5000),
+      scheduledDate,
+      timeSlot,
+      status: "ENQUIRY",
+      showLinePrices: true,
+      depositPence: null,
+      postcode,
+      addressLine1,
+      addressLine2,
+      town,
+      county,
     },
   };
 }

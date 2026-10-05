@@ -1,6 +1,7 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { starterCoverage } from "@/lib/coverage";
 import { tenantWhere } from "@/lib/tenancy";
 import {
   blankPriceUpdate,
@@ -93,6 +94,7 @@ export async function saveStarterTemplate(formData: FormData): Promise<void> {
           unit: item.unit,
           unitPricePence: item.unitPricePence,
           costPricePence: null,
+          ...coverageFields(starter.id, item.name),
           sortOrder: index,
         })),
       },
@@ -145,6 +147,7 @@ export async function loadPlasteringStarters(): Promise<void> {
               unit: item.unit,
               unitPricePence: item.unitPricePence,
               costPricePence: null,
+              ...coverageFields(row.starter.id, item.name),
               sortOrder: index,
             })),
           },
@@ -227,4 +230,10 @@ export async function saveStarterItem(formData: FormData): Promise<void> {
   }
   revalidateDesk();
   redirect("/library?notice=saved");
+}
+
+function coverageFields(templateId: string, name: string): { coverageBasis: string; coverageAmount: number | null } {
+  const coverage = starterCoverage(templateId, name);
+  if (!coverage) return { coverageBasis: "", coverageAmount: null };
+  return { coverageBasis: coverage.basis, coverageAmount: coverage.perUnit };
 }

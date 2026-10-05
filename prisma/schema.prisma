@@ -63,6 +63,7 @@ model Business {
   coverAmount   String             @default("")
   guarantee     String             @default("")
   accreditations String            @default("")
+  wastagePercent Int              @default(10)
   logoBytes     Bytes?
   logoMime      String?
   logoUpdatedAt DateTime?
@@ -81,6 +82,8 @@ model Business {
   invoices   Invoice[]
   payments   Payment[]
   jobPhotos  JobPhoto[]
+  labourRates LabourRate[]
+  roomMeasures RoomMeasure[]
 }
 
 /// A picture for one chooser tile. catalogueKey is a built-in list id or a saved template id.
@@ -160,6 +163,17 @@ model Job {
   firstViewedAt  DateTime?
   lastViewedAt   DateTime?
   showPhotos     Boolean     @default(false)
+  wastagePercent Int?
+  measureTypeKey String      @default("")
+  measureTypeName String     @default("")
+  dayRatePence   Int?
+  dayCount       Decimal?    @db.Decimal(6, 2)
+  measureSelection String    @default("")
+  postcode       String      @default("")
+  addressLine1   String      @default("")
+  addressLine2   String      @default("")
+  town           String      @default("")
+  county         String      @default("")
   scheduledDate DateTime     @db.Date
   timeSlot      String
   status        JobStatus
@@ -170,6 +184,7 @@ model Job {
   signOff       SignOff?
   invoices      Invoice[]
   photos        JobPhoto[]
+  rooms         RoomMeasure[]
 
   @@unique([businessId, quoteNumber])
   @@index([userId, scheduledDate])
@@ -188,6 +203,7 @@ model JobMaterial {
   unitPricePence Int?
   costPricePence Int?
   bought         Boolean @default(false)
+  fromMeasure    Boolean @default(false)
   sortOrder      Int     @default(0)
 
   @@index([jobId])
@@ -299,6 +315,8 @@ model MaterialTemplateItem {
   unit           String
   unitPricePence Int?
   costPricePence Int?
+  coverageBasis  String           @default("")
+  coverageAmount Decimal?         @db.Decimal(10, 2)
   sortOrder      Int              @default(0)
 
   @@index([templateId])
@@ -315,9 +333,50 @@ model SavedMaterial {
   unit           String
   unitPricePence Int?
   costPricePence Int?
+  coverageBasis  String   @default("")
+  coverageAmount Decimal? @db.Decimal(10, 2)
   createdAt      DateTime @default(now())
 
   @@unique([businessId, trade, name])
   @@index([userId, trade])
   @@index([businessId, trade])
+}
+
+/// Labour £ per m² for one job type. Blank stays null. jobTypeKey is a starter id or template:id.
+model LabourRate {
+  id               String   @id @default(cuid())
+  businessId       String
+  business         Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  jobTypeKey       String
+  labourPerM2Pence Int?
+
+  @@unique([businessId, jobTypeKey])
+  @@index([businessId])
+}
+
+/// Saved room or elevation sizes for one job. Prices are not stored here.
+model RoomMeasure {
+  id             String   @id @default(cuid())
+  businessId     String
+  business       Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  jobId          String
+  job            Job      @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  name           String
+  mode           String
+  lengthM        Decimal? @db.Decimal(8, 2)
+  widthM         Decimal? @db.Decimal(8, 2)
+  heightM        Decimal? @db.Decimal(8, 2)
+  includeWalls   Boolean  @default(true)
+  includeCeiling Boolean  @default(false)
+  directAreaM2   Decimal? @db.Decimal(10, 2)
+  doorCount      Int      @default(0)
+  doorAreaM2     Decimal  @default(1.9) @db.Decimal(6, 2)
+  windowCount    Int      @default(0)
+  windowAreaM2   Decimal  @default(1.5) @db.Decimal(6, 2)
+  externalCorners Int     @default(0)
+  stopBeadM      Decimal  @default(0) @db.Decimal(8, 2)
+  sortOrder      Int      @default(0)
+
+  @@index([jobId])
+  @@index([businessId])
 }

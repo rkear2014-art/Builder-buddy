@@ -5,6 +5,7 @@ import {
   blankPriceUpdate,
   findStarterMaterial,
   findStarterTemplate,
+  isRetiredTemplateName,
   planStarterLibraryUpdate,
   PLASTERING_STARTER_MATERIALS,
   PLASTERING_STARTER_TEMPLATES,
@@ -14,8 +15,6 @@ import {
 
 const SERVICE_NAMES = [
   "General plastering work",
-  "Skimming for a smooth finish",
-  "Hardwall/Skim finishes",
   "Dot and dab plastering",
   "Stud wall partitioning",
   "Covering Artex on ceilings and walls",
@@ -155,8 +154,11 @@ describe("plastering starters", () => {
       "Plasterer",
     );
     const byId = new Map(plan.map((row) => [row.starter.id, row]));
-    assert.equal(byId.get("plaster-skim")?.action, "rename");
-    assert.equal(byId.get("plaster-skim")?.existingName, "Skim a room");
+    assert.equal(byId.has("plaster-skim"), false);
+    assert.equal(byId.has("plaster-two-coat"), false);
+    assert.equal(isRetiredTemplateName("Skim a room"), true);
+    assert.equal(isRetiredTemplateName("Hardwall/Skim finishes"), true);
+    assert.equal(isRetiredTemplateName("General plastering work"), false);
     assert.equal(byId.get("plaster-render")?.action, "skip");
     assert.equal(byId.get("plaster-general")?.action, "add");
     assert.equal(byId.get("plaster-cornice")?.action, "add");
@@ -174,6 +176,6 @@ describe("plastering starters", () => {
     assert.equal(planStarterLibraryUpdate(["Skim a room"], "Electrician").length, 0);
 
     const both = planStarterLibraryUpdate(["Skim a room", "Skimming for a smooth finish"], "Plasterer");
-    assert.equal(both.find((row) => row.starter.id === "plaster-skim")?.action, "skip");
+    assert.equal(both.some((row) => row.starter.id === "plaster-skim"), false);
   });
 });

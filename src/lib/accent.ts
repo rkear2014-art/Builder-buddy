@@ -1,7 +1,18 @@
 import sharp from "sharp";
 
-/** Steel blue sampled from the K in the plastering logo. Used until a business chooses its own. */
-export const DEFAULT_ACCENT = "#395571";
+/**
+ * Red sampled from the rules on ak-plastering.co.uk.
+ * The brighter JPEG neighbours sit just under WCAG AA for white text, so the brand colour is this solid rule red.
+ */
+export const DEFAULT_ACCENT = "#dd1f29";
+
+/** Colours we used to prefill. A business that never chose its own still has one of these. */
+export const REPLACED_ACCENTS = ["#245a94", "#395571"] as const;
+
+export function isReplacedAccent(value: string): boolean {
+  const colour = value.trim().toLowerCase();
+  return REPLACED_ACCENTS.some((previous) => previous === colour);
+}
 
 const HEX = /^#[0-9a-fA-F]{6}$/;
 

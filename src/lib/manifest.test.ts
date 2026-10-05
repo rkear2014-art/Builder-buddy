@@ -12,7 +12,7 @@ describe("web app manifest", () => {
     assert.equal(data.start_url, "/");
     assert.equal(data.scope, "/");
     assert.equal(data.id, "/");
-    assert.equal(data.theme_color, "#f0b429");
+    assert.equal(data.theme_color, "#dd1f29");
     assert.equal(data.background_color, "#f3efe4");
     assert.equal(data.lang, "en-GB");
     const icons = data.icons ?? [];

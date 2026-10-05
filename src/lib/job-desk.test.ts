@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { catalogueCoversEveryStarter, catalogueGroupsFor, fittingHeroId } from "./catalogue";
+import { catalogueCoversEveryStarter, catalogueGroupsFor, defaultTileSource, fittingHeroId } from "./catalogue";
 import {
   enabledTrades,
   isEnabledTrade,
@@ -13,7 +13,7 @@ import { quoteMessage, whatsAppDigits, whatsAppHref } from "./customer-message";
 import { quoteStatusLabel } from "./job-desk";
 import { depositFromPercent, paymentNote, percentFromDeposit } from "./quote";
 import { surveyForTrade, surveyProgress, toggleSurveyStored } from "./survey";
-import { parseJobForm } from "./validators";
+import { parseBookingForm, parseJobForm } from "./validators";
 
 function jobForm(extra: Record<string, string> = {}): FormData {
   const form = new FormData();
@@ -53,6 +53,28 @@ describe("plastering-only desk", () => {
     assert.equal(kept.ok, true);
     if (kept.ok) assert.equal(kept.data.trade, "Plumber");
   });
+
+  it("books a job from the site address fields and keeps the combined line", () => {
+    const form = new FormData();
+    form.set("customerName", "Mrs Patel");
+    form.set("postcode", "bs78ns");
+    form.set("addressLine1", "14 Larkspur Road");
+    form.set("town", "Bristol");
+    form.set("phone", "07700 900123");
+    form.set("scheduledDate", "2026-10-05");
+    form.set("timeSlot", "morning");
+    const parsed = parseBookingForm(form);
+    assert.equal(parsed.ok, true);
+    if (!parsed.ok) return;
+    assert.equal(parsed.data.address, "14 Larkspur Road, Bristol BS7 8NS");
+    assert.equal(parsed.data.postcode, "BS7 8NS");
+    assert.equal(parsed.data.description, "");
+    assert.equal(parsed.data.trade, "Plasterer");
+    const missing = parseBookingForm(form);
+    form.set("addressLine1", "");
+    assert.equal(parseBookingForm(form).ok, false);
+    assert.equal(missing.ok, true);
+  });
 });
 
 describe("job desk helpers", () => {
@@ -84,6 +106,11 @@ describe("job desk helpers", () => {
     assert.equal(fittingHeroId("plaster-skim", photos), "room");
     assert.equal(fittingHeroId("plaster-screed", photos), null);
     assert.equal(fittingHeroId("plaster-render", []), null);
+    const shown = catalogueGroupsFor("Plasterer").flatMap((group) => group.starterIds);
+    assert.equal(shown.includes("plaster-skim"), false);
+    assert.equal(shown.includes("plaster-two-coat"), false);
+    assert.equal(shown.includes("plaster-general"), true);
+    for (const id of shown) assert.ok(defaultTileSource(id), id);
   });
 
   it("turns a deposit percentage into the amount the quotation stores", () => {

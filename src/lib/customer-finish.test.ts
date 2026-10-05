@@ -77,7 +77,7 @@ describe("customer finish", () => {
     assert.equal(canSendBrandedEmail({ RESEND_API_KEY: "re_test", RESEND_FROM_EMAIL: "quotes@plastererinredditch.co.uk" }), true);
     const html = brandedEmailHtml({
       businessName: "AK Plastering",
-      accent: "#395571",
+      accent: "#dd1f29",
       logoSrc: "https://app.example/logo",
       headline: "Your quotation",
       body: "Please have a look.",
@@ -88,7 +88,7 @@ describe("customer finish", () => {
     });
     assert.match(html, /Open the quotation/);
     assert.match(html, /https:\/\/app\.example\/sign\/abc/);
-    assert.match(html, /#395571/);
+    assert.match(html, /#dd1f29/);
     assert.equal(html.includes("<script"), false);
   });
 });
