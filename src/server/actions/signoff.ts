@@ -6,6 +6,7 @@ import { keepExistingSignOff, lockAgreement, parseLockedAgreement } from "@/lib/
 import { isConfigured } from "@/lib/config";
 import { quoteIsExpired } from "@/lib/documents";
 import { chargeVat } from "@/lib/quote";
+import { resolveTermsText } from "@/lib/terms";
 import { onDiaryAfterWon } from "@/lib/quote-stage";
 import { londonToday, utcDateToIso } from "@/lib/dates";
 import type { ActionState } from "@/lib/form-state";
@@ -26,13 +27,16 @@ export async function signAgreement(_state: ActionState, formData: FormData): Pr
   if (!signer.ok) return { error: signer.error };
   const signature = acceptedSignature(String(formData.get("signature") ?? ""));
   if (!signature) return { error: "Add a signature before sending." };
+  if (formData.get("termsAgreed") !== "yes") {
+    return { error: "Tick that you have read and agree to the terms and conditions." };
+  }
 
   const job = await getPrisma().job.findUnique({
     where: { shareToken: token },
     include: {
       materials: { orderBy: { sortOrder: "asc" } },
       signOff: true,
-      business: { select: { name: true, vatRegistered: true, vatRatePercent: true } },
+      business: { select: { name: true, address: true, phone: true, terms: true, vatRegistered: true, vatRatePercent: true } },
     },
   });
   if (!job || !job.shareActive) return { error: "This link is not valid." };
@@ -40,6 +44,8 @@ export async function signAgreement(_state: ActionState, formData: FormData): Pr
     return { error: "This quotation has expired. Ask for a new one." };
   }
 
+  const termsText = resolveTermsText(job.business.terms, job.business);
+  const signedAt = new Date().toISOString();
   const incoming = lockAgreement(
     {
       businessName: job.business.name,
@@ -66,7 +72,7 @@ export async function signAgreement(_state: ActionState, formData: FormData): Pr
         costPricePence: material.costPricePence,
       })),
     },
-    { signerName: signer.data.signerName, signedAt: new Date().toISOString() },
+    { signerName: signer.data.signerName, signedAt, termsText },
   );
 
   const existing = job.signOff ? parseLockedAgreement(job.signOff.snapshot) : null;
@@ -84,6 +90,9 @@ export async function signAgreement(_state: ActionState, formData: FormData): Pr
           signerName: incoming.signerName,
           signatureData: signature,
           signedAt: new Date(incoming.signedAt),
+          termsAgreed: true,
+          termsText,
+          termsAgreedAt: new Date(incoming.signedAt),
           snapshot: incoming,
         },
       });

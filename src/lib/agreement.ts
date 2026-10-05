@@ -63,6 +63,9 @@ export type LockedAgreement = PublicAgreement & {
   version: 1;
   signerName: string;
   signedAt: string;
+  /** Terms wording frozen with this signature. Empty on copies signed before terms were stored. */
+  termsText?: string;
+  termsAgreedAt?: string;
 };
 
 const publicMaterialSchema = z.object({
@@ -95,6 +98,8 @@ export const lockedAgreementSchema = z.object({
   fixedPricePence: z.number().int().nullable().optional(),
   signerName: z.string(),
   signedAt: z.string(),
+  termsText: z.string().optional(),
+  termsAgreedAt: z.string().optional(),
 });
 
 export function toPublicAgreement(job: AgreementSource): PublicAgreement {
@@ -144,14 +149,16 @@ function normalVatRate(rate: number | undefined): number {
 /** Copies the customer-facing agreement so later edits cannot change it. */
 export function lockAgreement(
   job: AgreementSource,
-  signature: { signerName: string; signedAt: string },
+  signature: { signerName: string; signedAt: string; termsText?: string },
 ): LockedAgreement {
   const agreed = structuredClone(toPublicAgreement(job));
+  const termsText = signature.termsText?.replace(/\r\n/g, "\n").trim() ?? "";
   return {
     version: 1,
     ...agreed,
     signerName: signature.signerName.trim(),
     signedAt: signature.signedAt,
+    ...(termsText ? { termsText, termsAgreedAt: signature.signedAt } : {}),
   };
 }
 
@@ -167,6 +174,9 @@ export function parseLockedAgreement(value: unknown): LockedAgreement | null {
     vatRatePercent: normalVatRate(data.vatRatePercent),
     totalOnly: data.totalOnly === true,
     fixedPricePence: data.fixedPricePence != null && data.fixedPricePence > 0 ? data.fixedPricePence : null,
+    ...(data.termsText?.trim()
+      ? { termsText: data.termsText.replace(/\r\n/g, "\n").trim(), termsAgreedAt: data.termsAgreedAt?.trim() || data.signedAt }
+      : {}),
   };
 }
 

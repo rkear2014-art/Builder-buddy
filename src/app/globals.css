@@ -119,6 +119,12 @@ body {
   resize: vertical;
 }
 
+.field textarea.terms-box {
+  min-height: 28rem;
+  font-weight: 500;
+  line-height: 1.55;
+}
+
 .card {
   background: var(--color-card);
   border: 1px solid var(--color-line);
@@ -431,6 +437,12 @@ summary.btn::-webkit-details-marker {
 
 .letterhead-sheet {
   position: relative;
+}
+
+.terms-copy p {
+  font-size: 1.0625rem;
+  line-height: 1.65;
+  overflow-wrap: anywhere;
 }
 
 .letterhead-sheet::before {

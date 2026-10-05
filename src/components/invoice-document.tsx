@@ -198,7 +198,8 @@ export function InvoiceDocument({
           </ul>
         ) : null}
 
-        <p className="mt-6 text-sm text-stone">
+        <p className="mt-6 text-sm font-bold">Subject to our terms and conditions.</p>
+        <p className="mt-2 text-sm text-stone">
           {quoteFooter({
             name: businessName,
             website: branding?.website ?? "",

@@ -35,6 +35,8 @@ export type QuoteChrome = {
   rooms?: Array<{ name: string; size: string; areas: string }>;
   /** Material names and quantities only. Empty hides the Materials section. */
   materials?: string[];
+  /** Terms printed at the bottom of the customer quote. */
+  terms: string;
 };
 
 export function quoteReference(jobId: string): string {

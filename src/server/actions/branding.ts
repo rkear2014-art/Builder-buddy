@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { accentFromImage, DEFAULT_ACCENT, isReplacedAccent, normaliseAccent } from "@/lib/accent";
 import { parseQuoteSettings } from "@/lib/quote";
+import { parseTermsField, termsToStore } from "@/lib/terms";
 import { businessLogoQuery, canEditBusiness, parseBusinessProfile, parseOwnerName } from "@/lib/branding";
 import type { ActionState } from "@/lib/form-state";
 import { AK_HERO_CAPTION, MAX_HERO_PHOTOS, missingSampleHeroKeys } from "@/lib/heroes";
@@ -39,6 +40,24 @@ export async function saveQuoteSettings(_state: ActionState, formData: FormData)
   });
   refreshBranding();
   redirect("/settings?saved=quote");
+}
+
+export async function saveTerms(_state: ActionState, formData: FormData): Promise<ActionState> {
+  const owner = await ownerBusinessId();
+  if ("error" in owner) return { error: owner.error };
+  const business = await getPrisma().business.findFirst({
+    where: { id: owner.id },
+    select: { name: true, address: true, phone: true },
+  });
+  if (!business) return { error: "That business could not be found." };
+  const parsed = parseTermsField(String(formData.get("terms") ?? ""));
+  if (!parsed.ok) return { error: parsed.error };
+  await getPrisma().business.update({
+    where: { id: owner.id },
+    data: { terms: termsToStore(parsed.terms, business) },
+  });
+  refreshBranding();
+  redirect("/settings?saved=terms");
 }
 
 export async function saveOwnerName(_state: ActionState, formData: FormData): Promise<ActionState> {

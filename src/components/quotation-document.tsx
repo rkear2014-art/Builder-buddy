@@ -17,6 +17,7 @@ import {
   stripTitle,
   type QuoteChrome,
 } from "@/lib/quote";
+import { QuoteTerms } from "@/components/quote-terms";
 
 export function QuotationDocument({
   agreement,
@@ -29,7 +30,7 @@ export function QuotationDocument({
   letterhead: CustomerLetterhead | null;
   quote: QuoteChrome;
   signatureDataUrl?: string | null;
-  signed?: { signerName: string; signedAt: string } | null;
+  signed?: { signerName: string; signedAt: string; termsAgreedAt?: string } | null;
 }) {
   const branding = letterhead?.branding;
   const accent = branding?.accentColour ?? "#dd1f29";
@@ -343,6 +344,9 @@ export function QuotationDocument({
             <p className="font-bold">
               Signed by {signed.signerName} on {formatLondonDateTime(signed.signedAt)}.
             </p>
+            {signed.termsAgreedAt ? (
+              <p className="mt-2">Agreed to the terms and conditions on {formatLondonDateTime(signed.termsAgreedAt)}.</p>
+            ) : null}
             {safeSignature ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img src={safeSignature} alt={`Signature of ${signed.signerName}`} className="mt-3 max-h-40" />
@@ -353,6 +357,8 @@ export function QuotationDocument({
           <p className="mt-6 text-stone">Sign below if you agree to this quotation.</p>
         )}
       </section>
+
+      <QuoteTerms text={quote.terms} />
     </article>
   );
 }

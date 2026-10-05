@@ -22,6 +22,8 @@ import { buildGlance, glanceChips, type GlanceJob, type GlancePage } from "@/lib
 import { formatDocumentNumber, quoteIsExpired } from "@/lib/documents";
 import { balancePence, invoiceGlance, invoiceStanding, invoiceTotals, type InvoiceStanding, type PaymentMethod } from "@/lib/invoice";
 import { chargeVat, parseQuoteChips, quoteMoney, type QuoteChrome } from "@/lib/quote";
+import { resolveTermsText } from "@/lib/terms";
+import { parseLockedAgreement } from "@/lib/agreement";
 import { customerQuoteSections, roomInputFromStored } from "@/lib/quote-breakdown";
 import { trustBadges } from "@/lib/trust";
 import { customerSubtotalPence, hidesMaterialLines } from "@/lib/customer-price";
@@ -60,6 +62,7 @@ const businessBrandingSelect = {
   reviewUrl: true,
   totalOnlyDefault: true,
   showQuoteRooms: true,
+  terms: true,
 } as const;
 
 const jobInclude = {
@@ -767,6 +770,10 @@ export const getShareView = cache(async (token: string): Promise<ShareView> => {
           unit: line.unit,
         })),
       }),
+      terms:
+        job.signOff?.termsText.trim() ||
+        parseLockedAgreement(job.signOff?.snapshot)?.termsText?.trim() ||
+        resolveTermsText(job.business.terms, job.business),
     },
     photos: [],
   };
