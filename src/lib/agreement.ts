@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { isInternalCrewName } from "./crew";
 import { customerLineTotalPence, materialsTotals, normaliseQuantity } from "./materials";
 
 export type AgreementSource = {
@@ -90,7 +91,8 @@ export const lockedAgreementSchema = z.object({
 });
 
 export function toPublicAgreement(job: AgreementSource): PublicAgreement {
-  const materials: PublicMaterialLine[] = job.materials.map((line) => ({
+  const visible = job.materials.filter((line) => !isInternalCrewName(line.name));
+  const materials: PublicMaterialLine[] = visible.map((line) => ({
     name: line.name.trim(),
     quantity: normaliseQuantity(line.quantity),
     unit: line.unit.trim(),
@@ -100,7 +102,7 @@ export function toPublicAgreement(job: AgreementSource): PublicAgreement {
       unitPricePence: line.unitPricePence,
     }),
   }));
-  const totals = materialsTotals(job.materials);
+  const totals = materialsTotals(visible);
   return {
     businessName: job.businessName.trim(),
     customerName: job.customerName.trim(),

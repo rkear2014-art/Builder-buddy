@@ -3,11 +3,13 @@ import { enabledTrades, isEnabledTrade, singleEnabledTrade, tradeLabel } from "@
 import { formatPence } from "@/lib/money";
 import { coverageBasisLabel, starterCoverage } from "@/lib/coverage";
 import { PLASTERING_STARTER_MATERIALS, PLASTERING_STARTER_TEMPLATES } from "@/lib/trade-starters";
+import { saveCrewRates } from "@/server/actions/crew";
+import { CREW_ROLES, poundsField } from "@/lib/crew";
 import { saveLabourRate, saveMaterialCoverage } from "@/server/actions/measure";
 import { removeCataloguePhoto, saveCataloguePhoto } from "@/server/actions/catalogue";
 import { addTemplateItem, createSavedItem, createTemplate, deleteSavedItem, deleteTemplate } from "@/server/actions/library";
 import { loadPlasteringStarters, saveStarterTemplate } from "@/server/actions/starters";
-import { getBusinessWastage, getLibrary, listCataloguePhotos, listLabourRates, requireUser } from "@/server/dal";
+import { getBusinessWastage, getLibrary, listCataloguePhotos, listCrewRates, listLabourRates, requireUser } from "@/server/dal";
 import { InlineForm } from "@/components/inline-form";
 import { SubmitButton } from "@/components/submit-button";
 import { UnitSelect } from "@/components/unit-select";
@@ -40,6 +42,8 @@ function libraryNotice(
   if (notice === "coverage") return "Enter how much one unit covers, as a number such as 10 or 2.88.";
   if (notice === "labour-saved") return "Labour price saved for that job type. Leave it blank if you do not want labour added.";
   if (notice === "labour") return "Enter the labour price in pounds per m², or leave it blank.";
+  if (notice === "crew-saved") return "Crew rates saved. A blank rate stays blank, and a job can still use a different one.";
+  if (notice === "crew") return "Enter a crew rate in pounds, or leave it blank.";
   if (notice === "already") return "That is already in your library.";
   if (notice === "missing") return "That starter list could not be found.";
   if (notice !== "starters") return null;
@@ -69,6 +73,7 @@ export default async function LibraryPage({
   const user = await requireUser();
   const library = await getLibrary(user.businessId);
   const labourRates = await listLabourRates(user.businessId);
+  const crewRates = await listCrewRates(user.businessId);
   const wastage = await getBusinessWastage(user.businessId);
   const labourByKey = new Map(labourRates.map((rate) => [rate.jobTypeKey, rate.labourPerM2Pence]));
   const tiles = await listCataloguePhotos(user.businessId);
@@ -87,6 +92,35 @@ export default async function LibraryPage({
         <p className="mt-1 text-stone">Saved items and templates, so a list is quick to build on site.</p>
       </div>
       {noticeText ? <p className="card font-bold">{noticeText}</p> : null}
+      <form action={saveCrewRates} className="card grid gap-3">
+        <h2 className="font-display text-3xl">Crew rates</h2>
+        <p className="text-stone">
+          Usual rates for a plasterer, labourer, and subcontractor. Leave a rate blank and nothing is priced. A job can use a different rate. The same rates are on the Business page.
+        </p>
+        {CREW_ROLES.map((role) => {
+          const stored = crewRates.find((item) => item.role === role.id);
+          const basis = stored?.basis === "m2" || stored?.basis === "day" ? stored.basis : role.defaultBasis;
+          return (
+            <div key={role.id} className="grid gap-2 border-t border-line pt-3 sm:grid-cols-[1fr_12rem]">
+              <label className="field">
+                {role.label} rate (£)
+                <span>{basis === "day" ? "Per person, per day." : "Per m². Not multiplied by the number of people."}</span>
+                <input name={`crewRate:${role.id}`} inputMode="decimal" placeholder="Blank" defaultValue={poundsField(stored?.ratePence)} />
+              </label>
+              <label className="field">
+                Rate type
+                <select name={`crewBasis:${role.id}`} defaultValue={basis}>
+                  <option value="day">Per day</option>
+                  <option value="m2">Per m²</option>
+                </select>
+              </label>
+            </div>
+          );
+        })}
+        <button className="btn btn-secondary" type="submit">
+          Save crew rates
+        </button>
+      </form>
 
       <section className="grid gap-3">
         <div className="flex flex-wrap items-end justify-between gap-3">

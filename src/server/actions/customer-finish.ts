@@ -5,6 +5,7 @@ import { createShareToken } from "@/lib/access";
 import { parseBusinessExtras } from "@/lib/business-extras";
 import { documentEmail } from "@/lib/branded-email";
 import { canEditBusiness } from "@/lib/branding";
+import { isInternalCrewName } from "@/lib/crew";
 import { addDays, isIsoDate, isoToUtcDate, londonToday } from "@/lib/dates";
 import type { ActionState } from "@/lib/form-state";
 import { invoiceTotals, statusAfterPayment, PAYMENT_METHODS, type PaymentMethod } from "@/lib/invoice";
@@ -87,7 +88,7 @@ export async function raiseInvoice(_state: ActionState, formData: FormData): Pro
         vatRatePercent: job.business.vatRatePercent,
         shareToken: createShareToken(),
         lines: {
-          create: job.materials.map((material, index) => ({
+          create: job.materials.filter((material) => !isInternalCrewName(material.name)).map((material, index) => ({
             name: material.name,
             quantity: material.quantity,
             unit: material.unit,

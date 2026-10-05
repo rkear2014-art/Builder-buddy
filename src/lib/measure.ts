@@ -1,3 +1,5 @@
+import type { CrewInput } from "./crew";
+import { priceCrew } from "./crew";
 import { customerLineTotalPence } from "./materials";
 import { coverageBasisLabel, type CoverageBasis } from "./coverage";
 
@@ -196,6 +198,8 @@ export function quoteFromMeasure(input: {
   labourPerM2Pence: number | null;
   dayRatePence: number | null;
   dayCount: number | null;
+  /** When the plasterer count is above zero, this replaces the single labour and day-rate lines. */
+  crew?: CrewInput | null;
   /** When set, only these line names are added into the total. */
   included?: readonly string[] | null;
 }): MeasureQuote {
@@ -255,7 +259,11 @@ export function quoteFromMeasure(input: {
     });
   }
 
-  if (input.labourPerM2Pence != null && totalM2 > 0) {
+  const crewPrice = input.crew ? priceCrew({ ...input.crew, totalM2 }) : null;
+  const plasterer = crewPrice?.roles.find((role) => role.role === "plasterer");
+  const crewOwnsLabour = plasterer != null && plasterer.count > 0;
+
+  if (!crewOwnsLabour && input.labourPerM2Pence != null && totalM2 > 0) {
     const quantity = quantityForQuote(totalM2, false);
     lines.push({
       name: "Labour",
@@ -267,7 +275,7 @@ export function quoteFromMeasure(input: {
     });
   }
 
-  if (input.dayRatePence != null && input.dayRatePence > 0 && input.dayCount != null && input.dayCount > 0) {
+  if (!crewOwnsLabour && input.dayRatePence != null && input.dayRatePence > 0 && input.dayCount != null && input.dayCount > 0) {
     const quantity = quantityForQuote(input.dayCount, false);
     lines.push({
       name: "Labour, day rate",
@@ -277,6 +285,10 @@ export function quoteFromMeasure(input: {
       lineTotalPence: quantity ? customerLineTotalPence({ quantity, unitPricePence: input.dayRatePence }) : null,
       note: null,
     });
+  }
+
+  if (crewPrice?.customerLine) {
+    lines.push(crewPrice.customerLine);
   }
 
   let totalPence = 0;

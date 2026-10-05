@@ -24,8 +24,10 @@ import {
 } from "@/server/actions/jobs";
 import { deleteJobMaterial, toggleMaterialBought } from "@/server/actions/materials";
 import { brandedEmailReady } from "@/server/email";
+import { startingCrew } from "@/lib/crew";
 import { formatM2, roomAreas, type MeasureMode } from "@/lib/measure";
-import { getJob, getLibrary, listJobInvoices, listJobPhotos, listRoomMeasures, requireUser } from "@/server/dal";
+import { CrewForm } from "@/components/crew-form";
+import { getJob, getLibrary, listCrewRates, listJobCrew, listJobInvoices, listJobPhotos, listRoomMeasures, requireUser } from "@/server/dal";
 import { requestOrigin } from "@/server/origin";
 import { InlineForm } from "@/components/inline-form";
 import { DeletePhotoForm, JobPhotoForm, PhotoShareButton, ShowPhotosForm } from "@/components/job-photo-form";
@@ -57,6 +59,17 @@ export default async function JobPage({ params }: { params: Promise<{ id: string
   const photos = await listJobPhotos(user.businessId, job.id);
   const invoices = await listJobInvoices(user.businessId, job.id);
   const measured = await listRoomMeasures(user.businessId, job.id);
+  const [crewRates, jobCrew] = await Promise.all([listCrewRates(user.businessId), listJobCrew(user.businessId, job.id)]);
+  const crewArea = (measured?.rooms ?? []).reduce(
+    (sum, room) => sum + roomAreas({ ...room, mode: (["room", "elevation", "floor", "direct"].includes(room.mode) ? room.mode : "room") as MeasureMode }).netM2,
+    0,
+  );
+  const crewStart = startingCrew({
+    defaults: crewRates,
+    saved: jobCrew.length > 0 ? jobCrew : null,
+    legacyDayRatePence: jobCrew.length > 0 ? null : measured?.dayRatePence,
+    legacyDays: measured?.dayCount,
+  });
   const origin = await requestOrigin();
   const shareUrl = origin ? `${origin}/sign/${job.shareToken}` : `/sign/${job.shareToken}`;
   const locked = job.signOff ? parseLockedAgreement(job.signOff.snapshot) : null;
@@ -319,6 +332,15 @@ export default async function JobPage({ params }: { params: Promise<{ id: string
           </ul>
         </section>
       ) : null}
+
+      <CrewForm
+        jobId={job.id}
+        initialDays={crewStart.days}
+        initialRoles={crewStart.roles}
+        totalM2={crewArea}
+        accent={accent}
+        accentInk={accentInk}
+      />
 
       <section id="materials" className="card grid gap-4">
         <div className="flex flex-wrap items-end justify-between gap-2">
