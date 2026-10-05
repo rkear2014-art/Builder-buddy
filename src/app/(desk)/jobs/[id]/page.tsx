@@ -11,10 +11,10 @@ import type { DeskJob } from "@/lib/desk";
 import { quoteStatusLabel } from "@/lib/job-desk";
 import { costTotals, materialsTotals } from "@/lib/materials";
 import { formatPence } from "@/lib/money";
-import { depositFromPercent, paymentNote, percentFromDeposit } from "@/lib/quote";
+import { depositFromPercent, paymentNote, percentFromDeposit, pricesIncludeVatLine, quoteMoney } from "@/lib/quote";
 import { surveyForTrade, surveyIntro, surveyKeys, surveyProgress } from "@/lib/survey";
 import { raiseInvoice, saveQuoteValidity } from "@/server/actions/customer-finish";
-import { savePaymentTerms, setShowLinePrices, setSurveyTick } from "@/server/actions/job-desk";
+import { savePaymentTerms, saveQuoteVat, setShowLinePrices, setSurveyTick } from "@/server/actions/job-desk";
 import {
   deleteJob,
   revokeShareLink,
@@ -25,7 +25,7 @@ import {
 } from "@/server/actions/jobs";
 import { deleteJobMaterial, toggleMaterialBought } from "@/server/actions/materials";
 import { brandedEmailReady } from "@/server/email";
-import { startingCrew } from "@/lib/crew";
+import { isInternalCrewName, startingCrew } from "@/lib/crew";
 import { formatM2, roomAreas, type MeasureMode } from "@/lib/measure";
 import { CrewForm } from "@/components/crew-form";
 import { getJob, getLibrary, listCrewRates, listJobCrew, listJobInvoices, listJobPhotos, listRoomMeasures, requireUser } from "@/server/dal";
@@ -75,7 +75,13 @@ export default async function JobPage({ params }: { params: Promise<{ id: string
   const shareUrl = origin ? `${origin}/sign/${job.shareToken}` : `/sign/${job.shareToken}`;
   const locked = job.signOff ? parseLockedAgreement(job.signOff.snapshot) : null;
   const changes = locked ? agreementChanges(locked, toPublicAgreement(job)) : [];
-  const customerTotal = materialsTotals(job.materials);
+  const customerTotal = materialsTotals(job.materials.filter((material) => !isInternalCrewName(material.name)));
+  const price = quoteMoney({
+    subtotalPence: customerTotal.totalPence,
+    vatRegistered: job.vatRegistered,
+    vatRatePercent: job.vatRatePercent,
+    depositPence: job.depositPence,
+  });
   const tradeCost = costTotals(job.materials);
   const accent = user.branding.accentColour;
   const accentInk = user.branding.accentInk;
@@ -84,7 +90,7 @@ export default async function JobPage({ params }: { params: Promise<{ id: string
   const progress = surveyProgress(job.trade, job.surveyDone);
   const ticked = new Set(surveyKeys(job.surveyDone));
   const itemCount = job.materials.length;
-  const depositPercent = percentFromDeposit(customerTotal.totalPence, job.depositPence);
+  const depositPercent = percentFromDeposit(price.totalPence, job.depositPence);
   const tradeBit = visibleTradeLabel(job.trade);
   const message = quoteMessage({
     customerName: job.customerName,
@@ -301,7 +307,7 @@ export default async function JobPage({ params }: { params: Promise<{ id: string
           <p className="text-sm text-stone">
             The quote, the contract, and the customer’s page say “{paymentNote(job.depositPence)}”
             {depositPercent != null &&
-            depositFromPercent(customerTotal.totalPence, depositPercent) !== job.depositPence
+            depositFromPercent(price.totalPence, depositPercent) !== job.depositPence
               ? ` The saved deposit is ${formatPence(job.depositPence ?? 0)}.`
               : "."}
           </p>
@@ -358,8 +364,44 @@ export default async function JobPage({ params }: { params: Promise<{ id: string
       <section id="materials" className="card grid gap-4">
         <div className="flex flex-wrap items-end justify-between gap-2">
           <h2 className="font-display text-2xl">Materials</h2>
-          <p className="font-display text-2xl">{job.showLinePrices ? formatPence(customerTotal.totalPence) : "Prices hidden"}</p>
+          {job.showLinePrices ? (
+            <div className="text-right">
+              {price.vatPence != null ? (
+                <>
+                  <p>Subtotal {formatPence(price.subtotalPence)}</p>
+                  <p>
+                    VAT ({job.vatRatePercent}%) {formatPence(price.vatPence)}
+                  </p>
+                  <p className="font-display text-2xl">Total {formatPence(price.totalPence)}</p>
+                  <p className="text-sm font-bold">{pricesIncludeVatLine(job.vatRatePercent)}</p>
+                </>
+              ) : (
+                <p className="font-display text-2xl">{formatPence(price.totalPence)}</p>
+              )}
+            </div>
+          ) : (
+            <p className="font-display text-2xl">Prices hidden</p>
+          )}
         </div>
+        <InlineForm action={saveQuoteVat} className="grid gap-3">
+          <input type="hidden" name="jobId" value={job.id} />
+          <input type="hidden" name="omitVat" value="no" />
+          <label className="flex items-start gap-3 text-lg font-bold">
+            <input type="checkbox" name="omitVat" value="yes" defaultChecked={job.omitVat} className="mt-1 h-7 w-7" />
+            <span>
+              No VAT on this quote
+              <span className="mt-1 block text-sm font-semibold text-stone">
+                {job.omitVat
+                  ? "VAT is turned off for this quote. Untick it to follow the Business page."
+                  : job.vatRegistered
+                    ? `VAT at ${job.vatRatePercent}% is added to the customer price. Tick this to leave it off.`
+                    : "This business is not VAT registered, so this quote has no VAT."}
+                {job.signOff ? " The signed copy keeps the VAT it was agreed with." : ""}
+              </span>
+            </span>
+          </label>
+          <SubmitButton variant="secondary">Save VAT</SubmitButton>
+        </InlineForm>
         {customerTotal.unpricedCount > 0 ? (
           <p className="text-stone">
             {customerTotal.unpricedCount} {customerTotal.unpricedCount === 1 ? "item has" : "items have"} no customer

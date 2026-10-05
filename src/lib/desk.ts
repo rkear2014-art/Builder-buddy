@@ -48,6 +48,8 @@ export type DeskJob = {
   showPhotos: boolean;
   vatRegistered: boolean;
   vatRatePercent: number;
+  omitVat: boolean;
+  vatNumber: string;
   materials: DeskMaterial[];
   signOff: DeskSignOff | null;
 };

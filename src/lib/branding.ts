@@ -19,6 +19,7 @@ export type BusinessBranding = BusinessProfile & {
   markUpdatedAt: string | null;
   vatRegistered: boolean;
   vatRatePercent: number;
+  vatNumber: string;
   quoteLetter: string;
   quoteChips: string;
   accent: string;
@@ -44,6 +45,7 @@ export type BrandingRow = BusinessProfile & {
   markUpdatedAt: Date | string | null;
   vatRegistered: boolean;
   vatRatePercent: number;
+  vatNumber?: string;
   quoteLetter: string;
   quoteChips: string;
   invoiceDueDays?: number;
@@ -152,6 +154,7 @@ export function toBranding(row: BrandingRow): BusinessBranding {
     tagline: row.tagline,
     vatRegistered: row.vatRegistered,
     vatRatePercent: row.vatRatePercent,
+    vatNumber: row.vatNumber?.trim() ?? "",
     quoteLetter: row.quoteLetter,
     quoteChips: row.quoteChips,
     invoiceDueDays: clampDays(row.invoiceDueDays, 14, 90),

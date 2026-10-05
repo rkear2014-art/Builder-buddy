@@ -3,7 +3,7 @@ import { describe, it } from "node:test";
 import { publicBaseUrl } from "./base-url";
 import { brandedEmailHtml, canSendBrandedEmail } from "./branded-email";
 import { formatDocumentNumber, quoteIsExpired } from "./documents";
-import { balancePence, invoiceStanding, invoiceTotals, statusAfterPayment } from "./invoice";
+import { balancePence, invoiceStanding, invoiceTotals, invoiceVatIsLocked, statusAfterPayment } from "./invoice";
 import { trustBadges } from "./trust";
 
 describe("customer finish", () => {
@@ -30,6 +30,21 @@ describe("customer finish", () => {
     });
     assert.equal(totals.duePence, 1500);
     assert.equal(balancePence(totals.duePence, 400), 1100);
+    const withVat = invoiceTotals({
+      lines: [{ quantity: "1", unitPricePence: 10000 }],
+      vatRegistered: true,
+      vatRatePercent: 20,
+      depositPence: null,
+    });
+    assert.equal(withVat.subtotalPence, 10000);
+    assert.equal(withVat.vatPence, 2000);
+    assert.equal(withVat.totalPence, 12000);
+    assert.equal(withVat.duePence, 12000);
+    assert.equal(balancePence(withVat.duePence, 2000), 10000);
+    assert.equal(invoiceVatIsLocked("DRAFT", 0), false);
+    assert.equal(invoiceVatIsLocked("SENT", 0), true);
+    assert.equal(invoiceVatIsLocked("PAID", 0), true);
+    assert.equal(invoiceVatIsLocked("DRAFT", 500), true);
     assert.equal(
       invoiceStanding({ status: "SENT", dueDate: "2026-10-01", today: "2026-10-04", paidPence: 0, totalDuePence: 1500 }),
       "Overdue",

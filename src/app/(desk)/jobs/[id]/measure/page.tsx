@@ -131,6 +131,8 @@ export default async function MeasurePage({
         plan={plan}
         initialChoices={initialChoices}
         initialIncluded={initialIncluded}
+        vatRegistered={job.vatRegistered}
+        vatRatePercent={job.vatRatePercent}
       />
     </div>
   );

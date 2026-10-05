@@ -140,3 +140,8 @@ export function invoiceTotals(input: {
 export function balancePence(duePence: number, paidPence: number): number {
   return Math.max(0, duePence - paidPence);
 }
+
+/** Sent, part-paid, and paid invoices keep the VAT they were issued with. A payment also freezes a draft. */
+export function invoiceVatIsLocked(status: StoredInvoiceStatus, paidPence: number): boolean {
+  return status !== "DRAFT" || paidPence > 0;
+}
