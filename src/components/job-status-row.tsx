@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { STATUS_LABELS, type JobStatus } from "@/lib/constants";
 import { JOB_PROGRESS, QUOTE_STAGE_LABELS, QUOTE_STAGES, type QuoteStage } from "@/lib/quote-stage";
 import { setJobStatus, setQuoteStage } from "@/server/actions/jobs";
@@ -9,38 +8,17 @@ export function JobStatusRow({
   jobId,
   quoteStage,
   status,
-  onDiary,
-  signed,
   accent,
   accentInk,
 }: {
   jobId: string;
   quoteStage: QuoteStage;
   status: JobStatus;
-  onDiary: boolean;
-  signed: boolean;
   accent: string;
   accentInk: string;
 }) {
-  const wonWaiting = quoteStage === "WON" && !onDiary;
   return (
     <div className="grid gap-3">
-      {wonWaiting ? (
-        <section className="rounded-3xl border border-[#178a45] bg-[#e8f6ee] p-4">
-          <h2 className="font-display text-4xl leading-none text-[#178a45]">Won.</h2>
-          <p className="mt-2 text-lg font-bold">
-            {signed ? "Customer signed. Book the job in." : "Book the job in."}
-          </p>
-          <Link
-            href={`/jobs/${jobId}/book`}
-            className="btn mt-3 min-h-[4.5rem] w-full text-xl"
-            style={{ background: accent, color: accentInk }}
-          >
-            Book the job in
-          </Link>
-        </section>
-      ) : null}
-
       <section aria-label="Job status">
         <p className="text-xs font-extrabold tracking-[0.14em] text-stone">JOB STATUS</p>
         <div className="mt-2 flex flex-wrap gap-2">
@@ -73,7 +51,11 @@ export function JobStatusRow({
                   <input type="hidden" name="status" value={progress} />
                   <button
                     className="btn btn-secondary w-full px-2"
-                    style={selected ? { background: accent, color: accentInk, borderColor: accent } : undefined}
+                    style={
+                      selected
+                        ? { background: "white", color: accent, borderColor: accent }
+                        : undefined
+                    }
                     type="submit"
                     aria-pressed={selected}
                   >

@@ -16,6 +16,7 @@ export function SendQuote({
   brandedReady = false,
   jobId,
   invoiceId,
+  layout = "stack",
 }: {
   customerName: string;
   businessName: string;
@@ -26,6 +27,7 @@ export function SendQuote({
   brandedReady?: boolean;
   jobId?: string;
   invoiceId?: string;
+  layout?: "stack" | "row";
 }) {
   const initial =
     kind === "invoice"
@@ -52,6 +54,59 @@ export function SendQuote({
       // The message app still opens if the status could not be saved.
     }
     window.location.href = href;
+  }
+
+  if (layout === "row") {
+    return (
+      <div className="grid gap-3">
+        <div id="send-row" className="grid grid-cols-3 gap-2">
+          {mail ? (
+            <a className="btn btn-secondary px-2" href={mail} onClick={(event) => void openChannel(event, mail)}>
+              Email
+            </a>
+          ) : (
+            <p className="btn btn-secondary px-2 opacity-60">Email</p>
+          )}
+          <a
+            className="btn btn-secondary px-2"
+            href={whatsAppHref(phone, message)}
+            onClick={(event) => void openChannel(event, whatsAppHref(phone, message))}
+          >
+            WhatsApp
+          </a>
+          <a
+            className="btn btn-secondary px-2"
+            href={smsHref(phone, message)}
+            onClick={(event) => void openChannel(event, smsHref(phone, message))}
+          >
+            Text
+          </a>
+        </div>
+        <details>
+          <summary className="cursor-pointer font-bold">Edit the message</summary>
+          <label className="field mt-3">
+            Message
+            <textarea value={message} onChange={(event) => setMessage(event.target.value)} rows={5} />
+          </label>
+        </details>
+        {brandedReady ? (
+          <form action={brandAction} className="grid gap-2">
+            {brandState.error ? (
+              <p role="alert" className="rounded-xl bg-blush px-3 py-2 font-bold text-clay">
+                {brandState.error}
+              </p>
+            ) : null}
+            <input type="hidden" name="kind" value={kind} />
+            <input type="hidden" name="jobId" value={jobId ?? ""} />
+            <input type="hidden" name="invoiceId" value={invoiceId ?? ""} />
+            <input type="hidden" name="message" value={message} />
+            <button className="btn btn-secondary w-full" type="submit">
+              Send branded email
+            </button>
+          </form>
+        ) : null}
+      </div>
+    );
   }
 
   return (

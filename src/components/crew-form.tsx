@@ -14,6 +14,7 @@ export function CrewForm({
   totalM2,
   accent,
   accentInk,
+  nested = false,
 }: {
   jobId: string;
   initialDays: string;
@@ -21,6 +22,7 @@ export function CrewForm({
   totalM2: number;
   accent: string;
   accentInk: string;
+  nested?: boolean;
 }) {
   const [days, setDays] = useState(initialDays);
   const [roles, setRoles] = useState(initialRoles);
@@ -30,11 +32,11 @@ export function CrewForm({
   }
 
   return (
-    <InlineForm action={saveJobCrew} className="card grid gap-4">
+    <InlineForm action={saveJobCrew} className={nested ? "grid gap-4" : "card grid gap-4"}>
       <input type="hidden" name="jobId" value={jobId} />
       <CrewEditor days={days} roles={roles} totalM2={totalM2} accent={accent} accentInk={accentInk} onDays={setDays} onRole={onRole} />
       <CrewHiddenFields days={days} roles={roles} />
-      <SubmitButton>Save crew</SubmitButton>
+      <SubmitButton variant={nested ? "secondary" : "primary"}>Save crew</SubmitButton>
       <p className="text-sm text-stone">Saving with a plasterer on the job replaces the Labour line on the quote. Labourer and subcontractor amounts stay on this page.</p>
     </InlineForm>
   );
