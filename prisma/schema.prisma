@@ -65,6 +65,8 @@ model Business {
   quoteValidDays Int               @default(30)
   /// New jobs copy this. Later changes do not rewrite jobs already saved.
   totalOnlyDefault Boolean         @default(false)
+  /// Customer quotes list room sizes and material quantities. Prices stay in the total.
+  showQuoteRooms Boolean           @default(true)
   nextInvoiceNumber Int            @default(1)
   nextQuoteNumber Int              @default(1)
   bankAccountName String           @default("")

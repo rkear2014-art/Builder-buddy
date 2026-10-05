@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { createShareToken } from "@/lib/access";
 import { parseBusinessExtras } from "@/lib/business-extras";
 import { documentEmail } from "@/lib/branded-email";
+import { customerQuoteSections, quoteBreakdownText, roomInputFromStored } from "@/lib/quote-breakdown";
 import { canEditBusiness } from "@/lib/branding";
 import { isInternalCrewName } from "@/lib/crew";
 import { customerSubtotalPence, hidesMaterialLines, scopeLine } from "@/lib/customer-price";
@@ -329,7 +330,18 @@ export async function sendBrandedMessage(_state: ActionState, formData: FormData
     const jobId = String(formData.get("jobId") ?? "");
     const job = await getPrisma().job.findFirst({
       where: { id: jobId, ...tenantWhere(user.businessId) },
-      select: { id: true, email: true, customerName: true, shareToken: true, shareActive: true, quoteStage: true },
+      select: {
+        id: true,
+        email: true,
+        customerName: true,
+        shareToken: true,
+        shareActive: true,
+        quoteStage: true,
+        totalOnly: true,
+        fixedPricePence: true,
+        materials: { orderBy: { sortOrder: "asc" }, select: { name: true, quantity: true, unit: true } },
+        rooms: { orderBy: { sortOrder: "asc" } },
+      },
     });
     if (!job) return { error: "That job could not be found." };
     to = job.email.trim();
@@ -344,12 +356,40 @@ export async function sendBrandedMessage(_state: ActionState, formData: FormData
   }
 
   if (!to) return { error: "Add the customer’s email on the job first." };
+  let body = message;
+  if (kind === "quote") {
+    const jobId = String(formData.get("jobId") ?? "");
+    const quoted = await getPrisma().job.findFirst({
+      where: { id: jobId, ...tenantWhere(user.businessId) },
+      select: {
+        totalOnly: true,
+        fixedPricePence: true,
+        materials: { orderBy: { sortOrder: "asc" }, select: { name: true, quantity: true, unit: true } },
+        rooms: { orderBy: { sortOrder: "asc" } },
+      },
+    });
+    if (quoted) {
+      const detail = quoteBreakdownText(
+        customerQuoteSections({
+          show: user.branding.showQuoteRooms,
+          wholeJob: hidesMaterialLines({ totalOnly: quoted.totalOnly, fixedPricePence: quoted.fixedPricePence }),
+          rooms: quoted.rooms.map(roomInputFromStored),
+          materials: quoted.materials.map((line) => ({
+            name: line.name,
+            quantity: line.quantity.toString(),
+            unit: line.unit,
+          })),
+        }),
+      );
+      if (detail) body = `${message}\n\n${detail}`;
+    }
+  }
   const built = documentEmail({
     kind,
     businessName: user.businessName,
     accent: user.branding.accentColour,
     logoSrc: await absoluteLogo(origin, user.branding.hasLogo ? logoPath : null),
-    body: message,
+    body,
     url,
     badges: trustBadges(user.branding),
   });

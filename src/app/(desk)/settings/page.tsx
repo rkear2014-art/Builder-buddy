@@ -396,6 +396,24 @@ function QuoteSection({ user, owner }: { user: SessionUser; owner: boolean }) {
               </span>
             </span>
           </label>
+          <input type="hidden" name="showQuoteRooms" value="no" />
+          <label className="flex items-start gap-3 text-lg font-bold">
+            <input
+              type="checkbox"
+              name="showQuoteRooms"
+              value="yes"
+              defaultChecked={branding.showQuoteRooms}
+              className="mt-1 h-7 w-7"
+            />
+            <span>
+              Show rooms and materials on quotes
+              <span className="mt-1 block text-sm font-semibold text-stone">
+                The customer quote, the print copy and the quote email list each room and the materials with quantities.
+                They never show a material price. A whole-job price still shows only the total. A job with no rooms or
+                no materials leaves that section off.
+              </span>
+            </span>
+          </label>
           <label className="field">
             Badges
             <span>One per line. Up to six, 40 characters each.</span>

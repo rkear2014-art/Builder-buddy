@@ -31,6 +31,10 @@ export type QuoteChrome = {
   photos: QuotePhoto[];
   validUntil?: string;
   expired?: boolean;
+  /** Room sizes from the calculator. Empty hides the Rooms section. */
+  rooms?: Array<{ name: string; size: string; areas: string }>;
+  /** Material names and quantities only. Empty hides the Materials section. */
+  materials?: string[];
 };
 
 export function quoteReference(jobId: string): string {
@@ -118,6 +122,7 @@ export type QuoteSettingsInput = {
   quoteLetter: string;
   quoteChips: string;
   totalOnlyDefault: boolean;
+  showQuoteRooms: boolean;
 };
 
 export function parseQuoteSettings(formData: FormData): { ok: true; data: QuoteSettingsInput } | { ok: false; error: string } {
@@ -141,6 +146,7 @@ export function parseQuoteSettings(formData: FormData): { ok: true; data: QuoteS
     }
   }
   const totalFlags = formData.getAll("totalOnlyDefault").map(String);
+  const roomFlags = formData.getAll("showQuoteRooms").map(String);
   return {
     ok: true,
     data: {
@@ -150,6 +156,7 @@ export function parseQuoteSettings(formData: FormData): { ok: true; data: QuoteS
       quoteLetter,
       quoteChips: parseQuoteChips(rawChips).join("\n"),
       totalOnlyDefault: totalFlags.includes("yes"),
+      showQuoteRooms: roomFlags.includes("yes"),
     },
   };
 }
