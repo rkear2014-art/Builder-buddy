@@ -13,7 +13,8 @@ export default defineConfig({
     seed: "tsx prisma/seed.ts",
   },
   datasource: {
-    // Migrations need a direct connection when DIRECT_URL is set. The app itself uses DATABASE_URL.
+    // Migrations use the direct address when DIRECT_URL is set. The app itself uses DATABASE_URL.
+    // The localhost fallback is only for `prisma generate` before a database exists.
     url: process.env.DIRECT_URL || process.env.DATABASE_URL || "postgresql://127.0.0.1:5432/builder_buddy",
   },
 });
