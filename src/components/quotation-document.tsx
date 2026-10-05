@@ -70,7 +70,7 @@ export function QuotationDocument({
             className="absolute inset-0"
             style={{
               background: hero
-                ? "linear-gradient(105deg, rgba(8,10,14,0.88) 0%, rgba(8,10,14,0.62) 48%, rgba(8,10,14,0.28) 100%)"
+                ? "linear-gradient(105deg, rgba(8,10,14,0.78) 0%, rgba(8,10,14,0.4) 50%, rgba(8,10,14,0.16) 100%)"
                 : `linear-gradient(115deg, #14181f 0%, #243044 55%, ${accent} 140%)`,
             }}
           />
