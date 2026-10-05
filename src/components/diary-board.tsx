@@ -64,7 +64,7 @@ export function DiaryToBook({
                 <span className="text-sm font-semibold">
                   {[job.postcode, bookingKindLabel(job.bookingKind), STATUS_LABELS[job.status]].filter(Boolean).join(" · ")}
                 </span>
-                <span className="text-sm text-stone">{job.summary}</span>
+                <span className="line-clamp-2 text-sm text-stone">{job.summary}</span>
               </Link>
             );
           })}
@@ -114,16 +114,17 @@ export function DiaryWeek({
 }) {
   const days = weekDates(anchor);
   return (
-    <div className="grid grid-cols-7 gap-1">
+    <div className="overflow-x-auto pb-1">
+      <div className="grid w-[70rem] grid-cols-7 gap-2">
       {days.map((day) => {
         const cards = cardsForDate(bookings, day);
         const todayColumn = day === today;
         return (
-          <section key={day} className={`grid min-w-0 content-start gap-1 p-1 ${todayColumn ? "diary-today" : ""}`}>
+          <section key={day} className={`grid content-start gap-1.5 p-1.5 ${todayColumn ? "diary-today" : ""}`}>
             <div className="text-center">
-              <p className="text-[0.7rem] font-extrabold uppercase">{formatWeekday(day)}</p>
-              <p className="text-lg font-extrabold leading-none">{Number(day.slice(8))}</p>
-              {todayColumn ? <p className="text-[0.65rem] font-extrabold">Today</p> : null}
+              <p className="text-xs font-extrabold uppercase">{formatWeekday(day)}</p>
+              <p className="text-2xl font-extrabold leading-none">{Number(day.slice(8))}</p>
+              {todayColumn ? <p className="text-xs font-extrabold">Today</p> : null}
               {showDayPrint ? (
                 <Link href={`/diary/print?scope=day&date=${day}`} className="text-xs font-bold underline">
                   Print
@@ -137,6 +138,7 @@ export function DiaryWeek({
           </section>
         );
       })}
+      </div>
     </div>
   );
 }
@@ -255,7 +257,7 @@ export function DiaryUpcoming({ bookings, today }: { bookings: DiaryBooking[]; t
               const progress = dayProgressLabel(card.dayNumber, card.spanDays);
               return (
                 <Link key={`${card.id}-${row.date}`} href={`/jobs/${card.id}`} className={`diary-card diary-card-${card.bookingKind}`}>
-                  <span className="text-xs font-extrabold uppercase">
+                  <span className="text-xs font-extrabold">
                     {bookingKindLabel(card.bookingKind)}
                     {progress ? ` · ${progress}` : ""}
                   </span>
