@@ -68,7 +68,13 @@ function openingsFrom(rows: ReviewState["openings"]): PhotoOpening[] {
   return rows.map((row) => ({ kind: row.kind, widthM: metres(row.widthM), heightM: metres(row.heightM) }));
 }
 
-function materialsFor(review: ReviewState, typeKey: string, place: "room" | "wall", wastagePercent: number): MaterialRow[] {
+function materialsFor(
+  review: ReviewState,
+  typeKey: string,
+  typeTitle: string,
+  place: "room" | "wall",
+  wastagePercent: number,
+): MaterialRow[] {
   const room = roomFromPhotoMeasure({
     typeKey,
     place,
@@ -80,7 +86,7 @@ function materialsFor(review: ReviewState, typeKey: string, place: "room" | "wal
     stopBeadM: metres(review.stopBeadM),
     angleBeadM: metres(review.angleBeadM),
   });
-  const suggested = materialsForPhotoRoom({ typeKey, room, wastagePercent });
+  const suggested = materialsForPhotoRoom({ typeKey, typeTitle, room, wastagePercent });
   return suggested.map((line) => {
     const previous = review.materials.find((item) => item.name === line.name);
     if (previous?.touched) return previous;
@@ -105,7 +111,13 @@ function blankReview(place: "room" | "wall", notice: string | null): ReviewState
   };
 }
 
-function reviewFromEstimate(estimate: PhotoEstimate, typeKey: string, place: "room" | "wall", wastagePercent: number): ReviewState {
+function reviewFromEstimate(
+  estimate: PhotoEstimate,
+  typeKey: string,
+  typeTitle: string,
+  place: "room" | "wall",
+  wastagePercent: number,
+): ReviewState {
   const review: ReviewState = {
     source: "ai",
     notice: null,
@@ -124,7 +136,7 @@ function reviewFromEstimate(estimate: PhotoEstimate, typeKey: string, place: "ro
     notes: estimate.notes,
     materials: [],
   };
-  return { ...review, materials: materialsFor(review, typeKey, place, wastagePercent) };
+  return { ...review, materials: materialsFor(review, typeKey, typeTitle, place, wastagePercent) };
 }
 
 export function PhotoMeasure({
@@ -170,7 +182,7 @@ export function PhotoMeasure({
 
   function openManual(notice: string) {
     const next = blankReview(place, notice);
-    setReview({ ...next, materials: materialsFor(next, typeKey, place, wastagePercent) });
+    setReview({ ...next, materials: materialsFor(next, typeKey, typeTitle, place, wastagePercent) });
     setStep("review");
   }
 
@@ -178,7 +190,7 @@ export function PhotoMeasure({
     setReview((current) => {
       if (!current) return current;
       const next = { ...current, ...patch };
-      return { ...next, materials: materialsFor(next, typeKey, place, wastagePercent) };
+      return { ...next, materials: materialsFor(next, typeKey, typeTitle, place, wastagePercent) };
     });
   }
 
@@ -198,6 +210,7 @@ export function PhotoMeasure({
       const body = new FormData();
       body.set("jobId", jobId);
       body.set("sectionId", sectionId);
+      body.set("typeKey", typeKey);
       body.set("typeTitle", typeTitle);
       body.set("place", place);
       body.set("knownMeasurement", known);
@@ -210,7 +223,7 @@ export function PhotoMeasure({
         | { ok: true; estimate: PhotoEstimate }
         | { ok: false; reason?: string };
       if (result.ok) {
-        setReview(reviewFromEstimate(result.estimate, typeKey, place, wastagePercent));
+        setReview(reviewFromEstimate(result.estimate, typeKey, typeTitle, place, wastagePercent));
         setStep("review");
         return;
       }

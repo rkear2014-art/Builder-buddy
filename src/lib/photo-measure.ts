@@ -247,28 +247,139 @@ export function roomFromPhotoMeasure(input: {
   };
 }
 
-export function materialsForPhotoRoom(input: {
-  typeKey: string;
-  room: RoomInput;
-  wastagePercent: number;
-}): PhotoMaterialLine[] {
-  const starterId = input.typeKey.startsWith("template:") ? "" : input.typeKey;
+export type PhotoJobKind = "skim" | "wet" | "dry-lining" | "render" | "other";
+
+const SKIM_MATERIALS = [
+  "Thistle MultiFinish plaster",
+  "PVA bonding agent",
+  "Scrim tape",
+  "Galvanised angle bead",
+  "Stop bead",
+];
+
+const DRY_LINING_MATERIALS = [
+  "12.5mm plasterboard 2400 x 1200",
+  "Dabbing adhesive",
+  "Plasterboard screws",
+  "Scrim tape",
+  "Thistle MultiFinish plaster",
+];
+
+const BACKING_COATS = new Set(["thistle hardwall plaster", "thistle bonding coat"]);
+
+/** Skim, wet plaster, dry lining and rendering each keep their own material list. */
+export function photoJobKind(typeKey: string, typeTitle = ""): PhotoJobKind {
+  const key = typeKey.trim();
+  const title = typeTitle.trim().toLowerCase();
+  if (key === "plaster-render" || title === "rendering" || title.startsWith("rendering ") || title.startsWith("render ")) {
+    return "render";
+  }
+  if (key === "plaster-dry-lining" || key === "plaster-tape-joint" || /\bdry[ -]?lin|dot and dab|tape and joint/.test(title)) {
+    return "dry-lining";
+  }
+  const wet =
+    key === "plaster-two-coat" ||
+    key === "plaster-repairs" ||
+    /\b(hardwall|bonding|re-?plaster|wet plaster|two[- ]coat|backing)\b/.test(title);
+  const skim = key === "plaster-skim" || /\bskim/.test(title);
+  if (skim && !wet) return "skim";
+  if (wet) return "wet";
+  return "other";
+}
+
+/** Told to the vision model with the job title and type, and reused for the material list. */
+export function photoMeasureInstruction(typeKey: string, typeTitle: string): string {
+  const title = typeTitle.trim() || "Plastering";
+  const type = typeKey.trim() || "unspecified";
+  const lead = `Job title: ${title}. Job type: ${type}.`;
+  const kind = photoJobKind(typeKey, typeTitle);
+  if (kind === "skim") {
+    return `${lead} This is a skim. Materials are multi-finish, PVA, scrim and beads only. Do not suggest Thistle Hardwall or Bonding Coat.`;
+  }
+  if (kind === "wet") {
+    return `${lead} This is wet plaster or a re-plaster. Materials are one backing coat (hardwall or bonding) plus multi-finish, PVA, scrim and beads.`;
+  }
+  if (kind === "dry-lining") {
+    return `${lead} This is dry lining. Materials are plasterboard, adhesive, screws, scrim and multi-finish. No hardwall or bonding backing coat.`;
+  }
+  if (kind === "render") {
+    return `${lead} This is rendering. Materials are sand, cement, lime, mesh and render beads. No skim bags and no hardwall.`;
+  }
+  return `${lead} Measure this plastering job. Do not add a backing coat unless it is wet plaster or a re-plaster.`;
+}
+
+export function photoEstimateRequestSchema(typeKey: string, typeTitle: string) {
+  return {
+    ...PHOTO_ESTIMATE_JSON_SCHEMA,
+    description: photoMeasureInstruction(typeKey, typeTitle),
+  };
+}
+
+function namesForPhotoJob(kind: PhotoJobKind, typeTitle: string): string[] | null {
+  if (kind === "skim") return SKIM_MATERIALS;
+  if (kind === "dry-lining") return DRY_LINING_MATERIALS;
+  if (kind === "wet") {
+    const title = typeTitle.toLowerCase();
+    const bonding = /\bbonding\b/.test(title) && !/\bhardwall\b/.test(title);
+    return [bonding ? "Thistle Bonding Coat" : "Thistle Hardwall plaster", ...SKIM_MATERIALS];
+  }
+  return null;
+}
+
+function materialLine(typeKey: string, name: string) {
+  const sources = [typeKey, "plaster-skim", "plaster-general", "plaster-dry-lining", "plaster-two-coat"];
+  let found = null as ReturnType<typeof starterMeasureMaterials>[number] | null;
+  for (const id of sources) {
+    const starterId = id.startsWith("template:") ? "" : id;
+    if (!starterId) continue;
+    found = starterMeasureMaterials(starterId).find((item) => item.name === name) ?? null;
+    if (found) break;
+  }
+  const guide = starterCoverage(typeKey.startsWith("template:") ? "plaster-skim" : typeKey, name) ?? starterCoverage("plaster-general", name);
+  const coverage = guide ? { basis: guide.basis, perUnit: guide.perUnit } : found?.coverage ?? null;
+  if (!coverage) return null;
+  return {
+    name,
+    unit: found?.unit ?? "each",
+    unitPricePence: found?.unitPricePence ?? null,
+    coverage,
+  };
+}
+
+function starterLines(typeKey: string) {
+  const starterId = typeKey.startsWith("template:") ? "" : typeKey;
   if (!starterId) return [];
   const plan = measurePlanFor(starterId);
   const excluded = new Set(plan.excludedByDefault);
-  const chosen = materialsForChoices(starterMeasureMaterials(starterId), plan, defaultChoices(plan)).filter(
-    (material) => !excluded.has(material.name) && material.coverage,
-  );
-  const withGuide = chosen.map((material) => {
-    const guide = starterCoverage(starterId, material.name);
-    return {
-      ...material,
-      coverage: guide ? { basis: guide.basis, perUnit: guide.perUnit } : material.coverage,
-    };
-  });
+  return materialsForChoices(starterMeasureMaterials(starterId), plan, defaultChoices(plan))
+    .filter((material) => !excluded.has(material.name) && material.coverage)
+    .filter((material) => photoJobKind(typeKey) !== "skim" || !BACKING_COATS.has(material.name.trim().toLowerCase()))
+    .map((material) => {
+      const guide = starterCoverage(starterId, material.name);
+      return {
+        ...material,
+        coverage: guide ? { basis: guide.basis, perUnit: guide.perUnit } : material.coverage,
+      };
+    });
+}
+
+export function materialsForPhotoRoom(input: {
+  typeKey: string;
+  typeTitle?: string;
+  room: RoomInput;
+  wastagePercent: number;
+}): PhotoMaterialLine[] {
+  const typeTitle = input.typeTitle ?? "";
+  const kind = photoJobKind(input.typeKey, typeTitle);
+  const named = namesForPhotoJob(kind, typeTitle);
+  const materials = named ? named.flatMap((name) => {
+    const line = materialLine(input.typeKey, name);
+    return line ? [line] : [];
+  }) : starterLines(input.typeKey);
+  if (materials.length === 0) return [];
   const quote = quoteFromMeasure({
     rooms: [input.room],
-    materials: withGuide,
+    materials,
     wastagePercent: input.wastagePercent,
     labourPerM2Pence: null,
     dayRatePence: null,

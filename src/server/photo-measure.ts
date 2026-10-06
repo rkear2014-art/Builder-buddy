@@ -2,12 +2,13 @@ import "server-only";
 
 import { londonToday } from "@/lib/dates";
 import {
-  PHOTO_ESTIMATE_JSON_SCHEMA,
   PHOTO_MEASURE_DAILY_LIMIT,
   PHOTO_MEASURE_FIXTURE,
   PHOTO_MEASURE_MAX_BYTES,
   PHOTO_MEASURE_MAX_PHOTOS,
   parsePhotoEstimateJson,
+  photoEstimateRequestSchema,
+  photoMeasureInstruction,
   photoMeasureReady,
   visionModel,
   type PhotoEstimate,
@@ -62,6 +63,7 @@ function messageText(content: unknown): string {
 
 async function readModel(input: {
   images: Buffer[];
+  typeKey: string;
   typeTitle: string;
   place: string;
   knownMeasurement: string;
@@ -95,6 +97,7 @@ async function readModel(input: {
             "stopBeadM is metres of stop bead. Use 0 when you cannot see a stop.",
             "confidence is low when the scale is a guess.",
             "notes is one or two short sentences for the plasterer. No prices.",
+            photoMeasureInstruction(input.typeKey, input.typeTitle),
           ].join(" "),
         },
         {
@@ -102,7 +105,7 @@ async function readModel(input: {
           content: [
             {
               type: "text",
-              text: `Job: ${input.typeTitle || "Plastering"}. Measure this as a ${input.place}. Known measurement: ${known || "none"}.`,
+              text: `${photoMeasureInstruction(input.typeKey, input.typeTitle)} Measure this as a ${input.place}. Known measurement: ${known || "none"}.`,
             },
             ...input.images.map((image) => ({
               type: "image_url",
@@ -116,7 +119,7 @@ async function readModel(input: {
         json_schema: {
           name: "photo_measure",
           strict: true,
-          schema: PHOTO_ESTIMATE_JSON_SCHEMA,
+          schema: photoEstimateRequestSchema(input.typeKey, input.typeTitle),
         },
       },
     }),
@@ -130,6 +133,7 @@ export async function measureFromPhotos(input: {
   businessId: string;
   jobId: string;
   sectionId: string;
+  typeKey: string;
   typeTitle: string;
   place: string;
   knownMeasurement: string;
@@ -143,9 +147,11 @@ export async function measureFromPhotos(input: {
   }
   const section = await getPrisma().jobSection.findFirst({
     where: { id: input.sectionId, jobId: input.jobId, ...tenantWhere(input.businessId) },
-    select: { id: true },
+    select: { id: true, typeKey: true, title: true },
   });
   if (!section) return { ok: false, reason: "missing" };
+  const typeKey = section.typeKey || input.typeKey;
+  const typeTitle = section.title || input.typeTitle;
 
   if (process.env.PHOTO_MEASURE_FIXTURE === "1") {
     return { ok: true, estimate: PHOTO_MEASURE_FIXTURE };
@@ -159,7 +165,8 @@ export async function measureFromPhotos(input: {
   try {
     const estimate = await readModel({
       images: input.images,
-      typeTitle: input.typeTitle,
+      typeKey,
+      typeTitle,
       place: input.place,
       knownMeasurement: input.knownMeasurement,
     });

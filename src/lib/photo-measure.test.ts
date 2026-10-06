@@ -9,6 +9,9 @@ import {
   parsePhotoEstimate,
   parsePhotoEstimateJson,
   photoAreas,
+  photoEstimateRequestSchema,
+  photoJobKind,
+  photoMeasureInstruction,
   revealsLengthM,
   roomFromPhotoMeasure,
 } from "./photo-measure";
@@ -93,7 +96,9 @@ describe("photo measure areas and materials", () => {
     assert.equal(quantity("12.5mm plasterboard 2400 x 1200"), "16");
     assert.equal(quantity("Dabbing adhesive"), "9");
     assert.equal(quantity("Scrim tape"), "1");
-    assert.equal(quantity("Thistle MultiFinish plaster"), undefined);
+    assert.equal(quantity("Thistle MultiFinish plaster"), "5");
+    assert.equal(quantity("Thistle Hardwall plaster"), undefined);
+    assert.equal(quantity("Thistle Bonding Coat"), undefined);
   });
 
   it("measures a rendered wall as length times height", () => {
@@ -133,6 +138,37 @@ describe("photo measure areas and materials", () => {
       (line) => line.name === "Stop bead",
     );
     assert.equal(stop?.quantity, "3");
+  });
+
+  it("never includes hardwall or bonding on a skim", () => {
+    const room = roomFromPhotoMeasure({
+      typeKey: "plaster-skim",
+      place: "room",
+      name: "Lounge",
+      lengthM: 5,
+      widthM: 4,
+      heightM: 2.4,
+      openings,
+      stopBeadM: 0,
+      angleBeadM: 9.6,
+    });
+    const jobs = [
+      { typeKey: "plaster-skim", typeTitle: "Skimming for a smooth finish" },
+      { typeKey: "plaster-general", typeTitle: "Skim lounge and hall" },
+    ];
+    for (const job of jobs) {
+      assert.equal(photoJobKind(job.typeKey, job.typeTitle), "skim");
+      const names = materialsForPhotoRoom({ ...job, room, wastagePercent: 10 }).map((line) => line.name);
+      assert.equal(names.includes("Thistle Hardwall plaster"), false, job.typeTitle);
+      assert.equal(names.includes("Thistle Bonding Coat"), false, job.typeTitle);
+      assert.equal(names.includes("Thistle MultiFinish plaster"), true, job.typeTitle);
+      assert.equal(names.includes("PVA bonding agent"), true, job.typeTitle);
+      const instruction = photoMeasureInstruction(job.typeKey, job.typeTitle);
+      assert.match(instruction, /Job title: .+/);
+      assert.match(instruction, new RegExp(`Job type: ${job.typeKey}`));
+      assert.match(instruction, /Do not suggest Thistle Hardwall or Bonding Coat/);
+      assert.match(photoEstimateRequestSchema(job.typeKey, job.typeTitle).description, /Skim lounge|Skimming/);
+    }
   });
 
   it("adds a new quantity onto materials already on the job", () => {

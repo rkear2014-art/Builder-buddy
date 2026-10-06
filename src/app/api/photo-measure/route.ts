@@ -39,6 +39,7 @@ export async function POST(request: Request): Promise<Response> {
     businessId: user.businessId,
     jobId: String(form.get("jobId") ?? ""),
     sectionId: String(form.get("sectionId") ?? ""),
+    typeKey: String(form.get("typeKey") ?? "").slice(0, 80),
     typeTitle: String(form.get("typeTitle") ?? "").slice(0, 80),
     place: String(form.get("place") ?? "room") === "wall" ? "wall" : "room",
     knownMeasurement: String(form.get("knownMeasurement") ?? ""),
