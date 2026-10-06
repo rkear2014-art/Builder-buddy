@@ -7,6 +7,7 @@ import { areasLabelFor, sectionSubtotalPence } from "@/lib/quote-sections";
 import { addQuoteJob, removeQuoteJob, saveQuoteJob } from "@/server/actions/quote-jobs";
 import { deleteJobMaterial, toggleMaterialBought } from "@/server/actions/materials";
 import { ConfirmSubmit } from "@/components/confirm-submit";
+import { PhotoMeasure } from "@/components/photo-measure";
 import { PillLink } from "@/components/pill-link";
 import { CrewForm } from "@/components/crew-form";
 import { SubmitButton } from "@/components/submit-button";
@@ -26,6 +27,8 @@ export function QuoteJobs({
   crewRates,
   legacyDayRatePence,
   legacyDays,
+  wastagePercent,
+  aiReady,
 }: {
   jobId: string;
   sections: DeskSection[];
@@ -34,6 +37,8 @@ export function QuoteJobs({
   crewRates: Array<{ role: string; basis: string; ratePence: number | null }>;
   legacyDayRatePence: number | null;
   legacyDays: string | null;
+  wastagePercent: number;
+  aiReady: boolean;
 }) {
   return (
     <section id="quote-jobs" className="card grid gap-4">
@@ -81,18 +86,46 @@ export function QuoteJobs({
                   <h3 className="font-display text-2xl">{label}</h3>
                   <PillLink href={measureHref}>Change sizes</PillLink>
                 </div>
-                <ul className="mt-1 grid gap-1">
+                <ul className="mt-2 grid gap-3">
                   {section.rooms.map((room, roomIndex) => (
-                    <li key={`${room.name}-${roomIndex}`}>
-                      {room.name || (place === "wall" ? "Wall" : "Room")} · {formatM2(areaOf(room))}
+                    <li key={`${room.name}-${roomIndex}`} className="grid gap-2">
+                      <p>
+                        {room.name || (place === "wall" ? "Wall" : "Room")} · {formatM2(areaOf(room))}
+                      </p>
+                      <PhotoMeasure
+                        jobId={jobId}
+                        sectionId={section.id}
+                        roomIndex={roomIndex}
+                        typeKey={section.typeKey}
+                        typeTitle={section.title}
+                        place={place}
+                        wastagePercent={wastagePercent}
+                        aiReady={aiReady}
+                        accent={accent}
+                        accentInk={accentInk}
+                      />
                     </li>
                   ))}
                 </ul>
               </div>
             ) : (
-              <PillLink href={measureHref}>
-                {place === "wall" ? "Measure the wall" : section.typeKey ? "Measure the room" : "Choose this job"}
-              </PillLink>
+              <div className="grid gap-2">
+                <PhotoMeasure
+                  jobId={jobId}
+                  sectionId={section.id}
+                  roomIndex={null}
+                  typeKey={section.typeKey}
+                  typeTitle={section.title}
+                  place={place}
+                  wastagePercent={wastagePercent}
+                  aiReady={aiReady}
+                  accent={accent}
+                  accentInk={accentInk}
+                />
+                <PillLink href={measureHref}>
+                  {place === "wall" ? "Measure the wall" : section.typeKey ? "Measure the room" : "Choose this job"}
+                </PillLink>
+              </div>
             )}
             <PillLink href={`/jobs/${jobId}/choose?section=${section.id}`}>Add materials</PillLink>
             {section.materials.length === 0 ? <p className="text-stone">No materials yet.</p> : null}

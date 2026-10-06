@@ -109,6 +109,7 @@ model Business {
   jobCrew    JobCrew[]
   roomMeasures RoomMeasure[]
   jobSections JobSection[]
+  photoMeasureDays PhotoMeasureDay[]
 }
 
 /// A picture for one chooser tile. catalogueKey is a built-in list id or a saved template id.
@@ -506,4 +507,17 @@ model RoomMeasure {
   @@index([jobId])
   @@index([businessId])
   @@index([sectionId])
+}
+
+/// How many photo measures a business has used on a London day. Photos themselves are not kept.
+model PhotoMeasureDay {
+  id         String   @id @default(cuid())
+  businessId String
+  business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  /// YYYY-MM-DD in Europe/London.
+  day        String
+  count      Int      @default(0)
+
+  @@unique([businessId, day])
+  @@index([businessId])
 }
