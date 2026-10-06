@@ -311,13 +311,13 @@ export function PhotoMeasure({
       </button>
 
       {step === "closed" ? null : (
-        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 p-2 sm:items-center">
+        <div className="fixed inset-0 z-50 overflow-y-auto bg-black/50 p-2">
           <div
             role="dialog"
             aria-modal="true"
             aria-labelledby="photo-measure-title"
             data-photo-measure={step === "review" ? "review" : "capture"}
-            className="photo-sheet grid max-h-[calc(100dvh-1rem)] w-full max-w-lg gap-2 overflow-y-auto rounded-2xl bg-card p-3 shadow-xl"
+            className="photo-sheet mx-auto grid w-full max-w-lg gap-2 rounded-2xl bg-card p-3 shadow-xl"
           >
             <h3 id="photo-measure-title" className="font-display text-2xl leading-none">
               Measure from photo
