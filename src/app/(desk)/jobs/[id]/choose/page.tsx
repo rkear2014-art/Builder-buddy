@@ -10,6 +10,7 @@ import { addJobMaterial, addSavedMaterialToJob, applyTemplate } from "@/server/a
 import { applyStarterToJob } from "@/server/actions/starters";
 import { getJob, getLibrary, listCataloguePhotos, listHeroPhotos, requireUser } from "@/server/dal";
 import { InlineForm } from "@/components/inline-form";
+import { PillLink } from "@/components/pill-link";
 import { SubmitButton } from "@/components/submit-button";
 import { UnitSelect } from "@/components/unit-select";
 
@@ -65,9 +66,9 @@ export default async function ChooseItemPage({
   return (
     <div className="mx-auto grid max-w-5xl gap-6" style={{ "--job-accent": accent } as CSSProperties}>
       <p>
-        <Link href={`/jobs/${job.id}`} className="font-bold underline" style={{ color: accent }}>
-          ← {job.customerName}
-        </Link>
+        <PillLink href={`/jobs/${job.id}`} back>
+          {job.customerName}
+        </PillLink>
       </p>
       <header>
         <p className="text-sm font-extrabold tracking-wide" style={{ color: accent }}>

@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { startingCrew } from "@/lib/crew";
 import type { DeskSection } from "@/lib/desk";
 import { formatM2, roomAreas, type MeasureMode } from "@/lib/measure";
@@ -8,6 +7,7 @@ import { areasLabelFor, sectionSubtotalPence } from "@/lib/quote-sections";
 import { addQuoteJob, removeQuoteJob, saveQuoteJob } from "@/server/actions/quote-jobs";
 import { deleteJobMaterial, toggleMaterialBought } from "@/server/actions/materials";
 import { ConfirmSubmit } from "@/components/confirm-submit";
+import { PillLink } from "@/components/pill-link";
 import { CrewForm } from "@/components/crew-form";
 import { SubmitButton } from "@/components/submit-button";
 
@@ -79,9 +79,7 @@ export function QuoteJobs({
               <div>
                 <div className="flex items-end justify-between gap-2">
                   <h3 className="font-display text-2xl">{label}</h3>
-                  <Link href={measureHref} className="font-bold underline" style={{ color: accent }}>
-                    Change sizes
-                  </Link>
+                  <PillLink href={measureHref}>Change sizes</PillLink>
                 </div>
                 <ul className="mt-1 grid gap-1">
                   {section.rooms.map((room, roomIndex) => (
@@ -92,13 +90,11 @@ export function QuoteJobs({
                 </ul>
               </div>
             ) : (
-              <Link href={measureHref} className="font-bold underline" style={{ color: accent }}>
+              <PillLink href={measureHref}>
                 {place === "wall" ? "Measure the wall" : section.typeKey ? "Measure the room" : "Choose this job"}
-              </Link>
+              </PillLink>
             )}
-            <Link href={`/jobs/${jobId}/choose?section=${section.id}`} className="font-bold underline" style={{ color: accent }}>
-              Add materials
-            </Link>
+            <PillLink href={`/jobs/${jobId}/choose?section=${section.id}`}>Add materials</PillLink>
             {section.materials.length === 0 ? <p className="text-stone">No materials yet.</p> : null}
             {section.materials.length > 0 ? (
               <details>

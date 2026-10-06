@@ -1,5 +1,5 @@
-import Link from "next/link";
 import { documentEmail } from "@/lib/branded-email";
+import { PillLink } from "@/components/pill-link";
 import { deskLogoSrc } from "@/lib/branding";
 import { quoteMessage } from "@/lib/customer-message";
 import { trustBadges } from "@/lib/trust";
@@ -26,9 +26,9 @@ export default async function EmailPreviewPage() {
   return (
     <div className="mx-auto grid max-w-3xl gap-4">
       <p>
-        <Link href="/settings" className="font-bold underline" style={{ color: user.branding.accentColour }}>
+        <PillLink href="/settings" back>
           Business
-        </Link>
+        </PillLink>
       </p>
       <h1 className="font-display text-4xl">Branded email</h1>
       <p className="text-stone">

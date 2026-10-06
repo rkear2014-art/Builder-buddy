@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { CSSProperties } from "react";
 import { isCoverageBasis, starterCoverage } from "@/lib/coverage";
@@ -8,6 +7,7 @@ import { extraMeasureLines, measurePlanFor, normaliseChoices, parseMeasureSelect
 import { isExteriorMeasure } from "@/lib/room-names";
 import { findStarterTemplate, isRetiredTemplateName, PLASTERING_STARTER_TEMPLATES } from "@/lib/trade-starters";
 import { MeasureForm } from "@/components/measure-form";
+import { PillLink } from "@/components/pill-link";
 import { getBusinessWastage, getJob, getLibrary, listCrewRates, listJobCrew, listLabourRates, listRoomMeasures, requireUser } from "@/server/dal";
 
 export const dynamic = "force-dynamic";
@@ -113,9 +113,9 @@ export default async function MeasurePage({
   return (
     <div className="mx-auto grid max-w-3xl gap-4" style={{ "--job-accent": accent } as CSSProperties}>
       <p>
-        <Link href={`/jobs/${job.id}/choose${sectionId ? `?section=${sectionId}` : ""}`} className="font-bold underline" style={{ color: accent }}>
-          ← Choose a job
-        </Link>
+        <PillLink href={`/jobs/${job.id}/choose${sectionId ? `?section=${sectionId}` : ""}`} back>
+          Choose a job
+        </PillLink>
       </p>
       <header>
         <p className="text-sm font-extrabold tracking-wide" style={{ color: accent }}>

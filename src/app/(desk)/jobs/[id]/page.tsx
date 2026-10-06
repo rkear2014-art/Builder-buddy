@@ -22,6 +22,7 @@ import { QuoteJobs } from "@/components/quote-jobs";
 import { getJob, getLibrary, listCrewRates, listJobInvoices, listRoomMeasures, requireUser } from "@/server/dal";
 import { requestOrigin } from "@/server/origin";
 import { InlineForm } from "@/components/inline-form";
+import { PillLink } from "@/components/pill-link";
 import { JobForm } from "@/components/job-form";
 import { SendQuote } from "@/components/send-quote";
 import { SharePortal } from "@/components/share-portal";
@@ -96,9 +97,9 @@ export default async function JobPage({ params }: { params: Promise<{ id: string
   return (
     <div className="mx-auto grid max-w-3xl gap-4" style={{ "--job-accent": accent } as CSSProperties}>
       <p>
-        <Link href="/jobs" className="font-bold underline" style={{ color: accent }}>
+        <PillLink href="/jobs" back>
           Jobs
-        </Link>
+        </PillLink>
       </p>
       <header className="grid gap-3">
         <h1 className="font-display text-5xl leading-tight tracking-tight">{job.customerName}</h1>
@@ -284,9 +285,7 @@ export default async function JobPage({ params }: { params: Promise<{ id: string
         ) : null}
         {library.templates.length === 0 ? (
           <p>
-            <Link href="/library" className="font-bold underline" style={{ color: accent }}>
-              Library
-            </Link>
+            <PillLink href="/library">Library</PillLink>
           </p>
         ) : null}
       </Fold>
@@ -424,9 +423,7 @@ export default async function JobPage({ params }: { params: Promise<{ id: string
         <ul className="grid gap-2">
           {invoices.map((invoice) => (
             <li key={invoice.id}>
-              <Link href={`/invoices/${invoice.id}`} className="font-extrabold underline" style={{ color: accent }}>
-                {invoice.reference}
-              </Link>
+              <PillLink href={`/invoices/${invoice.id}`}>{invoice.reference}</PillLink>
               <span className="text-stone"> · {invoice.standing}</span>
             </li>
           ))}
@@ -474,11 +471,7 @@ export default async function JobPage({ params }: { params: Promise<{ id: string
             </div>
           ) : (
             <p>
-              Add a review link on the{" "}
-              <Link href="/settings" className="font-bold underline" style={{ color: accent }}>
-                Business
-              </Link>{" "}
-              page.
+              Add a review link on the <PillLink href="/settings">Business</PillLink> page.
             </p>
           )
         ) : null}

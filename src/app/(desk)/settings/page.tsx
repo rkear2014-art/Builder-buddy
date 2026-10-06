@@ -18,6 +18,7 @@ import { saveBusinessExtras, sendTestEmail } from "@/server/actions/customer-fin
 import { saveReminderSettings } from "@/server/actions/reminders";
 import { brandedEmailReady } from "@/server/email";
 import { BusinessProfileForm } from "@/components/business-profile-form";
+import { PillLink } from "@/components/pill-link";
 import { InlineForm } from "@/components/inline-form";
 import { SubmitButton } from "@/components/submit-button";
 import { starterTemplatesFor } from "@/lib/trade-starters";
@@ -25,7 +26,6 @@ import { saveBusinessMeasure } from "@/server/actions/measure";
 import { CREW_ROLES, poundsField } from "@/lib/crew";
 import { getBusinessWastage, listCrewRates, listHeroPhotos, listLabourRates, requireUser } from "@/server/dal";
 import { formatPence } from "@/lib/money";
-import Link from "next/link";
 
 export const dynamic = "force-dynamic";
 
@@ -589,9 +589,7 @@ function ExtrasSection({ user, owner }: { user: SessionUser; owner: boolean }) {
         <p className="font-bold">Only the owner can change these.</p>
       )}
       <p>
-        <Link href="/settings/email-preview" className="font-bold underline" style={{ color: branding.accentColour }}>
-          Preview branded email
-        </Link>
+        <PillLink href="/settings/email-preview">Preview branded email</PillLink>
       </p>
       {emailReady && owner ? (
         <InlineForm action={sendTestEmail} className="grid gap-3">
