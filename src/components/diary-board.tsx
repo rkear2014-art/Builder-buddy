@@ -12,6 +12,7 @@ import {
   type DiaryView,
 } from "@/lib/diary";
 import { DiaryCardView } from "@/components/diary-card";
+import { PillLink } from "@/components/pill-link";
 import { EmptyState } from "@/components/empty-state";
 
 export function DiaryLegend() {
@@ -288,9 +289,7 @@ export function DiaryList({
         <section key={day.date} className="grid gap-2">
           <div className="flex items-center justify-between gap-2">
             <h2 className="font-display text-2xl">{formatIsoDate(day.date, "long")}</h2>
-            <Link href={`/diary/print?scope=day&date=${day.date}`} className="font-bold underline">
-              Print
-            </Link>
+            <PillLink href={`/diary/print?scope=day&date=${day.date}`}>Print</PillLink>
           </div>
           {bookJob ? (
             <BookDayForm jobId={bookJob.id} date={day.date} view={view} label={`Book ${bookJob.customerName.split(" ")[0]}`} />

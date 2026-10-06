@@ -9,6 +9,7 @@ import { HERO_VISIT_COOKIE } from "@/lib/heroes";
 import { initials } from "@/lib/place";
 import { formatPence } from "@/lib/money";
 import { EmptyState } from "@/components/empty-state";
+import { PillLink } from "@/components/pill-link";
 import { SendReminder } from "@/components/send-reminder";
 import { StatusBadge } from "@/components/status-badge";
 
@@ -36,7 +37,7 @@ function cardIsEmpty(card: GlanceCard): boolean {
 }
 
 function cardAction(id: string): string {
-  return id === "today" || id === "tomorrow" ? "Open diary →" : "View all →";
+  return id === "today" || id === "tomorrow" ? "Open diary" : "View all";
 }
 
 const BAR: Record<JobStatus, string> = {
@@ -55,14 +56,14 @@ export function GlanceBoard({ data, reminders = [] }: { data: GlancePage; remind
     <div className="grid gap-1.5">
       <Hero data={data} />
       <DeskShortcuts data={data} />
-      {reminders.length > 0 ? <InvoiceChase reminders={reminders} accent={accent} /> : null}
+      {reminders.length > 0 ? <InvoiceChase reminders={reminders} /> : null}
 
       <section className="grid gap-1.5">
         <div className="flex items-center justify-between gap-3">
           <h2 className="text-lg font-extrabold">At a glance</h2>
           <button
             type="button"
-            className="inline-flex items-center gap-1.5 text-sm font-bold text-stone"
+            className="pill pill-quiet"
             aria-pressed={hideEmpty}
             onClick={() => writeHideEmpty(!hideEmpty)}
           >
@@ -253,7 +254,7 @@ function Segment({
   );
 }
 
-function InvoiceChase({ reminders, accent }: { reminders: DueReminderView[]; accent: string }) {
+function InvoiceChase({ reminders }: { reminders: DueReminderView[] }) {
   return (
     <section id="to-chase" className="rounded-3xl border border-[#8d3428] bg-[#fdf6f4] p-4" aria-label="To chase">
       <h2 className="font-display text-3xl text-[#8d3428]">To chase</h2>
@@ -283,9 +284,7 @@ function InvoiceChase({ reminders, accent }: { reminders: DueReminderView[]; acc
               subject={reminder.subject}
               previewId={index === 0 ? "reminder-preview" : undefined}
             />
-            <Link href={reminder.invoiceHref} className="text-sm font-extrabold" style={{ color: accent }}>
-              Open invoice
-            </Link>
+            <PillLink href={reminder.invoiceHref}>Open invoice</PillLink>
           </li>
         ))}
       </ul>
@@ -313,9 +312,9 @@ function GlanceCardView({ card, accent, chaseAnchor }: { card: GlanceCard; accen
           card.rows.slice(0, 1).map((row) => <CardRow key={row.id} row={row} accent={accent} />)
         )}
       </div>
-      <Link href={card.href} className="mt-auto pt-1 text-right text-xs font-extrabold" style={{ color: accent }}>
-        {cardAction(card.id)}
-      </Link>
+      <div className="mt-auto flex justify-end pt-1.5">
+        <PillLink href={card.href}>{cardAction(card.id)}</PillLink>
+      </div>
     </article>
   );
 }
@@ -343,9 +342,7 @@ function WeekCard({ data, accent }: { data: GlancePage; accent: string }) {
       </p>
       <div className="mt-1 flex items-end justify-between gap-3">
         <h2 className="font-display text-3xl leading-none">This week</h2>
-        <Link href="/diary" className="text-sm font-extrabold" style={{ color: accent }}>
-          Diary →
-        </Link>
+        <PillLink href="/diary">Diary</PillLink>
       </div>
       <p className="mt-1 text-sm text-stone">{data.week.range}</p>
       <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
@@ -409,9 +406,7 @@ function RecentCard({ data }: { data: GlancePage }) {
     <section className="soft-card p-4">
       <div className="flex items-end justify-between gap-3">
         <h2 className="text-lg font-extrabold">Recent jobs</h2>
-        <Link href="/jobs" className="text-sm font-extrabold" style={{ color: data.accentColour }}>
-          All jobs →
-        </Link>
+        <PillLink href="/jobs">All jobs</PillLink>
       </div>
       <ul className="mt-3 divide-y divide-line">
         {data.recent.length === 0 ? (

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { InvoiceDocument } from "@/components/invoice-document";
+import { PillLink } from "@/components/pill-link";
 import { InlineForm } from "@/components/inline-form";
 import { MoneyFigure } from "@/components/money-figure";
 import { SendQuote } from "@/components/send-quote";
@@ -48,13 +49,12 @@ export default async function InvoicePage({
   return (
     <div className="mx-auto grid max-w-3xl gap-4">
       <p>
-        <Link href="/invoices" className="font-bold underline" style={{ color: user.branding.accentColour }}>
-          Invoices
-        </Link>
-        {" · "}
-        <Link href={`/jobs/${invoice.jobId}`} className="font-bold underline" style={{ color: user.branding.accentColour }}>
-          Job
-        </Link>
+        <span className="inline-flex flex-wrap gap-2">
+          <PillLink href="/invoices" back>
+            Invoices
+          </PillLink>
+          <PillLink href={`/jobs/${invoice.jobId}`}>Job</PillLink>
+        </span>
       </p>
       <div className="flex flex-wrap items-end justify-between gap-3">
         <h1 className="font-display text-4xl">{invoice.reference}</h1>
