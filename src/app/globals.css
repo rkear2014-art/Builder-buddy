@@ -171,6 +171,13 @@ body {
   resize: vertical;
 }
 
+.photo-sheet .field input,
+.photo-sheet .field select,
+.photo-sheet .plain-input {
+  min-height: 2.45rem;
+  padding: 0.3rem 0.55rem;
+}
+
 .field textarea.terms-box {
   min-height: 28rem;
   font-weight: 500;

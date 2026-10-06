@@ -12,6 +12,7 @@ import { jobNextStep, openJobSection } from "@/lib/job-next";
 import { costTotals } from "@/lib/materials";
 import { quoteSectionsSubtotal, unpricedSectionCount } from "@/lib/quote-sections";
 import { formatPence } from "@/lib/money";
+import { photoMeasureReady } from "@/lib/photo-measure";
 import { depositFromPercent, paymentNote, percentFromDeposit, pricesIncludeVatLine, quoteMoney } from "@/lib/quote";
 import { raiseInvoice, saveQuoteValidity } from "@/server/actions/customer-finish";
 import { saveCustomerPrice, savePaymentTerms, saveQuoteVat, setShowLinePrices } from "@/server/actions/job-desk";
@@ -163,6 +164,8 @@ export default async function JobPage({ params }: { params: Promise<{ id: string
         crewRates={crewRates}
         legacyDayRatePence={measured?.dayRatePence ?? null}
         legacyDays={measured?.dayCount ?? null}
+        wastagePercent={measured?.wastagePercent ?? 10}
+        aiReady={photoMeasureReady()}
       />
 
       <Fold title="1. Price" open={open === "price"}>
