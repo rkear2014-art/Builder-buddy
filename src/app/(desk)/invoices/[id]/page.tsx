@@ -11,6 +11,7 @@ import { trustBadges } from "@/lib/trust";
 import { londonToday } from "@/lib/dates";
 import { invoiceVatIsLocked } from "@/lib/invoice";
 import { markInvoiceSent, recordPayment, saveInvoiceDates, saveInvoiceVat } from "@/server/actions/customer-finish";
+import { saveInvoiceReminderPause } from "@/server/actions/reminders";
 import { brandedEmailReady } from "@/server/email";
 import { getInvoice, requireUser } from "@/server/dal";
 import { requestOrigin } from "@/server/origin";
@@ -116,6 +117,49 @@ export default async function InvoicePage({
             <input name="dueDate" type="date" defaultValue={invoice.dueDate} required />
           </label>
           <SubmitButton>Save dates</SubmitButton>
+        </InlineForm>
+      </section>
+
+      <section id="reminders" className="card grid gap-3">
+        <h2 className="font-display text-2xl">Reminders</h2>
+        {invoice.standing === "Paid" ? (
+          <p className="text-stone">This invoice is paid, so no more reminders will be sent.</p>
+        ) : invoice.standing === "Draft" ? (
+          <p className="text-stone">Reminders start after the invoice is marked as sent and the due date has passed.</p>
+        ) : (
+          <p className="text-stone">
+            {invoice.remindersPaused
+              ? "Reminders are paused for this invoice."
+              : user.branding.remindersOn
+                ? `Reminders follow the business schedule: ${user.branding.reminderDays.join(", ")} days after the due date.`
+                : "Reminders are turned off for the whole business."}
+          </p>
+        )}
+        {invoice.reminders.length === 0 ? (
+          <p className="font-bold">No reminders sent yet.</p>
+        ) : (
+          <ul className="grid gap-1">
+            {invoice.reminders.map((reminder) => (
+              <li key={reminder.step} className="font-bold">
+                {reminder.label}
+              </li>
+            ))}
+          </ul>
+        )}
+        <InlineForm action={saveInvoiceReminderPause} className="grid gap-3">
+          <input type="hidden" name="invoiceId" value={invoice.id} />
+          <input type="hidden" name="paused" value="no" />
+          <label className="flex items-start gap-3 text-lg font-bold">
+            <input
+              type="checkbox"
+              name="paused"
+              value="yes"
+              defaultChecked={invoice.remindersPaused}
+              className="mt-1 h-7 w-7"
+            />
+            <span>Pause reminders</span>
+          </label>
+          <SubmitButton variant="secondary">Save</SubmitButton>
         </InlineForm>
       </section>
 

@@ -5,12 +5,17 @@ import { DeskNav } from "@/components/desk-nav";
 import { DeskTopNav } from "@/components/desk-top-nav";
 import { PageTransition } from "@/components/page-transition";
 import { countChase, requireUser } from "@/server/dal";
+import { countDueManualReminders } from "@/server/invoice-reminders";
 
 export const dynamic = "force-dynamic";
 
 export default async function DeskLayout({ children }: { children: React.ReactNode }) {
   const user = await requireUser();
-  const chaseCount = await countChase(user.businessId);
+  const [jobChase, reminderChase] = await Promise.all([
+    countChase(user.businessId),
+    countDueManualReminders(user.businessId),
+  ]);
+  const chaseCount = jobChase + reminderChase;
   return (
     <div
       className="min-h-dvh bg-[#eef1f4]"

@@ -78,6 +78,14 @@ describe("fail closed access", () => {
       { type: "redirect", to: "/login" },
     );
     assert.deepEqual(
+      decideAccess({ pathname: "/api/cron/invoice-reminders", configured: true, hasValidSession: false }),
+      { type: "next" },
+    );
+    assert.deepEqual(
+      decideAccess({ pathname: "/api/cron/invoice-reminders", configured: false, hasValidSession: false }),
+      { type: "unavailable" },
+    );
+    assert.deepEqual(
       decideAccess({ pathname: "/_next/hmr", configured: true, hasValidSession: false }),
       { type: "next" },
     );
